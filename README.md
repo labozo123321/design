@@ -27,7 +27,7 @@ Fonts (Instrument Serif, Inter Tight, IBM Plex Mono) load through
 `@remotion/google-fonts`, so studio and render need internet access.
 
 Animated grain is the most expensive thing in the file to encode. The defaults
-(CRF 23, grain held for 2 frames, BT.709) give a master of roughly 150 MB.
+(CRF 23, grain held for 2 frames, BT.709) give a master of about 170 MB.
 Pass `--crf=18` for a heavier master or `--crf=26` for a lighter upload. Grain
 strength per act lives in `GRAIN_KEYS` (`src/components/FilmLayers.tsx`); grain
 size and its frame hold are props on `<Grain/>`.
