@@ -228,3 +228,22 @@ Text stays inside 90px of every edge and clear of the bottom 300px and right
 140px. `TextColumn` keeps centred copy in a symmetric 140–940px column.
 Render with `--props='{"showSafeArea":true}'` (or toggle the prop in the
 studio) to see the guides.
+
+## Promo (second composition)
+
+`npx remotion render Promo out/promo.mp4` renders a 30 s upbeat promo
+(1080×1920, 120 BPM; one beat = 15 frames) that uses the real app recording in
+`public/app/demo.mp4`:
+
+| frames | style | app footage |
+|---|---|---|
+| 0–150 | original 8-bit platformer: pixel hero, "$" coin blocks on the beat | none |
+| 150–390 | comic book: halftone, captions, bubbles, STAGE CLEARED burst | Journey |
+| 390–570 | sticker scrapbook: tape, marker loop on "Ask for a repeat", stickers | Jobs |
+| 570–720 | pixel boss fight: logging a win lands the final blow | Money, "Add income" view only |
+| 720–900 | confetti finale: FourFig wordmark, COMING SOON | none |
+
+Code lives in `src/promo/` (timeline, scenes, pixel/comic/scrapbook/confetti
+kits). The recorded status bar is replaced with a clean one, and the Money
+tab's test totals are never shown. Music and SFX come from
+`scripts/generate-promo-audio.py` (original, synthesised) into `public/promo/`.
