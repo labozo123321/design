@@ -53,7 +53,8 @@ export const TitleLockup: React.FC<TitleLockupProps> = ({ mark, rules, tagline, 
   const size = useWordmarkSize();
   const ruleW = 560;
   const ruleGap = size * 0.78;
-  const tracking = 0.14 + (1 - mark) * 0.16;
+  // Tracks out from tight to final, so the mark never grows past its fitted width.
+  const tracking = 0.14 - (1 - mark) * 0.08;
 
   const rule = (top: number) => (
     <div style={{ position: "absolute", left: 540 - ruleW / 2, top, width: ruleW, height: 2 }}>
