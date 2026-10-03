@@ -12,16 +12,16 @@ export const GRAIN_SEAM = 0.06;
 
 const GRAIN_KEYS: [number, number][] = [
   [0, GRAIN_SEAM],
-  [30, 0.36], //                          "grain fades in"
-  [T.blackout.from - 1, 0.36],
-  [T.blackout.from, 0.14], //             blackout: the tape is still rolling
-  [T.blackout.to - 1, 0.14],
-  [T.blackout.to, 0.38], //               the dread
-  [ACTS.turn.from - 1, 0.38],
+  [30, 0.32], //                          "grain fades in"
+  [T.blackout.from - 1, 0.32],
+  [T.blackout.from, 0.12], //             blackout: the tape is still rolling
+  [T.blackout.to - 1, 0.12],
+  [T.blackout.to, 0.3], //                the dread
+  [ACTS.turn.from - 1, 0.3],
   [ACTS.turn.from + 8, 0.2], //           the turn: grain lingers at 20%
   [ACTS.title.from - 1, 0.2],
-  [ACTS.title.from, 0.22], //             the title: cleaner, editorial
-  [T.fadeOut.from, 0.22],
+  [ACTS.title.from, 0.16], //             the title: cleaner, editorial
+  [T.fadeOut.from, 0.16],
   [DURATION, GRAIN_SEAM], //              back to the exact look of frame 0
 ];
 
@@ -59,7 +59,7 @@ export const FilmLayers: React.FC = () => {
       <RecHud frame={frame} force={titleHit} />
       <Scanlines opacity={scan} roll={routine || dread ? 1 : 0} />
       <Grain opacity={grainLevel(frame)} blend="screen" dust={dust} />
-      {turn ? <Grain opacity={0.2} blend="overlay" seed="grain-ui" frequency={0.95} /> : null}
+      {turn ? <Grain opacity={0.2} blend="overlay" seed="grain-ui" frequency={0.5} /> : null}
     </AbsoluteFill>
   );
 };

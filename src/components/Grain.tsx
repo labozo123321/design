@@ -14,6 +14,8 @@ type GrainProps = {
   contrast?: number;
   /** 0..1 amount of found-footage dust, hairs and scratches. */
   dust?: number;
+  /** Frames each grain pattern is held. 2 = grain "on twos": filmic, and half the encode cost. */
+  hold?: number;
   seed?: string;
 };
 
@@ -24,16 +26,17 @@ type GrainProps = {
 export const Grain: React.FC<GrainProps> = ({
   opacity,
   blend = "screen",
-  frequency = 0.82,
-  contrast = 2.6,
+  frequency = 0.42,
+  contrast = 2.1,
   dust = 0,
+  hold = 2,
   seed = "grain",
 }) => {
   const frame = useCurrentFrame();
   const id = useSafeId("grain");
   if (opacity <= 0.002) return null;
 
-  const turbSeed = Math.floor(random(`${seed}-${frame}`) * 10000);
+  const turbSeed = Math.floor(random(`${seed}-${Math.floor(frame / hold)}`) * 10000);
   // Mid-grey sits at 0.5; shift it down so screen-blended grain doesn't lift blacks to grey.
   const intercept = blend === "screen" ? -contrast * 0.5 + 0.12 : 0.5 - contrast * 0.5;
 
@@ -44,7 +47,7 @@ export const Grain: React.FC<GrainProps> = ({
           <feTurbulence
             type="fractalNoise"
             baseFrequency={frequency}
-            numOctaves={2}
+            numOctaves={1}
             seed={turbSeed}
             stitchTiles="stitch"
           />
