@@ -2,7 +2,7 @@
 
 A 36 second, 1080×1920, 30 fps teaser trailer built entirely in code with
 [Remotion](https://www.remotion.dev): shapes, gradients, SVG filters, CSS and
-text. No footage, no images, no music in the repo.
+text. No footage, no images, and the music and sound effects are synthesised by a script in the repo.
 
 The product name appears in exactly one place: `APP_NAME` in `src/theme.ts`,
 rendered only on the title card.
@@ -39,9 +39,10 @@ size and its frame hold are props on `<Grain/>`.
 ├── package.json
 ├── remotion.config.ts          render defaults (h264, CRF 23, BT.709)
 ├── tsconfig.json
+├── scripts/generate-audio.py   synthesises the score + all SFX
 ├── public/
-│   ├── score.mp3               (you add it) optional score
-│   └── sfx/                    (you add them) optional sound effects
+│   ├── score.mp3               generated score
+│   └── sfx/                    generated sound effects
 └── src/
     ├── index.ts                registerRoot
     ├── Root.tsx                <Composition id="Teaser" …>
@@ -50,7 +51,7 @@ size and its frame hold are props on `<Grain/>`.
     ├── theme.ts                APP_NAME, palette, safe zones
     ├── fonts.ts                @remotion/google-fonts loading
     ├── audio/
-    │   └── AudioSlot.tsx       commented-out <Audio> slot + cue sheet
+    │   └── AudioSlot.tsx       score + SFX cue table and mix
     ├── lib/
     │   ├── anim.ts             ramp(), EASE per style, step easing, spring presets
     │   ├── noise.ts            seeded value noise, camera shake, stepped random
@@ -153,30 +154,46 @@ directly; move the beat or the scene instead.
 
 `T.<scene>` gives `{ from, to, duration }` for any scene; `ACTS` gives the four acts.
 
-## Sound (optional)
+## Sound
 
-`src/audio/AudioSlot.tsx` holds a commented-out `<Audio>` for
-`public/score.mp3` (with volume automation: silent through the 300–330
-blackout and the 530–540 bass drop) plus one commented `<Sequence><Audio/></Sequence>`
-per cue. Uncomment the two imports at the top and the elements you need.
+The soundtrack is original and fully synthesised in code by
+`scripts/generate-audio.py` (oscillators, noise, filters, convolution reverb;
+no samples, no licensed music) into `public/score.mp3` and `public/sfx/*.mp3`.
+Regenerate with `pip install numpy scipy && python3 scripts/generate-audio.py`.
 
-| frame | file | cue |
-|---|---|---|
-| 15 | sfx/alarm-beep-distorted.mp3 | alarm beep, distorted |
-| 45 | sfx/hit-cut.mp3 | (optional) hit on the hard cut |
-| 200 | sfx/thud-heavy.mp3 | SPENT stamp, heavy thud |
-| 240 | sfx/glitch-in.mp3 | (optional) glitch slice transition |
-| 270 | sfx/glitch-forever.mp3 | (optional) "same life. forever." |
-| 300–330 | none | silence |
-| 330, 339, 347, 354, 360, 366, 371, 375, 379, 382, 385, 387 | sfx/hit-1…4.mp3 | percussive hit per flash frame |
-| 462, 474, 486 | sfx/crack.mp3 | (optional) glass crack bursts |
-| 530–540 | none | bass drop silence |
-| 538 | sfx/whoosh-reversed.mp3 | reversed whoosh |
-| 655 | sfx/click.mp3 | the period lands |
-| 744 | sfx/tap.mp3 | (optional) cursor tap |
-| 780 | sfx/whip.mp3 | (optional) whip pan |
-| 825 | sfx/chime-confirm.mp3 | confirm chime |
-| 1022 | sfx/glitch-stinger.mp3 | glitch stinger |
+- **Score**: dread drone, heartbeat, accelerating clock ticks and dying
+  fluorescent hum (Act 1); hard silence for the blackout; accelerating pulse and
+  riser (Act 2) into a bass-drop silence; a warm bloom then a 120 BPM
+  Am · F · C · G groove with side-chain pump (Act 3); dark pad turning into a
+  wide major resolve, bells and a sub under the title (Act 4). Silent at both
+  ends so the loop is clean.
+- **SFX**: every cue in `CUES` (`src/audio/AudioSlot.tsx`) reads its frame
+  from `SFX` in `src/timeline.ts`, so retiming a scene moves its sounds. The
+  score is one track written to the default timing; regenerate it if you retime.
+- **Mix**: per-cue volumes plus `MASTER`; the default render peaks at about
+  -1.2 dBFS and -16.5 LUFS.
+
+| frame | sound |
+|---|---|
+| 15 | distorted alarm beeps |
+| 45 | low hit on the hard cut |
+| 200 | SPENT stamp thud |
+| 240, 270 | glitch bursts |
+| 300–330 | silence |
+| 330 … 387 | percussive hit on every flash frame |
+| 437, 450 | balance glitch, glitch-in |
+| 462, 474, 486 | glass cracks |
+| 513 → 540 | reversed whoosh building into the turn (score silent 530–540) |
+| 596, 628 | cursor clicks; 598 typing; 619–625 strike-throughs |
+| 630, 660, 725 | iris / tilt-in / zoom swooshes; 635 typing |
+| 655 | the period lands |
+| 682 … 706 | journey nodes (ascending notes); 712 button pop |
+| 744 | tap; 772 "Sent" |
+| 780 | whip; 791, 794 chips; 795 card flip |
+| 814, 817, 820 | checklist ticks; 825 confirm chime |
+| 840 | boom on the cut to black |
+| 960 | title hit with shimmer |
+| 1022 | glitch stinger |
 
 ## Transitions used
 

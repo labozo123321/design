@@ -110,6 +110,18 @@ export const BEATS = {
   outreachTap: 9,
   /** outreach: "Sent" tag pops */
   outreachSent: 37,
+  /** search: typing starts / junk results get struck through */
+  searchType: 13,
+  searchStrikes: [34, 37, 40],
+  /** lookNoFurther: typing starts */
+  lookType: 5,
+  /** journey: nodes light up, CTA appears, zoom-through starts */
+  journeyLights: [22, 28, 34, 40, 46],
+  journeyCta: 52,
+  journeyZoom: 65,
+  /** progress: chips pop, boss mission flips */
+  progressChips: [11, 14],
+  progressBoss: 15,
   /** checklist: items tick */
   checklistTicks: [4, 7, 10],
   /** checklist: big check completes */
@@ -138,19 +150,45 @@ export const FLASH_HITS = [
   { at: 57, len: 3, word: "someday." },
 ] as const;
 
-/** Absolute SFX cue frames (see src/audio/AudioSlot.tsx). */
+/** Absolute SFX cue frames, derived from scenes + beats (see src/audio/AudioSlot.tsx). */
+const at = (id: SceneId, beats: readonly number[]) => beats.map((b) => T[id].from + b);
 export const SFX = {
-  alarmBeep: T.alarm.from + BEATS.alarmBeeps[0], //             15
-  cutHit: T.everyMorning.from, //                               45 (optional)
-  spentThud: T.spent.from + BEATS.spentImpact, //              200
-  glitchIn: T.sameLife.from, //                                240 (optional)
-  foreverGlitch: T.sameLife.from + BEATS.foreverAt, //         270 (optional)
-  flashHits: FLASH_HITS.map((h) => T.flashWords.from + h.at), // 330 … 387
-  crackHits: BEATS.crackBursts.map((b) => T.crackedClock.from + b), // 462, 474, 486 (optional)
-  reversedWhoosh: T.inkBleed.from + BEATS.inkWhoosh, //        538
-  periodClick: T.lookNoFurther.from + BEATS.periodClick, //   655
-  outreachTap: T.outreach.from + BEATS.outreachTap, //        744 (optional)
-  whip: T.progress.from, //                                    780 (optional)
-  confirmChime: T.checklist.from + BEATS.confirmChime, //     825
-  glitchStinger: T.titleGlitch.from + BEATS.titleGlitch, //  1022
+  // ACT 1
+  alarmBeep: T.alarm.from + BEATS.alarmBeeps[0], //                 15
+  cutHit: T.everyMorning.from, //                                   45
+  clockSpin: T.sameCommute.from + 18, //                            108
+  spentThud: T.spent.from + BEATS.spentImpact, //                  200
+  glitchIn: T.sameLife.from, //                                    240
+  foreverGlitch: T.sameLife.from + BEATS.foreverAt, //             270
+  // ACT 2
+  flashHits: at(
+    "flashWords",
+    FLASH_HITS.map((h) => h.at),
+  ), //       330 … 387
+  balanceGlitch: T.balance.from + 47, //                           437
+  glitchIn2: T.crackedClock.from, //                               450
+  crackHits: at("crackedClock", BEATS.crackBursts), //            462, 474, 486
+  reversedWhoosh: T.inkBleed.from + BEATS.inkWhoosh, //            538 (peak)
+  // ACT 3
+  uiClicks: at("search", [BEATS.searchClick, BEATS.searchClear]), // 596, 628
+  typingSearch: T.search.from + BEATS.searchType, //               598
+  strikes: at("search", BEATS.searchStrikes), //                  619, 622, 625
+  iris: T.lookNoFurther.from, //                                   630
+  typingLook: T.lookNoFurther.from + BEATS.lookType, //            635
+  periodClick: T.lookNoFurther.from + BEATS.periodClick, //        655
+  tiltIn: T.journey.from, //                                       660
+  nodePops: at("journey", BEATS.journeyLights), //                682 … 706
+  ctaPop: T.journey.from + BEATS.journeyCta, //                    712
+  zoom: T.journey.from + BEATS.journeyZoom, //                     725
+  outreachTap: T.outreach.from + BEATS.outreachTap, //             744
+  sent: T.outreach.from + BEATS.outreachSent, //                   772
+  whip: T.progress.from, //                                        780
+  chipPops: at("progress", BEATS.progressChips), //               791, 794
+  bossFlip: T.progress.from + BEATS.progressBoss, //               795
+  checklistTicks: at("checklist", BEATS.checklistTicks), //       814, 817, 820
+  confirmChime: T.checklist.from + BEATS.confirmChime, //          825
+  // ACT 4
+  cutToBlack: T.alarmGold.from, //                                 840
+  titleHit: T.title.from, //                                       960
+  glitchStinger: T.titleGlitch.from + BEATS.titleGlitch, //       1022
 };

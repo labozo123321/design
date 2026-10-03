@@ -1,5 +1,5 @@
 /** The only place the product name lives. Shown on the title card and nowhere else. */
-export const APP_NAME = "[APP NAME]";
+export const APP_NAME = "FourFig";
 
 export const COLORS = {
   // Horror acts

@@ -3,6 +3,7 @@ import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } fr
 import { PHONE, PhoneFrame } from "../components/PhoneFrame";
 import { SoftBackdrop } from "../components/SoftBackdrop";
 import { TextColumn } from "../components/Type";
+import { BEATS } from "../timeline";
 import { COLORS, FOCUS_Y } from "../theme";
 import { FONTS } from "../fonts";
 import { CLAMP, EASE, ramp, SPRING } from "../lib/anim";
@@ -26,10 +27,10 @@ const LABELS: Record<number, string> = {
   9: "$1,000",
 };
 const PATH = smoothPath(NODES);
-const LIGHT_AT = [22, 28, 34, 40, 46];
+const LIGHT_AT = BEATS.journeyLights;
 const CURRENT = LIGHT_AT.length - 1;
-const CTA_AT = 52;
-const ZOOM_START = 65;
+const CTA_AT = BEATS.journeyCta;
+const ZOOM_START = BEATS.journeyZoom;
 
 /** Phone CTA, in screen coordinates. The next scene picks it up at 1.6× scale. */
 export const PHONE_CTA = { w: 450, h: 82, cy: 1121 } as const;

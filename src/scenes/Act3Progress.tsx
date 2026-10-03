@@ -3,7 +3,7 @@ import { AbsoluteFill, interpolate, Sequence, spring, useCurrentFrame, useVideoC
 import { GlassCard } from "../components/GlassCard";
 import { SoftBackdrop } from "../components/SoftBackdrop";
 import { WhipPan } from "../components/WhipPan";
-import { T } from "../timeline";
+import { BEATS, T } from "../timeline";
 import { COLORS } from "../theme";
 import { FONTS } from "../fonts";
 import { EASE, ramp, SPRING } from "../lib/anim";
@@ -12,8 +12,8 @@ import { SceneProps } from "./types";
 
 const WHIP_LEN = 8;
 const FILL_AT = 5;
-const CHIPS_AT = [11, 14];
-const BOSS_AT = 15;
+const CHIPS_AT = BEATS.progressChips;
+const BOSS_AT = BEATS.progressBoss;
 
 export const THERMO = { cx: 262, top: 370, bottom: 1270, w: 120, bulbR: 92 } as const;
 const FILL_FROM = 0.05;

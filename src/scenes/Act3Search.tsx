@@ -11,10 +11,10 @@ import { CLAMP, EASE, ramp, SPRING } from "../lib/anim";
 import { SceneProps } from "./types";
 
 const QUERY = "how to make money on the side";
-const TYPE_START = 13;
+const TYPE_START = BEATS.searchType;
 const TYPE_RATE = 1.6; // characters per frame
 const RESULTS_AT = 31;
-const STRIKES = [34, 37, 40];
+const STRIKES = BEATS.searchStrikes;
 const JUNK = ["get rich quick", "crypto course", "drop shipping guru"];
 
 export const SEARCH_BAR = { x: 140, y: 600, w: 800, h: 132 } as const;

@@ -10,7 +10,7 @@ import { Act3Search, CLEAR_BUTTON } from "./Act3Search";
 import { SceneProps } from "./types";
 
 const PHRASE = "Look no further";
-const TYPE_START = 5;
+const TYPE_START = BEATS.lookType;
 const TYPE_END = 17;
 const IRIS_LEN = 11;
 
