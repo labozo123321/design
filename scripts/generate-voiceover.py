@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-Voiceover for the ExplainerVO composition, synthesised with Kokoro-82M
-(open-weights TTS, Apache 2.0) via kokoro-onnx. One clip per sentence, each
-fitted to its scene window, so caption timing is exact.
+Voiceovers synthesised with Kokoro-82M (open-weights TTS, Apache 2.0) via
+kokoro-onnx. One clip per sentence, so caption and animation timing is exact.
 
     pip install kokoro-onnx soundfile
     # model files from https://huggingface.co/fastrtc/kokoro-onnx (not committed, ~350 MB)
-    KOKORO_DIR=/path/to/models python3 scripts/generate-voiceover.py
+    KOKORO_DIR=/path/to/models python3 scripts/generate-voiceover.py            # ExplainerVO
+    KOKORO_DIR=/path/to/models python3 scripts/generate-voiceover.py story      # Story
 
-Writes public/voiceover/*.mp3 and src/voiceover/vo.json (frame timings + words).
+explainer: lines are fitted into the Explainer's fixed scene windows.
+  → public/voiceover/*.mp3, src/voiceover/vo.json
+story: the voice drives the edit. Each scene lasts as long as its lines need,
+  and the scene windows are written out alongside the line timings.
+  → public/story/vo/*.mp3, src/story/vo.json
 """
 
 import json
 import os
 import subprocess
+import sys
 import tempfile
 
 import numpy as np
@@ -22,7 +27,8 @@ from kokoro_onnx import Kokoro
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS = os.environ.get("KOKORO_DIR", os.path.join(ROOT, "models"))
-VOICE = os.environ.get("VO_VOICE", "af_heart")
+PIECE = sys.argv[1] if len(sys.argv) > 1 else "explainer"
+VOICE = os.environ.get("VO_VOICE", {"explainer": "af_heart", "story": "am_michael"}[PIECE])
 FPS = 30
 
 # (scene start s, scene end s, sentences). Scene windows match src/explainer/timeline.ts.
@@ -59,6 +65,64 @@ def to_mp3(x, sr, path):
     sf.write(wav, x, sr)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", wav, "-ar", "48000", "-b:a", "192k", path], check=True)
     os.remove(wav)
+
+
+# Story: (scene id, minimum seconds, sentences). Male voice, a touch brisker.
+STORY = [
+    ("paper", 4.2, ["You've got a skill.", "You design. You fix. You cook. You teach."]),
+    ("blueprint", 4.4, ["But turning it into a side hustle?", "Nobody hands you the plan."]),
+    ("bauhaus", 5.0, ["FourFig does.", "One clear path, broken into small steps you can actually finish."]),
+    ("riso", 5.0, ["Find your first client.", "Make the ask.", "Get paid.", "Then do it again."]),
+    ("groovy", 4.6, ["Log every win.", "Keep your streak.", "Watch your progress stack up."]),
+    ("end", 4.4, ["FourFig.", "Your side hustle, mapped."]),
+]
+STORY_SPEED = 1.06
+STORY_GAP = 0.22
+
+
+def story():
+    k = Kokoro(os.path.join(MODELS, "kokoro-v1.0.onnx"), os.path.join(MODELS, "voices-v1.0.bin"))
+    out_dir = os.path.join(ROOT, "public", "story", "vo")
+    os.makedirs(out_dir, exist_ok=True)
+    scenes, lines = [], []
+    t, n = 0.0, 0
+    for sid, min_s, sentences in STORY:
+        s0 = t
+        t += 0.3 if n else 0.35
+        idx = []
+        for text in sentences:
+            x, sr = synth(k, text, STORY_SPEED)
+            dur = len(x) / sr
+            name = f"vo-{n:02d}.mp3"
+            to_mp3(x / max(1e-6, np.abs(x).max()) * 0.89, sr, os.path.join(out_dir, name))
+            words = text.split()
+            weights = np.array([len(w.strip(".,?")) + 1 for w in words], dtype=float)
+            edges = np.concatenate([[0], np.cumsum(weights) / weights.sum()]) * dur
+            lines.append(
+                {
+                    "file": f"story/vo/{name}",
+                    "text": text,
+                    "scene": sid,
+                    "from": round(t * FPS),
+                    "duration": int(np.ceil(dur * FPS)),
+                    "words": [{"w": w, "at": round((t + edges[i]) * FPS)} for i, w in enumerate(words)],
+                }
+            )
+            idx.append(n)
+            print(f"{sid:9s} {t:6.2f}s  {dur:4.2f}s  {text}")
+            t += dur + STORY_GAP
+            n += 1
+        t = max(s0 + min_s, t - STORY_GAP + 0.45)
+        if sid == "end":
+            t = max(t, s0 + min_s) + 0.6
+        scenes.append({"id": sid, "from": round(s0 * FPS), "to": round(t * FPS), "lines": idx})
+    # snap scene boundaries to whole frames, contiguous
+    for a, b in zip(scenes, scenes[1:]):
+        b["from"] = a["to"]
+    total = scenes[-1]["to"]
+    print(f"total {total / FPS:.2f}s ({total} frames)")
+    with open(os.path.join(ROOT, "src", "story", "vo.json"), "w") as f:
+        json.dump({"fps": FPS, "voice": VOICE, "duration": total, "scenes": scenes, "lines": lines}, f, indent=1)
 
 
 def main():
@@ -104,4 +168,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    story() if PIECE == "story" else main()

@@ -9,6 +9,8 @@ import { Explainer } from "./explainer/Explainer";
 import { EX_DURATION } from "./explainer/timeline";
 import { Iso, ISO_DURATION } from "./iso/Iso";
 import { ExplainerVO } from "./voiceover/ExplainerVO";
+import { Story } from "./story/Story";
+import { STORY_DURATION } from "./story/timeline";
 
 const defaultProps: TeaserProps = { showSafeArea: false };
 
@@ -43,6 +45,14 @@ export const RemotionRoot: React.FC = () => (
       id="ExplainerVO"
       component={ExplainerVO}
       durationInFrames={EX_DURATION}
+      fps={FPS}
+      width={WIDTH}
+      height={HEIGHT}
+    />
+    <Composition
+      id="Story"
+      component={Story}
+      durationInFrames={STORY_DURATION}
       fps={FPS}
       width={WIDTH}
       height={HEIGHT}

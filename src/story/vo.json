@@ -1,0 +1,444 @@
+{
+  "fps": 30,
+  "voice": "am_michael",
+  "duration": 913,
+  "scenes": [
+    {
+      "id": "paper",
+      "from": 0,
+      "to": 138,
+      "lines": [0, 1]
+    },
+    {
+      "id": "blueprint",
+      "from": 138,
+      "to": 270,
+      "lines": [2, 3]
+    },
+    {
+      "id": "bauhaus",
+      "from": 270,
+      "to": 452,
+      "lines": [4, 5]
+    },
+    {
+      "id": "riso",
+      "from": 452,
+      "to": 619,
+      "lines": [6, 7, 8, 9]
+    },
+    {
+      "id": "groovy",
+      "from": 619,
+      "to": 763,
+      "lines": [10, 11, 12]
+    },
+    {
+      "id": "end",
+      "from": 763,
+      "to": 913,
+      "lines": [13, 14]
+    }
+  ],
+  "lines": [
+    {
+      "file": "story/vo/vo-00.mp3",
+      "text": "You've got a skill.",
+      "scene": "paper",
+      "from": 10,
+      "duration": 31,
+      "words": [
+        {
+          "w": "You've",
+          "at": 10
+        },
+        {
+          "w": "got",
+          "at": 22
+        },
+        {
+          "w": "a",
+          "at": 28
+        },
+        {
+          "w": "skill.",
+          "at": 32
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-01.mp3",
+      "text": "You design. You fix. You cook. You teach.",
+      "scene": "paper",
+      "from": 48,
+      "duration": 77,
+      "words": [
+        {
+          "w": "You",
+          "at": 48
+        },
+        {
+          "w": "design.",
+          "at": 56
+        },
+        {
+          "w": "You",
+          "at": 70
+        },
+        {
+          "w": "fix.",
+          "at": 78
+        },
+        {
+          "w": "You",
+          "at": 86
+        },
+        {
+          "w": "cook.",
+          "at": 94
+        },
+        {
+          "w": "You",
+          "at": 104
+        },
+        {
+          "w": "teach.",
+          "at": 112
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-02.mp3",
+      "text": "But turning it into a side hustle?",
+      "scene": "blueprint",
+      "from": 147,
+      "duration": 51,
+      "words": [
+        {
+          "w": "But",
+          "at": 147
+        },
+        {
+          "w": "turning",
+          "at": 153
+        },
+        {
+          "w": "it",
+          "at": 164
+        },
+        {
+          "w": "into",
+          "at": 169
+        },
+        {
+          "w": "a",
+          "at": 176
+        },
+        {
+          "w": "side",
+          "at": 179
+        },
+        {
+          "w": "hustle?",
+          "at": 187
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-03.mp3",
+      "text": "Nobody hands you the plan.",
+      "scene": "blueprint",
+      "from": 204,
+      "duration": 47,
+      "words": [
+        {
+          "w": "Nobody",
+          "at": 204
+        },
+        {
+          "w": "hands",
+          "at": 216
+        },
+        {
+          "w": "you",
+          "at": 227
+        },
+        {
+          "w": "the",
+          "at": 234
+        },
+        {
+          "w": "plan.",
+          "at": 241
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-04.mp3",
+      "text": "FourFig does.",
+      "scene": "bauhaus",
+      "from": 279,
+      "duration": 31,
+      "words": [
+        {
+          "w": "FourFig",
+          "at": 279
+        },
+        {
+          "w": "does.",
+          "at": 298
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-05.mp3",
+      "text": "One clear path, broken into small steps you can actually finish.",
+      "scene": "bauhaus",
+      "from": 316,
+      "duration": 122,
+      "words": [
+        {
+          "w": "One",
+          "at": 316
+        },
+        {
+          "w": "clear",
+          "at": 324
+        },
+        {
+          "w": "path,",
+          "at": 336
+        },
+        {
+          "w": "broken",
+          "at": 345
+        },
+        {
+          "w": "into",
+          "at": 359
+        },
+        {
+          "w": "small",
+          "at": 369
+        },
+        {
+          "w": "steps",
+          "at": 380
+        },
+        {
+          "w": "you",
+          "at": 392
+        },
+        {
+          "w": "can",
+          "at": 400
+        },
+        {
+          "w": "actually",
+          "at": 407
+        },
+        {
+          "w": "finish.",
+          "at": 425
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-06.mp3",
+      "text": "Find your first client.",
+      "scene": "riso",
+      "from": 461,
+      "duration": 40,
+      "words": [
+        {
+          "w": "Find",
+          "at": 461
+        },
+        {
+          "w": "your",
+          "at": 469
+        },
+        {
+          "w": "first",
+          "at": 478
+        },
+        {
+          "w": "client.",
+          "at": 489
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-07.mp3",
+      "text": "Make the ask.",
+      "scene": "riso",
+      "from": 507,
+      "duration": 28,
+      "words": [
+        {
+          "w": "Make",
+          "at": 507
+        },
+        {
+          "w": "the",
+          "at": 518
+        },
+        {
+          "w": "ask.",
+          "at": 527
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-08.mp3",
+      "text": "Get paid.",
+      "scene": "riso",
+      "from": 542,
+      "duration": 25,
+      "words": [
+        {
+          "w": "Get",
+          "at": 542
+        },
+        {
+          "w": "paid.",
+          "at": 553
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-09.mp3",
+      "text": "Then do it again.",
+      "scene": "riso",
+      "from": 573,
+      "duration": 33,
+      "words": [
+        {
+          "w": "Then",
+          "at": 573
+        },
+        {
+          "w": "do",
+          "at": 582
+        },
+        {
+          "w": "it",
+          "at": 588
+        },
+        {
+          "w": "again.",
+          "at": 594
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-10.mp3",
+      "text": "Log every win.",
+      "scene": "groovy",
+      "from": 628,
+      "duration": 31,
+      "words": [
+        {
+          "w": "Log",
+          "at": 628
+        },
+        {
+          "w": "every",
+          "at": 636
+        },
+        {
+          "w": "win.",
+          "at": 650
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-11.mp3",
+      "text": "Keep your streak.",
+      "scene": "groovy",
+      "from": 665,
+      "duration": 32,
+      "words": [
+        {
+          "w": "Keep",
+          "at": 665
+        },
+        {
+          "w": "your",
+          "at": 674
+        },
+        {
+          "w": "streak.",
+          "at": 684
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-12.mp3",
+      "text": "Watch your progress stack up.",
+      "scene": "groovy",
+      "from": 703,
+      "duration": 47,
+      "words": [
+        {
+          "w": "Watch",
+          "at": 703
+        },
+        {
+          "w": "your",
+          "at": 713
+        },
+        {
+          "w": "progress",
+          "at": 721
+        },
+        {
+          "w": "stack",
+          "at": 735
+        },
+        {
+          "w": "up.",
+          "at": 745
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-13.mp3",
+      "text": "FourFig.",
+      "scene": "end",
+      "from": 772,
+      "duration": 26,
+      "words": [
+        {
+          "w": "FourFig.",
+          "at": 772
+        }
+      ]
+    },
+    {
+      "file": "story/vo/vo-14.mp3",
+      "text": "Your side hustle, mapped.",
+      "scene": "end",
+      "from": 803,
+      "duration": 43,
+      "words": [
+        {
+          "w": "Your",
+          "at": 803
+        },
+        {
+          "w": "side",
+          "at": 812
+        },
+        {
+          "w": "hustle,",
+          "at": 821
+        },
+        {
+          "w": "mapped.",
+          "at": 834
+        }
+      ]
+    }
+  ]
+}

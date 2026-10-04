@@ -314,3 +314,25 @@ sentence, each fitted inside its scene. Running it writes
 | 15.25 s | When someone pays you, save their name. One tap asks them to book again. |
 | 21.25 s | Log every win, and watch it add up. |
 | 26.25 s | FourFig. Your side hustle, mapped. |
+
+## Story (brand-new spot, male voiceover)
+
+`npx remotion render Story out/story.mp4` renders a 30 s spot in six art styles,
+cut to a male voiceover (Kokoro `am_michael`). The voice drives the edit:
+`python3 scripts/generate-voiceover.py story` writes one clip per sentence, and
+each scene lasts as long as its lines need. The scene windows go into
+`src/story/vo.json`, which picture, captions, sound effects and music all read.
+`python3 scripts/generate-story-audio.py` builds the music bed, whose
+instrumentation changes at each scene boundary.
+
+| style | voiceover | transition in |
+|---|---|---|
+| paper cutout, stop motion on twos | "You've got a skill. You design. You fix. You cook. You teach." | (opens) |
+| blueprint | "But turning it into a side hustle? Nobody hands you the plan." | torn paper |
+| Bauhaus poster | "FourFig does. One clear path, broken into small steps you can actually finish." | iris |
+| risograph print | "Find your first client. Make the ask. Get paid. Then do it again." | blinds |
+| 70s groovy | "Log every win. Keep your streak. Watch your progress stack up." | sunrise |
+| FourFig end card | "FourFig. Your side hustle, mapped." | split |
+
+The delivered copy was loudness-normalized after rendering with
+`ffmpeg -i out/story.mp4 -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 256k story-14lufs.mp4`.
