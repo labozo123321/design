@@ -1,0 +1,25 @@
+{
+  "fps": 30,
+  "duration": 540,
+  "apartmentIn": 4,
+  "laptopOn": 95,
+  "line": [100, 150],
+  "sitUp": 118,
+  "stand": [135, 158],
+  "stones": [165, 184, 194, 204, 214, 224, 234, 244, 254, 264, 274, 286, 298, 310, 322],
+  "studio": [190, 232],
+  "store": [240, 272],
+  "handoff": [274, 294],
+  "mailbox": [298, 318],
+  "towers": [330, 420],
+  "track": [350, 396],
+  "lamps": [376, 430],
+  "plazaArrive": 346,
+  "monument": [392, 446],
+  "pullback": [450, 528],
+  "text": {
+    "afterWork": [14, 84],
+    "oneStep": [196, 322],
+    "title": [470, 540]
+  }
+}

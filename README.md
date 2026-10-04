@@ -266,3 +266,26 @@ as animated vector UI in its own style (`src/explainer/ui.tsx`).
 Music: `scripts/generate-explainer-audio.py` (original house bed, 120 BPM) →
 `public/explainer/music.mp3`. SFX reuse the trailer and promo libraries; cues
 live in `src/explainer/ExplainerAudio.tsx` and read `EB` beats.
+
+## Iso (fourth composition)
+
+`npx remotion render Iso out/iso.mp4 --gl=angle` renders an 18 s premium
+isometric 3D piece: a single floating diorama tile in a dark void that
+builds itself. It is real 3D (Three.js through `@remotion/three`) with an
+orthographic camera at 30° elevation and a slow 15° orbit. On a machine with
+no GPU, use `--gl=swangle`.
+
+| frames | shot |
+|---|---|
+| 0–90 | apartment corner, 9:47 PM, only the desk lamp lit, figure slumped · "after work." |
+| 90–180 | laptop glows gold, a gold line runs to the first stone, figure sits up and stands |
+| 180–330 | a stone lands per step; studio, storefront handoff, mailbox each glow gold; progress rail fills · "one step at a time." |
+| 330–450 | towers extrude floor by floor, elevated track lays itself, lamps light in a chain, the monument fills |
+| 450–540 | pull back and up, the tile turns a few degrees and rests · FourFig, "your side income, mapped out." |
+
+All timing lives in `src/iso/cues.json`, which both the scene and the audio
+script read. Materials and palette are in `src/iso/look.ts`, scene parts in
+`src/iso/parts.tsx`, and the camera and figure route in `src/iso/IsoWorld.tsx`.
+Sound: `python3 scripts/generate-iso-audio.py` → `public/iso/soundtrack.mp3`
+(ambient hum, a stone click per placement, milestone chimes, a building pad and
+a resolved D major chord).
