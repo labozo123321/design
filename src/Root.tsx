@@ -5,6 +5,8 @@ import { Teaser, TeaserProps } from "./Teaser";
 import { DURATION, FPS, HEIGHT, WIDTH } from "./timeline";
 import { Promo } from "./promo/Promo";
 import { PROMO_DURATION } from "./promo/timeline";
+import { Explainer } from "./explainer/Explainer";
+import { EX_DURATION } from "./explainer/timeline";
 
 const defaultProps: TeaserProps = { showSafeArea: false };
 
@@ -23,6 +25,14 @@ export const RemotionRoot: React.FC = () => (
       id="Promo"
       component={Promo}
       durationInFrames={PROMO_DURATION}
+      fps={FPS}
+      width={WIDTH}
+      height={HEIGHT}
+    />
+    <Composition
+      id="Explainer"
+      component={Explainer}
+      durationInFrames={EX_DURATION}
       fps={FPS}
       width={WIDTH}
       height={HEIGHT}

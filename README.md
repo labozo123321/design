@@ -247,3 +247,22 @@ Code lives in `src/promo/` (timeline, scenes, pixel/comic/scrapbook/confetti
 kits). The recorded status bar is replaced with a clean one, and the Money
 tab's test totals are never shown. Music and SFX come from
 `scripts/generate-promo-audio.py` (original, synthesised) into `public/promo/`.
+
+## Explainer (third composition)
+
+`npx remotion render Explainer out/explainer.mp4` renders a 30 s "how FourFig
+works" piece in pure motion graphics. No footage: the app's screens are rebuilt
+as animated vector UI in its own style (`src/explainer/ui.tsx`).
+
+| frames | beat |
+|---|---|
+| 0–120 | kinetic hook: "Your side hustle, one step at a time." → lime circle wipe |
+| 120–300 | 01 Follow the path: journey nodes check off, current stage lights up, its card lifts out |
+| 300–450 | 02 Do the next move: the card becomes a checklist, +XP chips, stage cleared, streak, confetti |
+| 450–630 | 03 Turn clients into regulars: save who paid, tap Ask for a repeat, message sends |
+| 630–780 | 04 Watch it add up: chart ranges switch, logging a win steps it up, milestone unlocks |
+| 780–900 | end card: FourFig, "Your side hustle, mapped.", Coming soon |
+
+Music: `scripts/generate-explainer-audio.py` (original house bed, 120 BPM) →
+`public/explainer/music.mp3`. SFX reuse the trailer and promo libraries; cues
+live in `src/explainer/ExplainerAudio.tsx` and read `EB` beats.
