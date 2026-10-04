@@ -289,3 +289,28 @@ script read. Materials and palette are in `src/iso/look.ts`, scene parts in
 Sound: `python3 scripts/generate-iso-audio.py` → `public/iso/soundtrack.mp3`
 (ambient hum, a stone click per placement, milestone chimes, a building pad and
 a resolved D major chord).
+
+## ExplainerVO (narrated explainer)
+
+`npx remotion render ExplainerVO out/explainer-vo.mp4` renders the Explainer
+picture with a voiceover. The music drops by about 8 dB under each line, and
+captions appear word by word in sync with the voice. Captions are skipped on
+the hook and the end card, where the same words are already on screen.
+
+The voice is synthesized with Kokoro-82M (open weights, Apache 2.0) through
+`kokoro-onnx`. The script lives in `scripts/generate-voiceover.py`, one clip per
+sentence, each fitted inside its scene. Running it writes
+`public/voiceover/*.mp3` and the timings in `src/voiceover/vo.json`:
+
+    pip install kokoro-onnx soundfile
+    # kokoro-v1.0.onnx + voices-v1.0.bin from huggingface.co/fastrtc/kokoro-onnx
+    KOKORO_DIR=/path/to/models python3 scripts/generate-voiceover.py   # VO_VOICE=am_michael for a male voice
+
+| time | line |
+|---|---|
+| 0.25 s | Your side hustle. One step at a time. |
+| 4.25 s | FourFig turns your idea into a simple path, so you always know what's next. |
+| 10.25 s | Each stage is a few small moves. Pick a person. Write an offer. Hit send. |
+| 15.25 s | When someone pays you, save their name. One tap asks them to book again. |
+| 21.25 s | Log every win, and watch it add up. |
+| 26.25 s | FourFig. Your side hustle, mapped. |

@@ -47,12 +47,16 @@ export const EXPLAINER_CUES: Cue[] = [
 const musicVolume = (f: number) =>
   interpolate(f, [0, 2, EX_DURATION - 12, EX_DURATION], [0.9, 0.9, 0.9, 0], CLAMP);
 
-export const ExplainerAudio: React.FC = () => (
+/** duck: 0..1 multiplier per frame, used by the voiceover cut to sit the music under the voice. */
+export const ExplainerAudio: React.FC<{ duck?: (f: number) => number; sfxGain?: number }> = ({
+  duck = () => 1,
+  sfxGain = 1,
+}) => (
   <>
-    <Audio src={staticFile("explainer/music.mp3")} volume={(f) => musicVolume(f) * MASTER} />
+    <Audio src={staticFile("explainer/music.mp3")} volume={(f) => musicVolume(f) * duck(f) * MASTER} />
     {EXPLAINER_CUES.map((c, i) => (
       <Sequence key={i} from={c.frame} name={c.file} layout="none">
-        <Audio src={staticFile(c.file)} volume={c.volume * MASTER} />
+        <Audio src={staticFile(c.file)} volume={c.volume * sfxGain * MASTER} />
       </Sequence>
     ))}
   </>

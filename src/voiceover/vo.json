@@ -1,0 +1,358 @@
+{
+  "fps": 30,
+  "voice": "af_heart",
+  "lines": [
+    {
+      "file": "voiceover/vo-00.mp3",
+      "text": "Your side hustle.",
+      "from": 8,
+      "duration": 31,
+      "words": [
+        {
+          "w": "Your",
+          "at": 8
+        },
+        {
+          "w": "side",
+          "at": 16
+        },
+        {
+          "w": "hustle.",
+          "at": 25
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-01.mp3",
+      "text": "One step at a time.",
+      "from": 43,
+      "duration": 38,
+      "words": [
+        {
+          "w": "One",
+          "at": 43
+        },
+        {
+          "w": "step",
+          "at": 51
+        },
+        {
+          "w": "at",
+          "at": 61
+        },
+        {
+          "w": "a",
+          "at": 67
+        },
+        {
+          "w": "time.",
+          "at": 71
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-02.mp3",
+      "text": "FourFig turns your idea into a simple path,",
+      "from": 128,
+      "duration": 78,
+      "words": [
+        {
+          "w": "FourFig",
+          "at": 128
+        },
+        {
+          "w": "turns",
+          "at": 142
+        },
+        {
+          "w": "your",
+          "at": 153
+        },
+        {
+          "w": "idea",
+          "at": 162
+        },
+        {
+          "w": "into",
+          "at": 171
+        },
+        {
+          "w": "a",
+          "at": 180
+        },
+        {
+          "w": "simple",
+          "at": 184
+        },
+        {
+          "w": "path,",
+          "at": 196
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-03.mp3",
+      "text": "so you always know what's next.",
+      "from": 211,
+      "duration": 47,
+      "words": [
+        {
+          "w": "so",
+          "at": 211
+        },
+        {
+          "w": "you",
+          "at": 215
+        },
+        {
+          "w": "always",
+          "at": 221
+        },
+        {
+          "w": "know",
+          "at": 232
+        },
+        {
+          "w": "what's",
+          "at": 239
+        },
+        {
+          "w": "next.",
+          "at": 250
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-04.mp3",
+      "text": "Each stage is a few small moves.",
+      "from": 308,
+      "duration": 55,
+      "words": [
+        {
+          "w": "Each",
+          "at": 308
+        },
+        {
+          "w": "stage",
+          "at": 316
+        },
+        {
+          "w": "is",
+          "at": 326
+        },
+        {
+          "w": "a",
+          "at": 331
+        },
+        {
+          "w": "few",
+          "at": 335
+        },
+        {
+          "w": "small",
+          "at": 341
+        },
+        {
+          "w": "moves.",
+          "at": 352
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-05.mp3",
+      "text": "Pick a person. Write an offer. Hit send.",
+      "from": 367,
+      "duration": 71,
+      "words": [
+        {
+          "w": "Pick",
+          "at": 367
+        },
+        {
+          "w": "a",
+          "at": 376
+        },
+        {
+          "w": "person.",
+          "at": 380
+        },
+        {
+          "w": "Write",
+          "at": 393
+        },
+        {
+          "w": "an",
+          "at": 404
+        },
+        {
+          "w": "offer.",
+          "at": 410
+        },
+        {
+          "w": "Hit",
+          "at": 421
+        },
+        {
+          "w": "send.",
+          "at": 428
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-06.mp3",
+      "text": "When someone pays you, save their name.",
+      "from": 458,
+      "duration": 59,
+      "words": [
+        {
+          "w": "When",
+          "at": 458
+        },
+        {
+          "w": "someone",
+          "at": 465
+        },
+        {
+          "w": "pays",
+          "at": 478
+        },
+        {
+          "w": "you,",
+          "at": 485
+        },
+        {
+          "w": "save",
+          "at": 491
+        },
+        {
+          "w": "their",
+          "at": 499
+        },
+        {
+          "w": "name.",
+          "at": 508
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-07.mp3",
+      "text": "One tap asks them to book again.",
+      "from": 522,
+      "duration": 54,
+      "words": [
+        {
+          "w": "One",
+          "at": 522
+        },
+        {
+          "w": "tap",
+          "at": 528
+        },
+        {
+          "w": "asks",
+          "at": 535
+        },
+        {
+          "w": "them",
+          "at": 543
+        },
+        {
+          "w": "to",
+          "at": 551
+        },
+        {
+          "w": "book",
+          "at": 556
+        },
+        {
+          "w": "again.",
+          "at": 565
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-08.mp3",
+      "text": "Log every win,",
+      "from": 638,
+      "duration": 31,
+      "words": [
+        {
+          "w": "Log",
+          "at": 638
+        },
+        {
+          "w": "every",
+          "at": 646
+        },
+        {
+          "w": "win,",
+          "at": 659
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-09.mp3",
+      "text": "and watch it add up.",
+      "from": 673,
+      "duration": 33,
+      "words": [
+        {
+          "w": "and",
+          "at": 673
+        },
+        {
+          "w": "watch",
+          "at": 680
+        },
+        {
+          "w": "it",
+          "at": 690
+        },
+        {
+          "w": "add",
+          "at": 694
+        },
+        {
+          "w": "up.",
+          "at": 701
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-10.mp3",
+      "text": "FourFig.",
+      "from": 788,
+      "duration": 24,
+      "words": [
+        {
+          "w": "FourFig.",
+          "at": 788
+        }
+      ]
+    },
+    {
+      "file": "voiceover/vo-11.mp3",
+      "text": "Your side hustle, mapped.",
+      "from": 816,
+      "duration": 41,
+      "words": [
+        {
+          "w": "Your",
+          "at": 816
+        },
+        {
+          "w": "side",
+          "at": 824
+        },
+        {
+          "w": "hustle,",
+          "at": 833
+        },
+        {
+          "w": "mapped.",
+          "at": 845
+        }
+      ]
+    }
+  ]
+}

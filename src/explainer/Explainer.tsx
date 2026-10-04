@@ -20,8 +20,8 @@ const SCENES: Record<ExSceneId, React.FC<{ duration: number }>> = {
 };
 
 /** How FourFig works: pure motion graphics, the app UI rebuilt and animated (no footage). */
-export const Explainer: React.FC = () => (
-  <AbsoluteFill style={{ background: "#0A0D14" }}>
+export const ExplainerScenes: React.FC = () => (
+  <>
     {(Object.keys(SCENES) as ExSceneId[]).map((id) => {
       const Scene = SCENES[id];
       return (
@@ -30,6 +30,12 @@ export const Explainer: React.FC = () => (
         </Sequence>
       );
     })}
+  </>
+);
+
+export const Explainer: React.FC = () => (
+  <AbsoluteFill style={{ background: "#0A0D14" }}>
+    <ExplainerScenes />
     <ExplainerAudio />
   </AbsoluteFill>
 );
