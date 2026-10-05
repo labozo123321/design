@@ -1,0 +1,38 @@
+{
+  "round": {
+    "file": "fight/vo/round.mp3",
+    "text": "Round one.",
+    "frames": 23,
+    "tail": 46
+  },
+  "fight": {
+    "file": "fight/vo/fight.mp3",
+    "text": "Fight.",
+    "frames": 18,
+    "tail": 39
+  },
+  "finish": {
+    "file": "fight/vo/finish.mp3",
+    "text": "Finish it.",
+    "frames": 25,
+    "tail": 47
+  },
+  "ko": {
+    "file": "fight/vo/ko.mp3",
+    "text": "Kay. Oh.",
+    "frames": 29,
+    "tail": 51
+  },
+  "email": {
+    "file": "fight/vo/email.mp3",
+    "text": "It was one email.",
+    "frames": 39,
+    "tail": 57
+  },
+  "end": {
+    "file": "fight/vo/end.mp3",
+    "text": "SideStack. We'll walk you through the scary parts.",
+    "frames": 84,
+    "tail": 102
+  }
+}

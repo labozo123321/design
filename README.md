@@ -336,3 +336,23 @@ instrumentation changes at each scene boundary.
 
 The delivered copy was loudness-normalized after rendering with
 `ffmpeg -i out/story.mp4 -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 256k story-14lufs.mp4`.
+
+## Fight (stickman fight, meme format)
+
+`npx remotion render Fight out/fight.mp4` renders a 27 s arcade-style stickman
+fight with a twist. The caption "me sending ONE email for my side hustle:" sits
+on top while ME fights OVERTHINKING: combos, thought-fireballs ("WHAT IF IT'S
+CRINGE"), a grayscale low point, a SEND IT super move and a K.O. Then there's a
+hard cut to "what actually happened:", where a guy clicks Send on one email and
+the app says Step complete. The deadpan narrator says "It was one email.", and
+the end card says "SideStack. We'll walk you through the scary parts."
+
+- `src/fight/rig.tsx`: the stickman rig (forward kinematics) and its pose library
+- `src/fight/choreo.ts`: keyframed choreography for both fighters, hits, impact frames, projectiles and beats (`FB`), plus the `BRAND` constant
+- `src/fight/Arena.tsx`: the camera (follow, zoom punches, shake), afterimages, sparks, speed lines and HUD
+- `src/fight/Reality.tsx`, `src/fight/EndCard.tsx`: the reveal and the end card
+- `scripts/generate-fight-audio.py`: the score (drum and bass, low point, comeback, jingle) and all fight sound effects
+- `scripts/generate-fight-voice.py`: the announcer (Kokoro `am_fenrir`, pitched down, hall reverb) and the narrator (`am_michael`)
+
+To change the brand name, edit `BRAND` in `choreo.ts`, plus the `end` line in
+`generate-fight-voice.py`, then rerun that script.
