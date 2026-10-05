@@ -45,7 +45,7 @@ const camera = (f: number) => {
   }
   cx = Math.max(-140, Math.min(140, cx));
   const low = interpolate(f, [345, 400, 470, 488], [0, 1, 1, 0], CLAMP);
-  cx = cx * (1 - low) + -150 * low;
+  cx = cx * (1 - low) + -100 * low;
   let zoom = interpolate(
     f,
     [0, 44, 60, 345, 452, 470, 520, 536, 544, 556, 600],
@@ -266,7 +266,7 @@ const Orb: React.FC<{ x: number; y: number; size: number; text: string; f: numbe
   text,
   f,
 }) => {
-  const r = 92 * size;
+  const r = 100 * size;
   const flick = 1 + Math.sin(f * 1.3) * 0.05;
   return (
     <g transform={`translate(${x} ${y})`}>
@@ -283,7 +283,7 @@ const Orb: React.FC<{ x: number; y: number; size: number; text: string; f: numbe
         );
       })}
       <circle r={r} fill="url(#orbCore)" />
-      <foreignObject x={-r * 0.95} y={-r * 0.62} width={r * 1.9} height={r * 1.24}>
+      <foreignObject x={-r * 1.6} y={-r * 0.75} width={r * 3.2} height={r * 1.5}>
         <div
           style={{
             width: "100%",
@@ -293,11 +293,11 @@ const Orb: React.FC<{ x: number; y: number; size: number; text: string; f: numbe
             justifyContent: "center",
             textAlign: "center",
             fontFamily: PFONTS.comic,
-            fontSize: 34 * size,
+            fontSize: 50 * Math.min(size, 1.6),
             lineHeight: 0.95,
             color: "#fff",
-            letterSpacing: "0.02em",
-            WebkitTextStroke: `${2 * size}px #5A0A10`,
+            letterSpacing: "0.03em",
+            textShadow: OUTLINE,
           }}
         >
           {text}
@@ -306,6 +306,21 @@ const Orb: React.FC<{ x: number; y: number; size: number; text: string; f: numbe
     </g>
   );
 };
+
+/** Thick black outline that keeps comic text readable over fire. */
+export const OUTLINE = [
+  [3, 0],
+  [-3, 0],
+  [0, 3],
+  [0, -3],
+  [2, 2],
+  [-2, 2],
+  [2, -2],
+  [-2, -2],
+  [0, 6],
+]
+  .map(([x, y]) => `${x}px ${y}px 0 #12060C`)
+  .join(", ");
 
 const Shards: React.FC<{ x: number; y: number; t: number; size: number; text: string; seed: number }> = ({
   x,

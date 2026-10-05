@@ -28,7 +28,7 @@ LINES = {
     "finish": ("announcer", "Finish it.", 0.85),
     "ko": ("announcer", "Kay. Oh.", 0.8),
     "email": ("narrator", "It was one email.", 0.95),
-    "end": ("narrator", "SideStack. We'll walk you through the scary parts.", 1.0),
+    "end": ("narrator", "FourFig. We'll walk you through the scary parts.", 1.0),
 }
 VOICES = {"announcer": "am_fenrir", "narrator": "am_michael"}
 

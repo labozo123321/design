@@ -3,6 +3,7 @@ import { AbsoluteFill, Sequence, interpolate, useCurrentFrame } from "remotion";
 import { CLAMP } from "../lib/anim";
 import { PFONTS } from "../promo/fonts";
 import { Arena } from "./Arena";
+import { Callout } from "./Callout";
 import { EndCard } from "./EndCard";
 import { FB, FIGHT_DURATION } from "./choreo";
 import { Reality } from "./Reality";
@@ -52,6 +53,7 @@ export const Fight: React.FC = () => {
     <AbsoluteFill style={{ background: "#000" }}>
       <Sequence durationInFrames={FB.cut} name="arena">
         <Arena />
+        <Callout />
       </Sequence>
       <Sequence from={FB.cut} durationInFrames={FB.end - FB.cut} name="reality">
         <Reality />

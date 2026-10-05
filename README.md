@@ -345,7 +345,7 @@ on top while ME fights OVERTHINKING: combos, thought-fireballs ("WHAT IF IT'S
 CRINGE"), a grayscale low point, a SEND IT super move and a K.O. Then there's a
 hard cut to "what actually happened:", where a guy clicks Send on one email and
 the app says Step complete. The deadpan narrator says "It was one email.", and
-the end card says "SideStack. We'll walk you through the scary parts."
+the end card says "FourFig. We'll walk you through the scary parts."
 
 - `src/fight/rig.tsx`: the stickman rig (forward kinematics) and its pose library
 - `src/fight/choreo.ts`: keyframed choreography for both fighters, hits, impact frames, projectiles and beats (`FB`), plus the `BRAND` constant

@@ -6,7 +6,7 @@
 import { Easing } from "remotion";
 import { POSES, Pose, PoseName, mix } from "./rig";
 
-export const BRAND = "SideStack";
+export const BRAND = "FourFig";
 export const FIGHT_DURATION = 820;
 
 /** Big beats shared by picture and sound. */
@@ -165,12 +165,12 @@ export const BOSS_KEYS: Key[] = [
   [232, "fly", 300, 312],
   [240, "down", 360, 0],
   [256, "down", 360, 0],
-  [264, "kneel", 360, 0],
-  [272, "guard", 360, 0],
-  [276, "cast", 360, 0],
-  [284, "guard", 360, 0],
-  [292, "cast", 360, 0],
-  [300, "guard", 360, 0],
+  [262, "kneel", 360, 0],
+  [267, "guard", 360, 0],
+  [271, "cast", 360, 0],
+  [281, "guard", 360, 0],
+  [288, "cast", 360, 0],
+  [298, "guard", 360, 0],
   [306, "dash", 340, 0],
   [312, "slam", 250, 0],
   [316, "cross", 240, 0],
@@ -274,9 +274,9 @@ export const SHOTS: Shot[] = [
     fate: "miss",
   },
   {
-    from: 278,
+    from: 270,
     to: 288,
-    x0: 300,
+    x0: 330,
     x1: 240,
     y0: 160,
     y1: 160,
@@ -284,7 +284,7 @@ export const SHOTS: Shot[] = [
     size: 0.95,
     fate: "smash",
   },
-  { from: 294, to: 304, x0: 300, x1: 170, y0: 160, y1: 150, text: "NOT READY YET", size: 0.95, fate: "hit" },
+  { from: 289, to: 304, x0: 340, x1: 170, y0: 160, y1: 150, text: "NOT READY YET", size: 0.95, fate: "hit" },
   {
     from: 462,
     to: 478,
@@ -296,6 +296,14 @@ export const SHOTS: Shot[] = [
     size: 2.3,
     fate: "smash",
   },
+];
+
+/** Move-name callouts for each throw, held long enough to read: [from, to, text]. */
+export const CALLOUTS: [number, number, string][] = [
+  [150, 204, "WHAT IF IT'S CRINGE"],
+  [266, 290, "THEY'LL SAY NO"],
+  [288, 318, "NOT READY YET"],
+  [410, 482, "WHAT IF THEY SAY NO"],
 ];
 
 /** Combo counter windows: [first hit, last hit, hits]. */

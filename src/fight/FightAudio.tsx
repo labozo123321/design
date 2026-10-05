@@ -24,7 +24,11 @@ const CUES: Cue[] = [
   })),
   // big impacts get a boom underneath
   ...IMPACTS.filter(([f]) => f !== FB.finalHit).map(([f]) => ({ frame: f, file: fx("crash"), volume: 0.22 })),
-  ...[150, 240, 345, 553].map((f) => ({ frame: f, file: fx("crash"), volume: f === 150 ? 0.25 : f === 553 ? 0.25 : 0.4 })),
+  ...[150, 240, 345, 553].map((f) => ({
+    frame: f,
+    file: fx("crash"),
+    volume: f === 150 ? 0.25 : f === 553 ? 0.25 : 0.4,
+  })),
   // thought projectiles
   ...SHOTS.map((s) => ({ frame: s.from, file: fx("fireball"), volume: s.size > 2 ? 0.6 : 0.4 })),
   ...SHOTS.filter((s) => s.fate !== "miss").map((s) => ({
