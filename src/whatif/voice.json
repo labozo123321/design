@@ -1,0 +1,76 @@
+{
+  "fps": 30,
+  "voice": "bm_george",
+  "lines": [
+    {
+      "file": "whatif/vo/vo-00.mp3",
+      "text": "What if gravity got five percent weaker every second?",
+      "highlight": ["weaker"],
+      "from": 9,
+      "duration": 101
+    },
+    {
+      "file": "whatif/vo/vo-01.mp3",
+      "text": "At first, you'd barely notice. Then the fountain starts reaching higher.",
+      "highlight": ["higher."],
+      "from": 120,
+      "duration": 131
+    },
+    {
+      "file": "whatif/vo/vo-02.mp3",
+      "text": "At seventy percent, kids start clearing park benches.",
+      "highlight": ["benches."],
+      "from": 270,
+      "duration": 102
+    },
+    {
+      "file": "whatif/vo/vo-03.mp3",
+      "text": "At half gravity, every jump lasts twice as long.",
+      "highlight": ["twice"],
+      "from": 390,
+      "duration": 98
+    },
+    {
+      "file": "whatif/vo/vo-04.mp3",
+      "text": "At a third, you could leap over a parked car.",
+      "highlight": ["car."],
+      "from": 492,
+      "duration": 81
+    },
+    {
+      "file": "whatif/vo/vo-05.mp3",
+      "text": "Seventeen percent. That's Moon gravity.",
+      "highlight": ["Moon"],
+      "from": 588,
+      "duration": 83
+    },
+    {
+      "file": "whatif/vo/vo-06.mp3",
+      "text": "At zero, nothing is holding anything down.",
+      "highlight": ["zero,"],
+      "from": 690,
+      "duration": 87
+    },
+    {
+      "file": "whatif/vo/vo-07.mp3",
+      "text": "The river lifts off in wobbling blobs of water, and anyone who jumps just keeps going.",
+      "highlight": ["keeps", "going."],
+      "from": 786,
+      "duration": 155
+    },
+    {
+      "file": "whatif/vo/vo-08.mp3",
+      "text": "Even the air starts drifting into space. The sky turns black, and the city goes silent.",
+      "highlight": ["black,", "silent."],
+      "from": 954,
+      "duration": 172
+    },
+    {
+      "file": "whatif/vo/vo-09.mp3",
+      "text": "How long would you last?",
+      "highlight": ["last?"],
+      "from": 1134,
+      "duration": 47
+    }
+  ]
+}

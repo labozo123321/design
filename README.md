@@ -356,3 +356,16 @@ the end card says "FourFig. We'll walk you through the scary parts."
 
 To change the brand name, edit `BRAND` in `choreo.ts`, plus the `end` line in
 `generate-fight-voice.py`, then rerun that script.
+
+## WhatIf (gravity simulation)
+
+`npx remotion render WhatIf out/whatif.mp4 --gl=angle` renders a 41 s
+"What if" simulation in the low-poly 3D documentary format: what if gravity got
+5% weaker every second? On a machine with no GPU, use `--gl=swangle`.
+
+- `src/whatif/timeline.ts`: gravity holds at 100% for 3 s, then drops 5 points a second to zero at 23 s. Air pressure then falls from 31.5 s to 37 s. Also holds the HUD descriptors.
+- `src/whatif/sim.ts`: deterministic physics integrated at 60 Hz under g(t): walking and jumping people (at zero g every step lifts them off), ballistic fountain jets, cars launched by speed bumps, falling leaves, river blobs, and balloons that swell and pop as the air thins
+- `src/whatif/World.tsx`: the plaza, river, bridge, buildings, live gravity sign, camera path, and a sky that turns black as the air leaves
+- `src/whatif/WhatIf.tsx`: serif captions with gold highlight words, plus the GRAVITY and AIR PRESSURE gauges
+- `scripts/generate-whatif-voice.py`: narration (Kokoro `bm_george`), each line pinned to the second its number appears
+- `scripts/generate-whatif-audio.py`: the score and city ambience, ducked under the voice. The bed is muffled to silence as the air goes, since sound needs air.
