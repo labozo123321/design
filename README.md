@@ -369,3 +369,27 @@ To change the brand name, edit `BRAND` in `choreo.ts`, plus the `end` line in
 - `src/whatif/WhatIf.tsx`: serif captions with gold highlight words, plus the GRAVITY and AIR PRESSURE gauges
 - `scripts/generate-whatif-voice.py`: narration (Kokoro `bm_george`), each line pinned to the second its number appears
 - `scripts/generate-whatif-audio.py`: the score and city ambience, ducked under the voice. The bed is muffled to silence as the air goes, since sound needs air.
+
+## Pov (first person, no narration)
+
+"POV: gravity is switching off". A 66 s first-person piece with no
+commentary and almost no text: one opening line, a tiny g and altitude readout,
+and one closing line.
+
+1. **Python track:** `python3 scripts/generate-pov-path.py` simulates the viewer and writes `src/pov/track.json`: walking, leaps that grow as g fades (100% at 4 s, 0 at 32 s), the last leap that never lands, then the updraft to about 125 km. It stores the per-frame camera, steps, take-offs and landings, plus head bob and landing shake.
+2. **Sound:** `python3 scripts/generate-pov-audio.py` builds `public/pov/bed.mp3` from that same track. It has footsteps, landings, wind (climb speed times air density), the score, city ambience that fades with altitude, breathing and a heartbeat.
+3. **Picture:** `src/pov/`:
+   - procedural city (about 3,500 buildings, roofs, trees, traffic);
+   - an Earth cap on the true curvature;
+   - an altitude-aware sky dome, sun and stars;
+   - a cloud deck and fly-through puffs;
+   - your arms and legs;
+   - debris, wind streaks, motes and landing dust;
+   - a lens flare hidden behind buildings, chromatic aberration, frost, eyelids and a heartbeat vignette.
+
+Render it in chunks, muted, then add the bed:
+
+    npx remotion render Pov out/pov-a.mp4 --frames=0-659    --muted --gl=angle
+    npx remotion render Pov out/pov-b.mp4 --frames=660-1319 --muted --gl=angle
+    npx remotion render Pov out/pov-c.mp4 --frames=1320-1979 --muted --gl=angle
+    ffmpeg -f concat -safe 0 -i list.txt -i public/pov/bed.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k pov.mp4
