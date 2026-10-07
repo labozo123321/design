@@ -12,6 +12,8 @@ import { ExplainerVO } from "./voiceover/ExplainerVO";
 import { Story } from "./story/Story";
 import { Fight } from "./fight/Fight";
 import { WhatIf } from "./whatif/WhatIf";
+import { Pov } from "./pov/Pov";
+import { POV_DURATION } from "./pov/timeline";
 import { WI_DURATION } from "./whatif/timeline";
 import { FIGHT_DURATION } from "./fight/choreo";
 import { STORY_DURATION } from "./story/timeline";
@@ -73,6 +75,14 @@ export const RemotionRoot: React.FC = () => (
       id="WhatIf"
       component={WhatIf}
       durationInFrames={WI_DURATION}
+      fps={FPS}
+      width={WIDTH}
+      height={HEIGHT}
+    />
+    <Composition
+      id="Pov"
+      component={Pov}
+      durationInFrames={POV_DURATION}
       fps={FPS}
       width={WIDTH}
       height={HEIGHT}

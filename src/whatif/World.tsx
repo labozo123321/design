@@ -28,7 +28,7 @@ const SMOOTH = Easing.bezier(0.45, 0, 0.25, 1);
 /* ------------------------------------------------------------------ */
 
 const matCache = new Map<string, THREE.MeshStandardMaterial>();
-const M = (color: string, opts: Partial<THREE.MeshStandardMaterialParameters> = {}) => {
+export const M = (color: string, opts: Partial<THREE.MeshStandardMaterialParameters> = {}) => {
   const key = color + JSON.stringify(opts);
   if (!matCache.has(key))
     matCache.set(
@@ -39,7 +39,7 @@ const M = (color: string, opts: Partial<THREE.MeshStandardMaterialParameters> = 
 };
 
 const texCache = new Map<string, THREE.Texture>();
-const facade = (base: string, cols: number, rows: number, seed: number) => {
+export const facade = (base: string, cols: number, rows: number, seed: number) => {
   const key = `${base}${cols}${rows}${seed}`;
   if (texCache.has(key)) return texCache.get(key)!;
   const c = document.createElement("canvas");
@@ -121,7 +121,7 @@ const sign = (text: string) => {
 /* Static set                                                           */
 /* ------------------------------------------------------------------ */
 
-const BUILDINGS: { x: number; z: number; w: number; d: number; h: number; c: string }[] = [
+export const BUILDINGS: { x: number; z: number; w: number; d: number; h: number; c: string }[] = [
   { x: -40, z: -34, w: 12, d: 10, h: 26, c: "#C8693E" },
   { x: -26, z: -36, w: 14, d: 12, h: 30, c: "#8C9DB5" },
   { x: -10, z: -33, w: 14, d: 10, h: 21, c: "#A9483A" },
@@ -132,7 +132,7 @@ const BUILDINGS: { x: number; z: number; w: number; d: number; h: number; c: str
   { x: -56, z: -38, w: 12, d: 12, h: 22, c: "#B9B4AE" },
 ];
 
-const Set: React.FC = () => (
+export const Set: React.FC = () => (
   <group>
     {/* plaza */}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 12]} receiveShadow>
@@ -305,7 +305,7 @@ const Set: React.FC = () => (
 /* Dynamic actors                                                       */
 /* ------------------------------------------------------------------ */
 
-const Person: React.FC<{ i: number; s: ReturnType<typeof simPeople>[number] }> = ({ i, s }) => {
+export const Person: React.FC<{ i: number; s: ReturnType<typeof simPeople>[number] }> = ({ i, s }) => {
   const p = PEOPLE[i];
   const sc = p.kid ? 0.68 : 1;
   const swing = s.airborne ? 0.5 : Math.sin(s.walk) * 0.55;
@@ -344,7 +344,7 @@ const Person: React.FC<{ i: number; s: ReturnType<typeof simPeople>[number] }> =
   );
 };
 
-const Car: React.FC<{ z: number; y: number; pitch: number; color: string }> = ({ z, y, pitch, color }) => (
+export const Car: React.FC<{ z: number; y: number; pitch: number; color: string }> = ({ z, y, pitch, color }) => (
   <group position={[ROAD_X + 1.5, y, z]} rotation={[pitch, Math.PI, 0]}>
     <mesh position={[0, 0.65, 0]} castShadow material={M(color)}>
       <boxGeometry args={[1.9, 0.75, 4.2]} />

@@ -7,6 +7,10 @@ import { AIR_GONE, AIR_START, G0, ZERO_AT, gravity } from "./timeline";
 
 const DT = 1 / 60;
 
+/** Gravity curve and extras, so other pieces can reuse the plaza physics with their own schedule. */
+export type Physics = { gravity: (t: number) => number; zeroAt: number; updraft?: (t: number) => number };
+const DEFAULT: Physics = { gravity, zeroAt: ZERO_AT };
+
 /* ------------------------------------------------------------------ */
 /* People                                                               */
 /* ------------------------------------------------------------------ */
@@ -75,7 +79,7 @@ export type PersonState = {
 };
 
 /** People: ping-pong walk, scheduled jumps, and at (near) zero g every step lifts them off for good. */
-export const simPeople = (t: number): PersonState[] =>
+export const simPeople = (t: number, ph: Physics = DEFAULT): PersonState[] =>
   PEOPLE.map((p, i) => {
     const dx = p.b[0] - p.a[0];
     const dz = p.b[1] - p.a[1];
@@ -100,12 +104,13 @@ export const simPeople = (t: number): PersonState[] =>
     };
     [x, z] = pos(s);
     for (let tt = 0; tt < t; tt += DT) {
-      const g = G0 * gravity(tt);
+      const g = G0 * ph.gravity(tt);
       if (free) {
         x += vxFree * DT;
         z += vzFree * DT;
         y += vy * DT;
         vy -= g * DT;
+        vy += (ph.updraft?.(tt) ?? 0) * DT;
         tumble += spin * DT;
         continue;
       }
@@ -127,7 +132,7 @@ export const simPeople = (t: number): PersonState[] =>
       } else if (tt >= nextJump) {
         vy = p.v0;
         nextJump = tt + p.jumper;
-      } else if (gravity(tt) < 0.03 && tt > ZERO_AT - 2) {
+      } else if (ph.gravity(tt) < 0.03 && tt > ph.zeroAt - 2) {
         // a normal step with almost nothing pulling back: off they go
         vy = 0.25 + random(`f${i}`) * 0.45;
         free = true;
@@ -135,7 +140,7 @@ export const simPeople = (t: number): PersonState[] =>
         vzFree = vz * 0.6;
         spin = (random(`sp${i}`) - 0.5) * 0.9;
       }
-      if (vy > 0 && gravity(tt) <= 0) {
+      if (vy > 0 && ph.gravity(tt) <= 0) {
         free = true;
         vxFree = vx;
         vzFree = vz;
@@ -169,8 +174,8 @@ const DROPS_PER_JET = 22;
 export type Drop = { x: number; y: number; z: number; o: number; s: number };
 
 /** Droplets on ballistic arcs under the current g. At zero g the jets simply keep going up. */
-export const drops = (t: number, pressure: number): Drop[] => {
-  const g = G0 * gravity(t);
+export const drops = (t: number, pressure: number, ph: Physics = DEFAULT): Drop[] => {
+  const g = G0 * ph.gravity(t);
   const out: Drop[] = [];
   JETS.forEach((j, ji) => {
     const flight = g > 0.05 ? (2 * j.vy) / g : Infinity;
@@ -206,7 +211,7 @@ export const CARS = [
 const BUMPS = [18, 2, -8];
 
 /** Cars drive down the road; at low g the speed bumps start launching them. */
-export const simCars = (t: number) =>
+export const simCars = (t: number, ph: Physics = DEFAULT) =>
   CARS.map((c, i) => {
     let z = c.z0;
     let y = 0;
@@ -214,7 +219,7 @@ export const simCars = (t: number) =>
     let pitch = 0;
     let lastZ = z;
     for (let tt = 0; tt < t; tt += DT) {
-      const g = G0 * gravity(tt);
+      const g = G0 * ph.gravity(tt);
       z -= c.speed * DT;
       if (z < -16 && y <= 0) z += 50;
       for (const b of BUMPS) {
@@ -224,6 +229,7 @@ export const simCars = (t: number) =>
       if (y > 0 || vy > 0) {
         y += vy * DT;
         vy -= g * DT;
+        if (y > 0.5) vy += (ph.updraft?.(tt) ?? 0) * DT;
         pitch = Math.max(-0.4, Math.min(0.4, vy * 0.08));
         if (y <= 0) {
           y = 0;
@@ -243,9 +249,9 @@ export const BUMP_Z = BUMPS;
 export const RIVER = { z0: -24, z1: -14, level: -0.6 };
 
 /** After zero g the river surface tears into wobbling blobs that drift up. */
-export const blobs = (t: number) =>
+export const blobs = (t: number, ph: Physics = DEFAULT) =>
   Array.from({ length: 22 }).flatMap((_, i) => {
-    const at = ZERO_AT + 0.8 + i * 0.42;
+    const at = ph.zeroAt + 0.8 + i * 0.42;
     if (t < at) return [];
     const age = t - at;
     const r = (k: string) => random(`bl${i}${k}`);
@@ -269,7 +275,7 @@ export const TREES = [
 ];
 
 /** Leaves: fall slower and slower, then hang in the air. */
-export const leaves = (t: number) =>
+export const leaves = (t: number, ph: Physics = DEFAULT) =>
   Array.from({ length: 24 }).flatMap((_, i) => {
     const tree = TREES[i % TREES.length];
     const at = (i * 1.37) % 30;
@@ -277,7 +283,7 @@ export const leaves = (t: number) =>
     const r = (k: string) => random(`lf${i}${k}`);
     let y = 6 * tree.s + r("y") * 2;
     for (let tt = at; tt < t; tt += DT) {
-      const g = gravity(tt);
+      const g = ph.gravity(tt);
       y -= (0.9 * Math.sqrt(g) - (g <= 0 ? 0.08 : 0)) * DT;
       if (y < 0.05) {
         y = 0.05;
