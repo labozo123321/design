@@ -17,6 +17,7 @@ import { city } from "./city";
 import { SPHERES } from "./crowd";
 import { PovWorld } from "./PovWorld";
 import { Post } from "./Post";
+import { GravityCaptions } from "./Captions";
 import { CLOUD_BASE, CLOUD_TOP, SUN_DIR, spaceness } from "./Sky";
 import { T, camAt, gravity, lastPulse } from "./timeline";
 
@@ -386,7 +387,8 @@ export const Pov: React.FC = () => {
       />
       <Grain frame={frame} />
 
-      {/* minimal text */}
+      {/* minimal text: where this much gravity is real */}
+      <GravityCaptions t={t} serif={SERIF} mono={MONO} />
       <div
         style={{
           position: "absolute",
