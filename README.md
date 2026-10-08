@@ -383,6 +383,7 @@ and one closing line.
    - an Earth cap on the true curvature;
    - an altitude-aware sky dome, sun and stars;
    - a cloud deck and fly-through puffs;
+   - a plaza crowd (`crowd.ts`, `Human.tsx`): 41 articulated people with faces that blink, glance at you and gape as gravity fails. They are simulated together on routes planned clear of every prop, so nobody walks through a cart, a bench, each other or you, and they float off at zero g. Two of them meet your eye: a balloon seller who waves as you pass the cart, and a woman by the river who watches you come down beside her and float away;
    - your arms and legs;
    - debris, wind streaks, motes and landing dust;
    - a lens flare hidden behind buildings, chromatic aberration, frost, eyelids and a heartbeat vignette.
