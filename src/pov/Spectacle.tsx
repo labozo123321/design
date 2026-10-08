@@ -33,9 +33,22 @@ const surge = (t: number, dist: (p: (typeof PULSES)[number]) => number) => {
     // when the wave reaches this light (inverse of waveRadius)
     const a = age - (Math.sqrt(30 * 30 + 32 * Math.max(0, dist(p) - 3)) - 30) / 16;
     if (a < 0 || a > 0.7) continue;
-    dip = Math.max(dip, p.k * Math.exp(-a * 5) * (0.65 + 0.35 * Math.sin(a * 70)));
+    dip = Math.max(dip, p.k * smooth(0, 0.1, a) * Math.exp(-a * 4) * (0.8 + 0.2 * Math.sin(a * 32)));
   }
   return Math.min(1, dip);
+};
+/** When the wave reaches (x, z): a smooth burst (no flicker) for screens to glitch through. */
+export const burstAt = (t: number, x: number, z: number) => {
+  let b = 0;
+  for (const p of PULSES) {
+    const age = t - p.t;
+    if (age < 0 || age > 6) continue;
+    const d = Math.hypot(x - p.x, z - p.z);
+    const a = age - (Math.sqrt(30 * 30 + 32 * Math.max(0, d - 3)) - 30) / 16;
+    if (a < 0 || a > 0.9) continue;
+    b = Math.max(b, p.k * smooth(0, 0.12, a) * (1 - smooth(0.35, 0.9, a)));
+  }
+  return b;
 };
 /** A light at (x, z). */
 export const surgeAt = (t: number, x: number, z: number) => surge(t, (p) => Math.hypot(x - p.x, z - p.z));

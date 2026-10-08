@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { random } from "remotion";
 import { BUMP_Z, FOUNTAIN, ROAD_X, TREES } from "../whatif/sim";
 import { BUILDINGS, M } from "../whatif/World";
-import { surgeAt } from "./Spectacle";
+import { burstAt, surgeAt } from "./Spectacle";
 
 /**
  * The plaza for the POV piece: the same layout as the WhatIf set (every prop where the crowd expects it),
@@ -212,20 +212,7 @@ const drawScreen = (i: number, kind: number, t: number, glitch: number) => {
   const H = 160;
   g.fillStyle = "#05060A";
   g.fillRect(0, 0, W, H);
-  if (glitch > 0.15) {
-    // the surge: torn colour bars and static
-    const fr = Math.round(t * 30);
-    for (let k = 0; k < 14; k++) {
-      const y = random(`gy${i}${fr}${k}`) * H;
-      const h = 3 + random(`gh${i}${fr}${k}`) * 16;
-      g.fillStyle = ["#FF2A6D", "#05D9E8", "#FFFFFF", "#D1F7FF", "#7700FF"][k % 5];
-      g.globalAlpha = 0.35 + 0.65 * random(`ga${i}${fr}${k}`);
-      g.fillRect(random(`gx${i}${fr}${k}`) * -60, y, W + 60, h);
-    }
-    g.globalAlpha = 1;
-    s.tex.needsUpdate = true;
-    return s.tex;
-  }
+
   if (kind === 0) {
     // equaliser bars sweeping through the spectrum
     for (let k = 0; k < 16; k++) {
@@ -260,6 +247,30 @@ const drawScreen = (i: number, kind: number, t: number, glitch: number) => {
     g.fill();
     g.fillStyle = "#14102A";
     for (let k = 0; k < 6; k++) g.fillRect(0, H * 0.66 + k * 9, W, 3 + k);
+  }
+  if (glitch > 0.01) {
+    // the surge: the picture dims and torn colour bars slide through it, each pattern cross-fading into
+    // the next, all scaled by how hard the wave is hitting (it eases in and out: no cuts, no strobing)
+    const k0 = Math.min(1, glitch * 1.5);
+    g.fillStyle = "#05060A";
+    g.globalAlpha = 0.65 * k0;
+    g.fillRect(0, 0, W, H);
+    const u = t * 10;
+    const step = Math.floor(u);
+    const f = u - step;
+    for (const [st, w] of [
+      [step, 1 - f],
+      [step + 1, f],
+    ] as const) {
+      for (let k = 0; k < 12; k++) {
+        const y = random(`gy${i}${st}${k}`) * H;
+        const h = 3 + random(`gh${i}${st}${k}`) * 14;
+        g.fillStyle = ["#FF2A6D", "#05D9E8", "#B7C9D6", "#7FD8E8", "#7A2CFF"][k % 5];
+        g.globalAlpha = (0.3 + 0.4 * random(`ga${i}${st}${k}`)) * k0 * w;
+        g.fillRect(random(`gx${i}${st}${k}`) * -60, y, W + 60, h);
+      }
+    }
+    g.globalAlpha = 1;
   }
   s.tex.needsUpdate = true;
   return s.tex;
@@ -495,7 +506,7 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
             <mesh position={[0, 0, 0.06]}>
               <planeGeometry args={[s.w, s.h]} />
               <meshBasicMaterial
-                map={drawScreen(k, s.kind, t, surgeAt(t, b.x, b.z + b.d / 2))}
+                map={drawScreen(k, s.kind, t, burstAt(t, b.x, b.z + b.d / 2))}
                 color={hot("#FFFFFF", 1.35)}
               />
             </mesh>

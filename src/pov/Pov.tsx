@@ -268,7 +268,7 @@ const Lids: React.FC<{ open: number }> = ({ open }) => {
 const lidsOpen = (t: number) => {
   // waking: half open, a heavy blink, then open
   if (t < 1.0)
-    return interpolate(t, [0, 0.22, 0.38, 0.47, 0.54, 0.66, 1.0], [0.05, 0.75, 0.7, 0.1, 0.1, 0.8, 1], CLAMP);
+    return interpolate(t, [0, 0.22, 0.36, 0.5, 0.56, 0.72, 1.0], [0.05, 0.75, 0.7, 0.1, 0.1, 0.8, 1], CLAMP);
   // one blink right as the last leap leaves the ground
   if (t > 29.3 && t < 29.75) return interpolate(t, [29.3, 29.45, 29.55, 29.75], [1, 0, 0, 1], CLAMP);
   // the end: heavy lids, a last flutter, closed
@@ -316,10 +316,10 @@ export const Pov: React.FC = () => {
       ? {
           radius: lp.age * 1.05 - 0.04,
           strength: lp.k * 0.04 * Math.exp(-lp.age * 1.5),
-          flash: lp.k * 0.9 * Math.exp(-lp.age * 2.6),
+          flash: lp.k * 0.9 * Math.min(1, lp.age / 0.06) * Math.exp(-lp.age * 2.6),
         }
       : { radius: 0, strength: 0, flash: 0 };
-  const hit = lp && lp.age < 0.5 ? lp.k * Math.exp(-lp.age * 9) : 0;
+  const hit = lp && lp.age < 0.5 ? lp.k * Math.min(1, lp.age / 0.06) * Math.exp(-lp.age * 9) : 0;
   const tick = lp && lp.age < 1.2 ? Math.exp(-lp.age * 5) : 0;
   const outro = interpolate(t, [62.4, 63.2, 65.0, 65.6], [0, 1, 1, 0], CLAMP);
   const readout = interpolate(t, [2.4, 3.2, 63, 64], [0, 1, 1, 0], CLAMP);

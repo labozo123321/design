@@ -40,7 +40,9 @@ export const skyColor = (dir: THREE.Vector3, alt: number, out = new THREE.Color(
     .clone()
     .lerp(GROUND.horizonSun, Math.pow(Math.max(0, (az + 1) / 2), 2.2))
     .lerp(SPACE.horizon, s);
-  if (e < 0) out.copy(hor).multiplyScalar(1 - s * 0.6);
+  // below the horizon the glow darkens gradually: a hard step here made the band pop whenever the horizon
+  // crossed a row of the dome's vertices on the way up
+  if (e < 0) out.copy(hor).multiplyScalar(1 - s * 0.6 * Math.min(1, -e / band));
   else if (k < 1) out.copy(hor).lerp(mid, k);
   else out.copy(mid).lerp(zen, Math.min(1, (e - band) / (0.9 - band * 0.5)));
   const sd = Math.max(0, dir.dot(SUN_DIR));
@@ -54,7 +56,7 @@ export const skyColor = (dir: THREE.Vector3, alt: number, out = new THREE.Color(
 /** Sky dome centred on the camera, vertex coloured every frame. */
 export const SkyDome: React.FC<{ cam: THREE.Vector3; alt: number }> = ({ cam, alt }) => {
   const geo = useMemo(() => {
-    const g = new THREE.SphereGeometry(1, 96, 64);
+    const g = new THREE.SphereGeometry(1, 96, 192);
     g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3), 3));
     return g;
   }, []);
