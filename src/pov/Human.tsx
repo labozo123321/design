@@ -133,12 +133,18 @@ const geo = (key: string, make: () => THREE.BufferGeometry) => (geos[key] ??= ma
 const capsule = (r: number, len: number) =>
   geo(`cap${r}-${len}`, () => new THREE.CapsuleGeometry(r, len, 8, 16));
 const sphere = (seg = 18) => geo(`sph${seg}`, () => new THREE.SphereGeometry(1, seg, Math.round(seg * 0.75)));
+/**
+ * Profiles are written top to bottom; LatheGeometry needs them bottom to top, or every face points inward
+ * and the shape renders inside-out (its near side culled, lit from the wrong side).
+ */
 const lathe = (key: string, pts: [number, number][]) =>
   geo(
     `lathe-${key}`,
     () =>
       new THREE.LatheGeometry(
-        pts.map(([x, y]) => new THREE.Vector2(x, y)),
+        (pts[0][1] > pts[pts.length - 1][1] ? [...pts].reverse() : pts).map(
+          ([x, y]) => new THREE.Vector2(x, y),
+        ),
         32,
       ),
   );
