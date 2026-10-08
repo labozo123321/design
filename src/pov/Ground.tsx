@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { random } from "remotion";
-import { CITY_R, city, traffic } from "./city";
+import { CITY_R, GROUND_Y, NS_STREETS, RIVER_Z0, RIVER_Z1, city, parked, traffic } from "./city";
 import { EARTH_R } from "./timeline";
 
 /* ------------------------------------------------------------------ */
@@ -90,14 +90,14 @@ export const Planet: React.FC = () => {
   const geo = useMemo(() => {
     const SEG = 512;
     const RINGS = 300;
-    const r0 = CITY_R - 120;
+    const r0 = CITY_R + 60;
     const r1 = 3.0e6;
     const pos: number[] = [];
     const col: number[] = [];
     const idx: number[] = [];
     for (let k = 0; k <= RINGS; k++) {
       const r = r0 * Math.pow(r1 / r0, k / RINGS);
-      const y = -(r * r) / (EARTH_R + Math.sqrt(EARTH_R * EARTH_R - r * r)) - 0.3;
+      const y = -(r * r) / (EARTH_R + Math.sqrt(EARTH_R * EARTH_R - r * r)) + GROUND_Y - 0.12;
       for (let s = 0; s < SEG; s++) {
         const a = (s / SEG) * Math.PI * 2 + (k % 2) * (Math.PI / SEG);
         const x = Math.cos(a) * r;
@@ -176,32 +176,119 @@ const streets = () => {
   return streetTex;
 };
 
+/** City disk (radius CITY_R + 60) split by the river: two shapes, no overlapping layers anywhere. */
+const groundGeo = (() => {
+  let cache: THREE.ShapeGeometry[] | null = null;
+  return () => {
+    if (cache) return cache;
+    const R = CITY_R + 60;
+    const seg = (from: number, to: number, n: number) => {
+      const sh = new THREE.Shape();
+      for (let k = 0; k <= n; k++) {
+        const a = from + ((to - from) * k) / n;
+        const p = [R * Math.cos(a), R * Math.sin(a)] as const;
+        if (k === 0) sh.moveTo(p[0], p[1]);
+        else sh.lineTo(p[0], p[1]);
+      }
+      sh.closePath();
+      return new THREE.ShapeGeometry(sh, 1);
+    };
+    // shape coords are (x, -z): south of the river is -z <= -RIVER_Z1, north is -z >= -RIVER_Z0
+    const as = Math.asin(-RIVER_Z1 / R);
+    const an = Math.asin(-RIVER_Z0 / R);
+    cache = [seg(Math.PI - as, 2 * Math.PI + as, 720), seg(an, Math.PI - an, 360)];
+    return cache;
+  };
+})();
+
+const StaticInstances: React.FC<{
+  geometry: THREE.BufferGeometry;
+  matrices: THREE.Matrix4[];
+  color: string;
+  colors?: THREE.Color[];
+  shadow?: boolean;
+}> = ({ geometry, matrices, color, colors, shadow = true }) => {
+  const mesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(
+      geometry,
+      new THREE.MeshStandardMaterial({
+        color: colors ? "#FFFFFF" : color,
+        roughness: 0.85,
+        flatShading: true,
+      }),
+      Math.max(1, matrices.length),
+    );
+    matrices.forEach((mx, i) => m.setMatrixAt(i, mx));
+    colors?.forEach((c, i) => m.setColorAt(i, c));
+    m.count = matrices.length;
+    m.castShadow = shadow;
+    m.receiveShadow = true;
+    m.frustumCulled = false;
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    return m;
+  }, [geometry, matrices, colors, color, shadow]);
+  return <primitive object={mesh} />;
+};
+
+const BOX = new THREE.BoxGeometry(1, 1, 1);
+const mtx = (x: number, y: number, z: number, sx: number, sy: number, sz: number, ry = 0) =>
+  new THREE.Matrix4().compose(
+    new THREE.Vector3(x, y, z),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)),
+    new THREE.Vector3(sx, sy, sz),
+  );
+
 export const CityGround: React.FC = () => {
   const tex = streets();
-  const size = CITY_R * 2 + 200;
-  tex.repeat.set(size / 96, size / 96);
-  const off = ((((-size / 2) % 96) + 96) % 96) / 96;
-  tex.offset.set(off, off);
+  tex.repeat.set(1 / 96, 1 / 96);
+  tex.offset.set(0, 0);
+  const W = (CITY_R + 60) * 2;
+  const bridges = useMemo(() => {
+    const deck: THREE.Matrix4[] = [];
+    const rails: THREE.Matrix4[] = [];
+    const span = RIVER_Z1 - RIVER_Z0;
+    const zc = (RIVER_Z0 + RIVER_Z1) / 2;
+    NS_STREETS.forEach((x) => {
+      deck.push(mtx(x, GROUND_Y - 0.09, zc, 16, 0.18, span));
+      rails.push(mtx(x - 7.9, GROUND_Y + 0.45, zc, 0.25, 0.9, span));
+      rails.push(mtx(x + 7.9, GROUND_Y + 0.45, zc, 0.25, 0.9, span));
+    });
+    return { deck, rails };
+  }, []);
+  const parks = useMemo(() => city.parks.map((p) => mtx(p.x, GROUND_Y + 0.075, p.z, p.w, 0.15, p.d)), []);
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-        <planeGeometry args={[size, size]} />
-        <meshStandardMaterial map={tex} roughness={0.95} />
-      </mesh>
-      {/* the river runs the full width of the city */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.62, -19]}>
-        <planeGeometry args={[size, 11]} />
-        <meshStandardMaterial color="#3E80C4" roughness={0.25} metalness={0.15} />
-      </mesh>
-      {city.parks.map((p, i) => (
-        <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[p.x, 0.02, p.z]} receiveShadow>
-          <planeGeometry args={[p.w, p.d]} />
-          <meshStandardMaterial color="#6E9A4E" roughness={1} />
+      {groundGeo().map((g, i) => (
+        <mesh key={i} geometry={g} rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
+          <meshStandardMaterial map={tex} roughness={0.95} />
         </mesh>
       ))}
+      {/* the river through the whole city, its stone banks, and a bridge for every traffic street */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.62, (RIVER_Z0 + RIVER_Z1) / 2]}>
+        <planeGeometry args={[W, RIVER_Z1 - RIVER_Z0 + 0.6]} />
+        <meshStandardMaterial color="#3E80C4" roughness={0.25} metalness={0.15} />
+      </mesh>
+      {[RIVER_Z0 + 0.15, RIVER_Z1 - 0.15].map((z) => (
+        <mesh key={z} position={[0, GROUND_Y - 0.155, z]} material={MAT_BANK}>
+          <boxGeometry args={[W, 0.29, 0.3]} />
+        </mesh>
+      ))}
+      <StaticInstances geometry={BOX} matrices={bridges.deck} color="#4A4D53" />
+      <StaticInstances geometry={BOX} matrices={bridges.rails} color="#B9B2A6" />
+      <StaticInstances geometry={BOX} matrices={parks} color="#6E9A4E" shadow={false} />
+      {/* the plaza and the far bank stand on solid slabs, 0.4 m above the streets */}
+      <mesh position={[0, (GROUND_Y - 0.01) / 2, 14]} material={MAT_PLAZA}>
+        <boxGeometry args={[120, -GROUND_Y - 0.01, 56]} />
+      </mesh>
+      <mesh position={[0, (GROUND_Y + 0.19) / 2, -45]} material={MAT_BANK}>
+        <boxGeometry args={[160, 0.19 - GROUND_Y, 42]} />
+      </mesh>
     </group>
   );
 };
+const MAT_BANK = new THREE.MeshStandardMaterial({ color: "#CFC6B5", roughness: 0.95 });
+const MAT_PLAZA = new THREE.MeshStandardMaterial({ color: "#DCD6CC", roughness: 0.95 });
 
 /* ------------------------------------------------------------------ */
 /* Buildings, roofs, trees, traffic (instanced)                         */
@@ -284,7 +371,7 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
       const c = new THREE.Color(b.c);
       for (let i = 0; i < bp.count; i++) {
         const x = bp.getX(i) * b.w + b.x;
-        const y = (bp.getY(i) + 0.5) * b.h;
+        const y = (bp.getY(i) + 0.5) * (b.h - GROUND_Y) + GROUND_Y;
         const z = bp.getZ(i) * b.d + b.z;
         pos.push(x, y, z);
         const nx = bn.getX(i);
@@ -295,7 +382,7 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
         if (Math.abs(ny) > 0.5) uv.push(0.02, 0.02);
         else {
           const along = Math.abs(nx) > 0.5 ? (bp.getZ(i) + 0.5) * b.d : (bp.getX(i) + 0.5) * b.w;
-          uv.push(along / bay, (bp.getY(i) + 0.5) * (b.h / storey));
+          uv.push(along / bay, ((bp.getY(i) + 0.5) * (b.h - GROUND_Y) + GROUND_Y) / storey);
         }
         const shade = Math.abs(ny) > 0.5 ? 0.82 : 1;
         col.push(c.r * shade, c.g * shade, c.b * shade);
@@ -321,6 +408,8 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
     </mesh>
   );
 };
+
+const TANK = new THREE.CylinderGeometry(0.5, 0.5, 1, 10);
 
 /** Rooftop clutter: AC units and water tanks. */
 const Roofs: React.FC = () => {
@@ -354,42 +443,9 @@ const Roofs: React.FC = () => {
   }, []);
   return (
     <group>
-      <Instanced matrices={boxes} color="#9A9690">
-        <boxGeometry args={[1, 1, 1]} />
-      </Instanced>
-      <Instanced matrices={tanks} color="#7A5A3C">
-        <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
-      </Instanced>
+      <StaticInstances geometry={BOX} matrices={boxes} color="#9A9690" />
+      <StaticInstances geometry={TANK} matrices={tanks} color="#7A5A3C" />
     </group>
-  );
-};
-
-const Instanced: React.FC<{
-  matrices: THREE.Matrix4[];
-  color: string;
-  children: React.ReactNode;
-  colors?: THREE.Color[];
-  shadow?: boolean;
-}> = ({ matrices, color, children, colors, shadow = true }) => {
-  const ref = React.useRef<THREE.InstancedMesh>(null);
-  React.useLayoutEffect(() => {
-    const m = ref.current!;
-    matrices.forEach((mx, i) => m.setMatrixAt(i, mx));
-    if (colors) colors.forEach((c, i) => m.setColorAt(i, c));
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [matrices, colors]);
-  return (
-    <instancedMesh
-      ref={ref}
-      args={[undefined, undefined, Math.max(1, matrices.length)]}
-      castShadow={shadow}
-      receiveShadow
-      frustumCulled={false}
-    >
-      {children}
-      <meshStandardMaterial color={colors ? "#FFFFFF" : color} roughness={0.85} flatShading />
-    </instancedMesh>
   );
 };
 
@@ -401,9 +457,9 @@ const Trees: React.FC = () => {
     city.trees.forEach((t, i) => {
       const a = new THREE.Matrix4();
       a.compose(
-        new THREE.Vector3(t.x, 1.6 * t.s, t.z),
+        new THREE.Vector3(t.x, (3.2 * t.s + GROUND_Y) / 2, t.z),
         new THREE.Quaternion(),
-        new THREE.Vector3(0.35 * t.s, 3.2 * t.s, 0.35 * t.s),
+        new THREE.Vector3(0.35 * t.s, 3.2 * t.s - GROUND_Y, 0.35 * t.s),
       );
       trunks.push(a);
       const b = new THREE.Matrix4();
@@ -421,36 +477,56 @@ const Trees: React.FC = () => {
   }, []);
   return (
     <group>
-      <Instanced matrices={trunks} color="#6B4A2F">
-        <cylinderGeometry args={[0.5, 0.6, 1, 6]} />
-      </Instanced>
-      <Instanced matrices={crowns} color="#4E9E43" colors={colors}>
-        <icosahedronGeometry args={[1, 0]} />
-      </Instanced>
+      <StaticInstances geometry={TRUNK} matrices={trunks} color="#6B4A2F" />
+      <StaticInstances geometry={CROWN} matrices={crowns} color="#4E9E43" colors={colors} />
     </group>
   );
 };
 
+const TRUNK = new THREE.CylinderGeometry(0.5, 0.6, 1, 6);
+const CROWN = new THREE.IcosahedronGeometry(1, 0);
+const CAR_MAX = traffic(0).length + 64;
+const CAR_MAT = new THREE.MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.6, flatShading: true });
+
+/** Moving cars: one instanced mesh whose matrices are written during render (never a stale frame). */
 const Traffic: React.FC<{ t: number }> = ({ t }) => {
+  const mesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(BOX, CAR_MAT, CAR_MAX);
+    m.frustumCulled = false;
+    m.receiveShadow = true;
+    return m;
+  }, []);
   const cars = traffic(t);
-  const { mats, cols } = useMemo(() => ({ mats: [] as THREE.Matrix4[], cols: [] as THREE.Color[] }), []);
-  mats.length = 0;
-  cols.length = 0;
-  cars.forEach((c) => {
-    const m = new THREE.Matrix4();
-    m.compose(
-      new THREE.Vector3(c.x, 0.8, c.z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, c.rot, 0)),
-      new THREE.Vector3(1.9, 1.4, 4.3),
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const c = new THREE.Color();
+  cars.forEach((car, i) => {
+    q.setFromEuler(e.set(0, car.rot, 0));
+    mesh.setMatrixAt(
+      i,
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(car.x, GROUND_Y + 0.8 * car.scale, car.z),
+        q,
+        new THREE.Vector3(1.9 * car.scale, 1.4 * car.scale, 4.3 * car.scale),
+      ),
     );
-    mats.push(m);
-    cols.push(new THREE.Color(c.c));
+    mesh.setColorAt(i, c.set(car.c));
   });
-  return (
-    <Instanced matrices={[...mats]} color="#FFF" colors={[...cols]} shadow={false}>
-      <boxGeometry args={[1, 1, 1]} />
-    </Instanced>
+  mesh.count = cars.length;
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  return <primitive object={mesh} />;
+};
+
+const Parked: React.FC = () => {
+  const { m, c } = useMemo(
+    () => ({
+      m: parked.map((p) => mtx(p.x, GROUND_Y + 0.8, p.z, 1.9, 1.4, 4.3, p.rot)),
+      c: parked.map((p) => new THREE.Color(p.c)),
+    }),
+    [],
   );
+  return <StaticInstances geometry={BOX} matrices={m} color="#FFF" colors={c} shadow={false} />;
 };
 
 export const City: React.FC<{ t: number; alt: number }> = ({ t, alt }) => (
@@ -459,6 +535,11 @@ export const City: React.FC<{ t: number; alt: number }> = ({ t, alt }) => (
     <Buildings />
     <Roofs />
     <Trees />
-    {alt < 4000 ? <Traffic t={t} /> : null}
+    {alt < 4000 ? (
+      <>
+        <Traffic t={t} />
+        <Parked />
+      </>
+    ) : null}
   </group>
 );

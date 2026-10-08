@@ -14,6 +14,7 @@ import { loadFont as loadMono } from "@remotion/google-fonts/IBMPlexMono";
 import { CLAMP } from "../lib/anim";
 import { BUILDINGS as BUILDINGS_NEAR } from "../whatif/World";
 import { city } from "./city";
+import { SPHERES } from "./crowd";
 import { PovWorld } from "./PovWorld";
 import { CLOUD_BASE, CLOUD_TOP, SUN_DIR, spaceness } from "./Sky";
 import { T, camAt, gravity } from "./timeline";
@@ -72,6 +73,15 @@ const rayHits = (o: THREE.Vector3, d: THREE.Vector3) => {
       }
     }
     if (hit) return true;
+  }
+  // tree canopies and lamp globes
+  for (const sp of SPHERES) {
+    const ox = o.x - sp.x;
+    const oy = o.y - sp.y;
+    const oz = o.z - sp.z;
+    const b = ox * d.x + oy * d.y + oz * d.z;
+    const c = ox * ox + oy * oy + oz * oz - sp.r * sp.r * 0.8;
+    if (b < 0 && b * b - c > 0) return true;
   }
   return false;
 };

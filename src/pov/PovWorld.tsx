@@ -2,19 +2,10 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useThree } from "@react-three/fiber";
 import { interpolate, useCurrentFrame } from "remotion";
-import {
-  BALLOONS,
-  FOUNTAIN,
-  PEOPLE,
-  RIVER,
-  balloonPop,
-  blobs,
-  drops,
-  leaves,
-  simCars,
-  simPeople,
-} from "../whatif/sim";
-import { Car, M, Person, Set } from "../whatif/World";
+import { BALLOONS, FOUNTAIN, balloonPop, blobs, drops, leaves } from "../whatif/sim";
+import { Car, M, Set } from "../whatif/World";
+import { SPECS, crowdAt } from "./crowd";
+import { Human, lookFor } from "./Human";
 import { Arms, Legs } from "./Body";
 import { Debris, LandingDust, Motes, Streaks } from "./Fx3d";
 import { City, Planet } from "./Ground";
@@ -22,6 +13,27 @@ import { Clouds, SUN_DIR, SkyDome, Stars, Sun, horizonDip, skyColor, spaceness }
 import { PHYSICS, T, UPDRAFT_AT, camAt } from "./timeline";
 
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
+const LOOKS = SPECS.map(lookFor);
+
+/** Cars parked along the plaza road (clear of the speed bumps); at zero g they drift up off the tarmac. */
+const PARKED = [
+  { z: 28, color: "#C0392B" },
+  { z: 13.5, color: "#2C3E50" },
+  { z: 6.5, color: "#ECF0F1" },
+  { z: -4, color: "#D4AC0D" },
+];
+
+/** The viewer's column once floating (x, z drift), so rising river blobs never pass through the lens. */
+const camColumnDist = (x: number, z: number) => {
+  const ax = T.x[T.floatAt];
+  const az = T.z[T.floatAt];
+  const bx = T.x[T.frames - 1];
+  const bz = T.z[T.frames - 1];
+  const dx = bx - ax;
+  const dz = bz - az;
+  const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(x - (ax + dx * u), z - (az + dz * u));
+};
 
 const Rig: React.FC<{ frame: number }> = ({ frame }) => {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -44,8 +56,7 @@ export const PovWorld: React.FC = () => {
   const cam = new THREE.Vector3(c.x, c.y, c.z);
   const alt = c.y;
   const s = spaceness(alt);
-  const people = useMemo(() => simPeople(t, PHYSICS), [t]);
-  const cars = useMemo(() => simCars(t, PHYSICS), [t]);
+  const people = useMemo(() => crowdAt(frame), [frame]);
   const lift = (tt: number) => Math.max(0, tt - UPDRAFT_AT);
   const dip = horizonDip(alt);
   const horizon = skyColor(
@@ -66,23 +77,15 @@ export const PovWorld: React.FC = () => {
       CLAMP,
     ),
   );
-  const shadowR = Math.min(1600, Math.max(60, alt * 2.2));
-  const lightPos = cam.clone().addScaledVector(SUN_DIR, shadowR * 2.5);
+  // shadows never follow the camera (no crawling edges): a fine map over the plaza while we are on or
+  // near the ground, then a city-wide map, switched at 39 s while the view is turned up to the sky
+  const plazaShadow = t < 39;
+  const shadowR = plazaShadow ? 46 : 1650;
+  const shadowTarget = plazaShadow ? new THREE.Vector3(-2, 0, 6) : new THREE.Vector3(0, 0, 0);
+  const lightPos = shadowTarget.clone().addScaledVector(SUN_DIR, plazaShadow ? 90 : 4200);
   const yawAtUpdraft = T.yaw[UPDRAFT_AT * 30];
   const motes = interpolate(t, [0.5, 3, 30, 36], [0, 1, 1, 0], CLAMP);
   const vel = T.vel[frame] ?? 0;
-
-  // people step aside so nobody ever walks through the lens
-  const shifted = people.map((p) => {
-    const dx = p.x - c.x;
-    const dz = p.z - c.z;
-    const d = Math.hypot(dx, dz);
-    const dy = Math.abs(p.y + 0.9 - c.y);
-    if (d > 2.2 || dy > 2) return p;
-    const nd = Math.sqrt(d * d + 1.6 * 1.6);
-    const k = d > 1e-3 ? nd / d : 1;
-    return { ...p, x: c.x + dx * k + (d < 1e-3 ? 1.6 : 0), z: c.z + dz * k };
-  });
 
   return (
     <>
@@ -104,18 +107,18 @@ export const PovWorld: React.FC = () => {
         intensity={2.35 + s * 0.9}
         color={new THREE.Color("#FFFFFF").lerp(new THREE.Color("#FFD2A0"), 0.55 * (1 - s))}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={plazaShadow ? 2048 : 4096}
+        shadow-mapSize-height={plazaShadow ? 2048 : 4096}
         shadow-camera-left={-shadowR}
         shadow-camera-right={shadowR}
         shadow-camera-top={shadowR}
         shadow-camera-bottom={-shadowR}
         shadow-camera-near={1}
-        shadow-camera-far={shadowR * 6}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.04}
+        shadow-camera-far={plazaShadow ? 220 : 9000}
+        shadow-bias={plazaShadow ? -0.0003 : -0.0008}
+        shadow-normalBias={plazaShadow ? 0.03 : 0.6}
       >
-        <object3D attach="target" position={[c.x, Math.min(alt, 0), c.z]} />
+        <object3D attach="target" position={shadowTarget} />
       </directionalLight>
 
       <Planet />
@@ -123,27 +126,25 @@ export const PovWorld: React.FC = () => {
       <Set />
 
       {/* river, lifting into blobs after zero g */}
-      {blobs(t, PHYSICS).map((b, i) => (
-        <mesh
-          key={i}
-          position={[b.x, b.y + lift(t) * lift(t) * 0.9, b.z]}
-          scale={[b.size * (1 + b.wob), b.size * (1 - b.wob), b.size * (1 + b.wob * 0.5)]}
-          castShadow
-        >
-          <icosahedronGeometry args={[1, 3]} />
-          <meshStandardMaterial
-            color="#4A8FD4"
-            roughness={0.08}
-            metalness={0.15}
-            transparent
-            opacity={0.82}
-          />
-        </mesh>
-      ))}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, RIVER.level + 0.01, (RIVER.z0 + RIVER.z1) / 2]}>
-        <planeGeometry args={[160, RIVER.z1 - RIVER.z0 + 1]} />
-        <meshStandardMaterial color="#3E80C4" roughness={0.2} metalness={0.15} />
-      </mesh>
+      {blobs(t, PHYSICS)
+        .filter((b) => camColumnDist(b.x, b.z) > b.size * 1.35 + 2.4)
+        .map((b, i) => (
+          <mesh
+            key={i}
+            position={[b.x, b.y + lift(t) * lift(t) * 0.9, b.z]}
+            scale={[b.size * (1 + b.wob), b.size * (1 - b.wob), b.size * (1 + b.wob * 0.5)]}
+            castShadow
+          >
+            <icosahedronGeometry args={[1, 3]} />
+            <meshStandardMaterial
+              color="#4A8FD4"
+              roughness={0.08}
+              metalness={0.15}
+              transparent
+              opacity={0.82}
+            />
+          </mesh>
+        ))}
 
       {/* fountain */}
       <mesh
@@ -200,10 +201,24 @@ export const PovWorld: React.FC = () => {
           <planeGeometry args={[0.18, 0.12]} />
         </mesh>
       ))}
-      {cars.map((cc, i) => (
-        <Car key={i} {...cc} />
-      ))}
-      {shifted.map((p, i) => (i < PEOPLE.length ? <Person key={i} i={i} s={p} /> : null))}
+      {PARKED.map((pc, i) => {
+        const drift = Math.max(0, t - 32.4 - i * 0.35);
+        const y = 0.03 * drift * drift * (1 + i * 0.25) + lift(t) * lift(t) * (0.55 + i * 0.08);
+        return <Car key={i} z={pc.z} y={y} pitch={drift * 0.035 * (i % 2 ? 1 : -1)} color={pc.color} />;
+      })}
+      {alt < 320
+        ? people.map((p, i) => (
+            <Human
+              key={i}
+              sp={SPECS[i]}
+              look={LOOKS[i]}
+              st={p}
+              t={t}
+              cam={cam}
+              detail={Math.hypot(p.x - c.x, p.y + 1.6 - c.y, p.z - c.z) < 28}
+            />
+          ))
+        : null}
 
       <Clouds cam={cam} sunlit={sunlit} />
       <Motes cam={cam} t={t} o={motes} />
