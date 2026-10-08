@@ -267,7 +267,7 @@ export const CityGround: React.FC = () => {
       {/* the river through the whole city, its stone banks, and a bridge for every traffic street */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.62, (RIVER_Z0 + RIVER_Z1) / 2]}>
         <planeGeometry args={[W, RIVER_Z1 - RIVER_Z0 + 0.6]} />
-        <meshStandardMaterial color="#3E80C4" roughness={0.25} metalness={0.15} />
+        <meshStandardMaterial color="#3672AE" roughness={0.14} metalness={0.05} />
       </mesh>
       {[RIVER_Z0 + 0.15, RIVER_Z1 - 0.15].map((z) => (
         <mesh key={z} position={[0, GROUND_Y - 0.155, z]} material={MAT_BANK}>
@@ -324,6 +324,37 @@ const windowTex = (kind: number) => {
   return t;
 };
 
+const glowCache: Record<string, THREE.Texture> = {};
+/** Which windows are lit at dusk: an 8 x 8 block of cells, matching the window grid of windowTex. */
+const windowGlow = (kind: number) => {
+  const key = String(kind);
+  if (glowCache[key]) return glowCache[key];
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 512;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, 512, 512);
+  const warm = ["#FFD48A", "#FFC46E", "#FFE2B0", "#FFB45C", "#D6E8FF"];
+  for (let r = 0; r < 8; r++) {
+    const floor = random(`wg${kind}-${r}`);
+    for (let k = 0; k < 8; k++) {
+      if (random(`wl${kind}-${r}-${k}`) > 0.14 + floor * 0.4) continue;
+      g.fillStyle = warm[Math.floor(random(`wc${kind}-${r}-${k}`) * warm.length)];
+      g.globalAlpha = 0.5 + 0.5 * random(`wa${kind}-${r}-${k}`);
+      if (kind === 0) g.fillRect(k * 64 + 14, (7 - r) * 64 + 14, 36, 38);
+      else g.fillRect(k * 64, (7 - r) * 64 + 10, 64, 44);
+    }
+  }
+  g.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 8, 1 / 8);
+  t.colorSpace = THREE.SRGBColorSpace;
+  glowCache[key] = t;
+  return t;
+};
+
 /** Box whose side UVs are in metres / (bay, storey) so windows keep their size on any building. */
 const unitBox = (bay: number, storey: number) => {
   const g = new THREE.BoxGeometry(1, 1, 1);
@@ -366,9 +397,11 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
     const bp = base.attributes.position;
     const bn = base.attributes.normal;
     const bi = base.index!;
-    list.forEach((b) => {
+    list.forEach((b, n) => {
       const off = pos.length / 3;
       const c = new THREE.Color(b.c);
+      const du = Math.floor(random(`bu${kind}-${n}`) * 8);
+      const dv = Math.floor(random(`bv${kind}-${n}`) * 8);
       for (let i = 0; i < bp.count; i++) {
         const x = bp.getX(i) * b.w + b.x;
         const y = (bp.getY(i) + 0.5) * (b.h - GROUND_Y) + GROUND_Y;
@@ -382,7 +415,7 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
         if (Math.abs(ny) > 0.5) uv.push(0.02, 0.02);
         else {
           const along = Math.abs(nx) > 0.5 ? (bp.getZ(i) + 0.5) * b.d : (bp.getX(i) + 0.5) * b.w;
-          uv.push(along / bay, ((bp.getY(i) + 0.5) * (b.h - GROUND_Y) + GROUND_Y) / storey);
+          uv.push(along / bay + du, ((bp.getY(i) + 0.5) * (b.h - GROUND_Y) + GROUND_Y) / storey + dv);
         }
         const shade = Math.abs(ny) > 0.5 ? 0.82 : 1;
         col.push(c.r * shade, c.g * shade, c.b * shade);
@@ -396,11 +429,14 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
     g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
     g.setIndex(idx);
     return g;
-  }, [list, bay, storey]);
+  }, [list, bay, storey, kind]);
   return (
     <mesh geometry={geo} castShadow receiveShadow frustumCulled={false}>
       <meshStandardMaterial
         map={windowTex(kind)}
+        emissiveMap={windowGlow(kind)}
+        emissive="#FFFFFF"
+        emissiveIntensity={1.35}
         vertexColors
         roughness={kind ? 0.35 : 0.85}
         metalness={kind ? 0.25 : 0}
@@ -529,10 +565,36 @@ const Parked: React.FC = () => {
   return <StaticInstances geometry={BOX} matrices={m} color="#FFF" colors={c} shadow={false} />;
 };
 
+/** Red aviation beacons on the towers, blinking out of step with each other. */
+const Beacons: React.FC<{ t: number }> = ({ t }) => {
+  const towers = useMemo(() => city.buildings.filter((b) => b.h > 70), []);
+  const mesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(0.6, 10, 8),
+      new THREE.MeshBasicMaterial({ color: "#FFFFFF" }),
+      Math.max(1, towers.length),
+    );
+    towers.forEach((b, i) => m.setMatrixAt(i, new THREE.Matrix4().makeTranslation(b.x, b.h + 0.9, b.z)));
+    m.count = towers.length;
+    m.frustumCulled = false;
+    m.instanceMatrix.needsUpdate = true;
+    return m;
+  }, [towers]);
+  const c = new THREE.Color();
+  towers.forEach((_, i) => {
+    const on = (t + random(`bk${i}`) * 1.5) % 1.5 < 0.2;
+    c.set("#FF2A2A").multiplyScalar(on ? 6 : 0.3);
+    mesh.setColorAt(i, c);
+  });
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  return <primitive object={mesh} />;
+};
+
 export const City: React.FC<{ t: number; alt: number }> = ({ t, alt }) => (
   <group>
     <CityGround />
     <Buildings />
+    <Beacons t={t} />
     <Roofs />
     <Trees />
     {alt < 4000 ? (

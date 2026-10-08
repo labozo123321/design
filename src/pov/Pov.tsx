@@ -16,6 +16,7 @@ import { BUILDINGS as BUILDINGS_NEAR } from "../whatif/World";
 import { city } from "./city";
 import { SPHERES } from "./crowd";
 import { PovWorld } from "./PovWorld";
+import { Post } from "./Post";
 import { CLOUD_BASE, CLOUD_TOP, SUN_DIR, spaceness } from "./Sky";
 import { T, camAt, gravity } from "./timeline";
 
@@ -320,6 +321,7 @@ export const Pov: React.FC = () => {
           gl={{ antialias: true, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}
         >
           <PovWorld />
+          <Post strength={0.75} radius={0.55} threshold={0.92} />
         </ThreeCanvas>
       </AbsoluteFill>
       <svg width={0} height={0} style={{ position: "absolute" }}>

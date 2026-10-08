@@ -3,14 +3,15 @@ import * as THREE from "three";
 import { useThree } from "@react-three/fiber";
 import { interpolate, useCurrentFrame } from "remotion";
 import { BALLOONS, FOUNTAIN, balloonPop, blobs, drops, leaves } from "../whatif/sim";
-import { Car, M, Set } from "../whatif/World";
+import { Car, M } from "../whatif/World";
 import { SPECS, crowdAt } from "./crowd";
 import { Human, lookFor } from "./Human";
 import { Arms, Legs } from "./Body";
 import { Debris, LandingDust, Motes, Streaks } from "./Fx3d";
 import { City, Planet } from "./Ground";
 import { Clouds, SUN_DIR, SkyDome, Stars, Sun, horizonDip, skyColor, spaceness } from "./Sky";
-import { PHYSICS, T, UPDRAFT_AT, camAt } from "./timeline";
+import { PHYSICS, T, UPDRAFT_AT, camAt, gravity } from "./timeline";
+import { Plaza } from "./Plaza";
 
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const LOOKS = SPECS.map(lookFor);
@@ -119,7 +120,8 @@ export const PovWorld: React.FC = () => {
     ),
     alt,
   );
-  const sunlit = new THREE.Color("#FFF4E6").lerp(new THREE.Color("#FFD9B0"), 0.35 * (1 - s));
+  // golden hour: clouds lit pink-gold, a strong orange key, cool blue sky fill in the shadows
+  const sunlit = new THREE.Color("#FFF4E6").lerp(new THREE.Color("#FFC39A"), 0.7 * (1 - s));
   // fog: thick city haze on the ground, thin and far in the upper atmosphere
   const fogFar = Math.exp(
     interpolate(
@@ -148,17 +150,17 @@ export const PovWorld: React.FC = () => {
       <Sun cam={cam} alt={alt} />
       <hemisphereLight
         args={[
-          skyColor(new THREE.Vector3(0, 1, 0), alt).lerp(new THREE.Color("#CFE0F5"), 0.4),
-          "#9A8A70",
-          0.85 * (1 - s) + 0.08,
+          skyColor(new THREE.Vector3(0, 1, 0), alt).lerp(new THREE.Color("#9DB6EA"), 0.35),
+          "#8A6A50",
+          0.92 * (1 - s) + 0.08,
         ]}
       />
-      <ambientLight intensity={0.14 * (1 - s) + 0.05} />
+      <ambientLight intensity={0.1 * (1 - s) + 0.05} />
       <SunLight
         position={lightPos}
         target={shadowTarget}
-        intensity={2.35 + s * 0.9}
-        color={new THREE.Color("#FFFFFF").lerp(new THREE.Color("#FFD2A0"), 0.55 * (1 - s))}
+        intensity={2.9 + s * 0.4}
+        color={new THREE.Color("#FFFFFF").lerp(new THREE.Color("#FFB26E"), 0.8 * (1 - s))}
         size={plazaShadow ? 2048 : 4096}
         r={shadowR}
         far={plazaShadow ? 220 : 9000}
@@ -168,7 +170,7 @@ export const PovWorld: React.FC = () => {
 
       <Planet />
       <City t={t} alt={alt} />
-      <Set />
+      <Plaza t={t} g={gravity(t)} />
 
       {/* river, lifting into blobs after zero g */}
       {blobs(t, PHYSICS)
@@ -230,9 +232,27 @@ export const PovWorld: React.FC = () => {
             >
               <sphereGeometry args={[1, 18, 14]} />
             </mesh>
-            <mesh position={[bx, by - 1.1, bz]} material={M("#EEE")}>
-              <cylinderGeometry args={[0.006, 0.006, 1.6, 3]} />
-            </mesh>
+            {/* tied to the umbrella tip; once a balloon slips free its string swings down to hang below it */}
+            {(() => {
+              const top = new THREE.Vector3(bx, by - 0.5, bz);
+              const tie = new THREE.Vector3(3, 3.07, 13);
+              const hang = new THREE.Vector3(bx, by - 2.0, bz);
+              const k = Math.min(1, free / 0.5);
+              const end = tie.lerp(hang, k * k * (3 - 2 * k));
+              const d = top.clone().sub(end);
+              const len = d.length();
+              const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+              return (
+                <mesh
+                  position={end.add(top).multiplyScalar(0.5)}
+                  quaternion={q}
+                  scale={[1, len, 1]}
+                  material={M("#EEE")}
+                >
+                  <cylinderGeometry args={[0.006, 0.006, 1, 3]} />
+                </mesh>
+              );
+            })()}
           </group>
         );
       })}

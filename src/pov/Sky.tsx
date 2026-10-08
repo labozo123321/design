@@ -3,8 +3,8 @@ import * as THREE from "three";
 import { random } from "remotion";
 import { EARTH_R } from "./timeline";
 
-/** Low golden sun to the north-west, behind the river. */
-export const SUN_DIR = new THREE.Vector3(-0.8, 0.5, -0.33).normalize();
+/** Golden-hour sun, 18 degrees up, to the north-west behind the river (the towers there are backlit). */
+export const SUN_DIR = new THREE.Vector3(-0.879, 0.309, -0.362).normalize();
 
 const smooth = (a: number, b: number, x: number) => {
   const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -15,7 +15,13 @@ export const spaceness = (alt: number) => smooth(Math.log(3000), Math.log(60000)
 export const horizonDip = (alt: number) => Math.acos(EARTH_R / (EARTH_R + Math.max(0, alt)));
 
 const C = (h: string) => new THREE.Color(h);
-const GROUND = { zenith: C("#5C8FD3"), mid: C("#A9C6E8"), horizon: C("#F4D3A8"), sun: C("#FFC77A") };
+const GROUND = {
+  zenith: C("#3A5FA6"),
+  mid: C("#8FA7D8"),
+  horizon: C("#E8A9A0"), // dusty rose away from the sun ...
+  horizonSun: C("#FFB25C"), // ... burning orange under it
+  sun: C("#FFD08A"),
+};
 const SPACE = { zenith: C("#000003"), mid: C("#02030A"), horizon: C("#5D9BFF"), sun: C("#FFF3DC") };
 
 /** Sky colour in a world direction, at a given altitude. */
@@ -27,12 +33,21 @@ export const skyColor = (dir: THREE.Vector3, alt: number, out = new THREE.Color(
   const k = Math.min(1, Math.max(0, e / band));
   const zen = GROUND.zenith.clone().lerp(SPACE.zenith, s);
   const mid = GROUND.mid.clone().lerp(SPACE.mid, s);
-  const hor = GROUND.horizon.clone().lerp(SPACE.horizon, s);
+  // the horizon warms toward the sun's side of the sky
+  const hl = Math.hypot(dir.x, dir.z) || 1;
+  const az = (dir.x * SUN_DIR.x + dir.z * SUN_DIR.z) / hl / Math.hypot(SUN_DIR.x, SUN_DIR.z);
+  const hor = GROUND.horizon
+    .clone()
+    .lerp(GROUND.horizonSun, Math.pow(Math.max(0, (az + 1) / 2), 2.2))
+    .lerp(SPACE.horizon, s);
   if (e < 0) out.copy(hor).multiplyScalar(1 - s * 0.6);
   else if (k < 1) out.copy(hor).lerp(mid, k);
   else out.copy(mid).lerp(zen, Math.min(1, (e - band) / (0.9 - band * 0.5)));
   const sd = Math.max(0, dir.dot(SUN_DIR));
-  out.lerp(GROUND.sun.clone().lerp(SPACE.sun, s), Math.pow(sd, 18) * 0.85 + Math.pow(sd, 4) * 0.2 * (1 - s));
+  out.lerp(
+    GROUND.sun.clone().lerp(SPACE.sun, s),
+    Math.min(1, Math.pow(sd, 18) * 0.85 + Math.pow(sd, 4) * 0.32 * (1 - s)),
+  );
   return out;
 };
 
