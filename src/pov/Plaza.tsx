@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { random } from "remotion";
 import { BUMP_Z, FOUNTAIN, ROAD_X, TREES } from "../whatif/sim";
 import { BUILDINGS, M } from "../whatif/World";
+import { surgeAt } from "./Spectacle";
 
 /**
  * The plaza for the POV piece: the same layout as the WhatIf set (every prop where the crowd expects it),
@@ -204,13 +205,27 @@ const screen = (i: number) => {
   }
   return screens[i];
 };
-const drawScreen = (i: number, kind: number, t: number) => {
+const drawScreen = (i: number, kind: number, t: number, glitch: number) => {
   const s = screen(i);
   const { g } = s;
   const W = 256;
   const H = 160;
   g.fillStyle = "#05060A";
   g.fillRect(0, 0, W, H);
+  if (glitch > 0.15) {
+    // the surge: torn colour bars and static
+    const fr = Math.round(t * 30);
+    for (let k = 0; k < 14; k++) {
+      const y = random(`gy${i}${fr}${k}`) * H;
+      const h = 3 + random(`gh${i}${fr}${k}`) * 16;
+      g.fillStyle = ["#FF2A6D", "#05D9E8", "#FFFFFF", "#D1F7FF", "#7700FF"][k % 5];
+      g.globalAlpha = 0.35 + 0.65 * random(`ga${i}${fr}${k}`);
+      g.fillRect(random(`gx${i}${fr}${k}`) * -60, y, W + 60, h);
+    }
+    g.globalAlpha = 1;
+    s.tex.needsUpdate = true;
+    return s.tex;
+  }
   if (kind === 0) {
     // equaliser bars sweeping through the spectrum
     for (let k = 0; k < 16; k++) {
@@ -361,9 +376,11 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
             roughness: 0.85,
           });
         }),
+        neon: new THREE.MeshBasicMaterial(),
       })),
     [],
   );
+  const lamps = useMemo(() => LAMP_XZ.map(() => new THREE.MeshBasicMaterial()), []);
   return (
     <group>
       {/* plaza: warm stone, and a mosaic round the fountain */}
@@ -428,9 +445,14 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
         <boxGeometry args={[160, 1.4, 1]} />
       </mesh>
       {/* the towers across the river, lit for the evening */}
-      {towers.map(({ b, i, mats }) => {
-        const neon = NEON[i % NEON.length];
+      {towers.map(({ b, i, mats, neon: neonMat }) => {
         const front = b.z + b.d / 2;
+        // the pulse browns the tower out for a moment as its wave rolls past
+        const dip = surgeAt(t, b.x, front);
+        mats.forEach((m) => {
+          if (m.emissiveMap) m.emissiveIntensity = 1.2 * (1 - 0.85 * dip);
+        });
+        neonMat.color.copy(hot(NEON[i % NEON.length], 2.6 * (1 - 0.9 * dip)));
         return (
           <group key={i}>
             <mesh position={[b.x, b.h / 2, b.z]} castShadow receiveShadow material={mats}>
@@ -438,14 +460,14 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
             </mesh>
             {/* neon edges: the two front corners and the roofline */}
             {[-1, 1].map((sx) => (
-              <mesh key={sx} position={[b.x + (sx * b.w) / 2, b.h / 2, front]} material={glowMat(neon, 2.6)}>
+              <mesh key={sx} position={[b.x + (sx * b.w) / 2, b.h / 2, front]} material={neonMat}>
                 <boxGeometry args={[0.14, b.h, 0.14]} />
               </mesh>
             ))}
-            <mesh position={[b.x, b.h, front]} material={glowMat(neon, 2.6)}>
+            <mesh position={[b.x, b.h, front]} material={neonMat}>
               <boxGeometry args={[b.w, 0.14, 0.14]} />
             </mesh>
-            <mesh position={[b.x, b.h, b.z]} material={glowMat(neon, 2.0)}>
+            <mesh position={[b.x, b.h, b.z]} material={neonMat}>
               <boxGeometry args={[0.12, 0.12, b.d]} />
             </mesh>
             {/* a red beacon on the roof, blinking */}
@@ -472,7 +494,10 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
             </mesh>
             <mesh position={[0, 0, 0.06]}>
               <planeGeometry args={[s.w, s.h]} />
-              <meshBasicMaterial map={drawScreen(k, s.kind, t)} color={hot("#FFFFFF", 1.35)} />
+              <meshBasicMaterial
+                map={drawScreen(k, s.kind, t, surgeAt(t, b.x, b.z + b.d / 2))}
+                color={hot("#FFFFFF", 1.35)}
+              />
             </mesh>
           </group>
         );
@@ -530,12 +555,18 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
         </mesh>
       ))}
       {/* lamps: glowing globes and warm pools of light */}
-      {LAMP_XZ.map(([x, z]) => (
+      {LAMP_XZ.map(([x, z], li) => (
         <group key={`${x}${z}`} position={[x, 0, z]}>
           <mesh position={[0, 2.4, 0]} castShadow material={M("#1F1F24")}>
             <cylinderGeometry args={[0.09, 0.12, 4.8, 6]} />
           </mesh>
-          <mesh position={[0, 4.95, 0]} material={glowMat("#FFD9A0", 2.6)}>
+          <mesh
+            position={[0, 4.95, 0]}
+            material={(() => {
+              lamps[li].color.copy(hot("#FFD9A0", 2.6 * (1 - 0.9 * surgeAt(t, x, z))));
+              return lamps[li];
+            })()}
+          >
             <icosahedronGeometry args={[0.38, 2]} />
           </mesh>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>

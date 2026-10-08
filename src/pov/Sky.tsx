@@ -103,7 +103,7 @@ export const Sun: React.FC<{ cam: THREE.Vector3; alt: number }> = ({ cam, alt })
   const s = spaceness(alt);
   const d = 8e6;
   const p = cam.clone().addScaledVector(SUN_DIR, d);
-  const size = d * (0.07 + 0.05 * (1 - s));
+  const size = d * (0.06 + 0.035 * (1 - s));
   return (
     <sprite position={p} scale={[size, size, 1]} renderOrder={-9} frustumCulled={false}>
       <spriteMaterial

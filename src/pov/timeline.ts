@@ -31,3 +31,17 @@ export const camAt = (frame: number): Cam => {
     fov: T.fov[f],
   };
 };
+
+/** Gravity pulses: when each one hits, how hard, and where the viewer stood (the shockwave's centre). */
+export const PULSES = TRACK.pulses.map((f, i) => ({
+  t: f / TRACK.fps,
+  k: TRACK.pulseK[i],
+  x: TRACK.x[f],
+  z: TRACK.z[f],
+}));
+/** The most recent pulse at time t, with its age in seconds (null before the first). */
+export const lastPulse = (t: number) => {
+  let p: (typeof PULSES)[number] | null = null;
+  for (const q of PULSES) if (t >= q.t) p = q;
+  return p ? { ...p, age: t - p.t } : null;
+};

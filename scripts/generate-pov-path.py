@@ -233,6 +233,28 @@ def main():
             if f < N:
                 fov[f] += 4 * math.sin(min(1, d / 4) * math.pi / 2) * math.exp(-d / 10)
 
+    # ---------------- gravity pulses: the shock that starts it all (0.9 s), the moment g starts to fall (4 s),
+    # then every further 20%. Each one jolts the head (pitch/roll only, so the body path and the crowd are
+    # untouched) and punches the fov. The picture and the sound both read these times from the track.
+    PULSES = [0.9, 4.0] + [4 + 28 * (1 - g) for g in (0.8, 0.6, 0.4, 0.2, 0.0)]
+    PULSE_K = [1.0, 0.65, 0.7, 0.75, 0.8, 0.85, 1.15]
+    rng2 = np.random.default_rng(29)
+    hann7 = np.hanning(7)[1:-1] / np.hanning(7)[1:-1].sum()
+    jolt = np.convolve(rng2.standard_normal(N), hann7, mode="same")
+    jolt2 = np.convolve(rng2.standard_normal(N), hann7, mode="same")
+    jolt /= jolt.std()
+    jolt2 /= jolt2.std()
+    for p, kk in zip(PULSES, PULSE_K):
+        f0 = int(round(p * FPS))
+        for d in range(0, 45):
+            f = f0 + d
+            if f >= N:
+                break
+            e = kk * min(1.0, (d + 1) / 3.0) * math.exp(-d / 7.0)
+            shake_p[f] += e * (0.016 * jolt[f] - 0.018 * math.sin(d * 0.6))
+            shake_r[f] += e * 0.014 * jolt2[f]
+            fov[f] += kk * 3.0 * math.sin(min(1, d / 3) * math.pi / 2) * math.exp(-d / 9)
+
     # a head turn that leaves the body (and its sway) alone: passing the balloon cart, we keep our eyes on
     # the seller who is waving at us, then look ahead again just before the first leap
     GLANCE = [(6.3, 0.0), (7.0, 0.22), (7.5, 0.36), (8.0, 0.48), (8.5, 0.63), (9.0, 0.8), (9.5, 0.95), (10.0, 0.5), (10.45, 0.05), (10.9, 0.0)]
@@ -261,6 +283,8 @@ def main():
         "takeoffs": takeoffs,
         "landings": [[f, v] for f, v in landings],
         "floatAt": takeoffs[-1],
+        "pulses": [int(round(p * FPS)) for p in PULSES],
+        "pulseK": PULSE_K,
     }
     os.makedirs(os.path.join(ROOT, "src", "pov"), exist_ok=True)
     with open(os.path.join(ROOT, "src", "pov", "track.json"), "w") as fh:

@@ -18,7 +18,7 @@ import { SPHERES } from "./crowd";
 import { PovWorld } from "./PovWorld";
 import { Post } from "./Post";
 import { CLOUD_BASE, CLOUD_TOP, SUN_DIR, spaceness } from "./Sky";
-import { T, camAt, gravity } from "./timeline";
+import { T, camAt, gravity, lastPulse } from "./timeline";
 
 const SERIF = loadDMSerif("normal", { weights: ["400"], subsets: ["latin"] }).fontFamily;
 const MONO = loadMono("normal", { weights: ["500"], subsets: ["latin"] }).fontFamily;
@@ -129,7 +129,7 @@ const Flare: React.FC<{ frame: number; dim: number }> = ({ frame, dim }) => {
   const prev = useMemo(() => [frame - 2, frame - 1, frame].map(sunState), [frame]);
   const s = prev[2];
   const vis =
-    ((prev[0].vis + prev[1].vis + s.vis) / 3) * dim * Math.max(0, 1 - Math.max(0, s.edge - 1) / 0.3);
+    ((prev[0].vis + prev[1].vis + s.vis) / 3) * dim * 0.75 * Math.max(0, 1 - Math.max(0, s.edge - 1) / 0.3);
   if (vis < 0.02) return null;
   const cx = W / 2;
   const cy = H / 2;
@@ -267,7 +267,8 @@ const Lids: React.FC<{ open: number }> = ({ open }) => {
 
 const lidsOpen = (t: number) => {
   // waking: half open, a heavy blink, then open
-  if (t < 2.2) return interpolate(t, [0, 0.5, 0.9, 1.15, 1.35, 2.2], [0, 0.45, 0.4, 0.05, 0.6, 1], CLAMP);
+  if (t < 1.0)
+    return interpolate(t, [0, 0.22, 0.38, 0.47, 0.54, 0.66, 1.0], [0.05, 0.75, 0.7, 0.1, 0.1, 0.8, 1], CLAMP);
   // one blink right as the last leap leaves the ground
   if (t > 29.3 && t < 29.75) return interpolate(t, [29.3, 29.45, 29.55, 29.75], [1, 0, 0, 1], CLAMP);
   // the end: heavy lids, a last flutter, closed
@@ -305,7 +306,21 @@ export const Pov: React.FC = () => {
       pulse = Math.max(pulse, Math.exp(-d * 9) + 0.6 * Math.exp(-Math.abs(d - 0.18) * 14));
   }
   const vign = 0.42 + s * 0.2 + pulse * 0.25 + interpolate(t, [62, 66], [0, 0.25], CLAMP);
-  const title = interpolate(t, [1.6, 2.4, 4.4, 5.2], [0, 1, 1, 0], CLAMP);
+  // the title slams in on the first pulse
+  const title = interpolate(t, [0.95, 1.08, 4.4, 5.0], [0, 1, 1, 0], CLAMP);
+  const slam = Math.max(0, t - 0.95);
+  // gravity pulses: a ripple through the picture, an impact flash, the readout jumping
+  const lp = lastPulse(t);
+  const ripple =
+    lp && lp.age < 1.4
+      ? {
+          radius: lp.age * 1.05 - 0.04,
+          strength: lp.k * 0.04 * Math.exp(-lp.age * 1.5),
+          flash: lp.k * 0.9 * Math.exp(-lp.age * 2.6),
+        }
+      : { radius: 0, strength: 0, flash: 0 };
+  const hit = lp && lp.age < 0.5 ? lp.k * Math.exp(-lp.age * 9) : 0;
+  const tick = lp && lp.age < 1.2 ? Math.exp(-lp.age * 5) : 0;
   const outro = interpolate(t, [62.4, 63.2, 65.0, 65.6], [0, 1, 1, 0], CLAMP);
   const readout = interpolate(t, [2.4, 3.2, 63, 64], [0, 1, 1, 0], CLAMP);
   const altText = alt < 1000 ? `${alt.toFixed(0)} m` : `${(alt / 1000).toFixed(alt < 10000 ? 2 : 1)} km`;
@@ -321,7 +336,7 @@ export const Pov: React.FC = () => {
           gl={{ antialias: true, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}
         >
           <PovWorld />
-          <Post strength={0.75} radius={0.55} threshold={0.92} />
+          <Post strength={0.62} radius={0.55} threshold={1.0} ripple={ripple} />
         </ThreeCanvas>
       </AbsoluteFill>
       <svg width={0} height={0} style={{ position: "absolute" }}>
@@ -352,6 +367,16 @@ export const Pov: React.FC = () => {
       </svg>
 
       <Flare frame={frame} dim={1 - white} />
+      {hit > 0.01 ? (
+        <AbsoluteFill
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255,250,240,0.9), rgba(255,240,220,0.35) 70%, rgba(255,240,220,0.1))",
+            opacity: Math.min(0.45, hit * 0.4),
+            mixBlendMode: "screen",
+          }}
+        />
+      ) : null}
       {white > 0.01 ? <AbsoluteFill style={{ background: "#F4F6FA", opacity: white }} /> : null}
       <Frost k={frost} />
       <AbsoluteFill
@@ -367,13 +392,15 @@ export const Pov: React.FC = () => {
           position: "absolute",
           left: 90,
           right: 140,
-          top: 330,
+          top: 320,
           textAlign: "center",
           opacity: title,
           fontFamily: SERIF,
-          fontSize: 58,
+          fontSize: 68,
+          lineHeight: 1.08,
           color: "#fff",
-          textShadow: "0 2px 18px rgba(0,0,0,0.6)",
+          transform: `scale(${1 + 0.22 * Math.exp(-slam * 9)})`,
+          textShadow: `${12 * Math.exp(-slam * 7)}px 0 0 rgba(255,40,120,0.75), ${-12 * Math.exp(-slam * 7)}px 0 0 rgba(40,220,255,0.75), 0 3px 22px rgba(0,0,0,0.7)`,
         }}
       >
         POV: gravity is switching off
@@ -383,10 +410,12 @@ export const Pov: React.FC = () => {
           position: "absolute",
           left: 90,
           top: 1480,
-          opacity: readout * 0.85,
+          opacity: readout * (0.85 + 0.15 * tick),
           fontFamily: MONO,
-          fontSize: 30,
-          color: "#fff",
+          fontSize: 34,
+          color: tick > 0.05 ? `rgb(${255 - 112 * tick},${255 - 12 * tick},255)` : "#fff",
+          transform: `scale(${1 + 0.35 * tick})`,
+          transformOrigin: "left center",
           textShadow: "0 1px 8px rgba(0,0,0,0.7)",
           letterSpacing: "0.04em",
         }}

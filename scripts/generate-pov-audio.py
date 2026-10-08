@@ -213,6 +213,64 @@ def body():
     return b
 
 
+# ------------------------------------------------------------------ gravity pulses
+
+
+def pulse_hit(k):
+    """The wave going off: a sub boom falling to 26 Hz, the crack of its front, air shoved outward, a low ring."""
+    sec = 2.4
+    n = int(sec * SR)
+    tt = np.arange(n) / SR
+    f = 26 + 44 * np.exp(-tt / 0.18)
+    boom = np.sin(2 * np.pi * np.cumsum(f) / SR) * decay(n, 0.7)
+    crack = bp(noise(sec), 1800, 9000) * decay(n, 0.025)
+    whomp = ga.sweep(noise(sec), 900, 90, "low", 0.7) * decay(n, 0.5)
+    ring = np.sin(2 * np.pi * 43 * tt) * decay(n, 1.1) * 0.35
+    return sat(boom * 1.1 + crack * 0.35 + whomp * 0.6 + ring, 1.6) * (0.75 + 0.35 * k)
+
+
+def swell(sec=0.7):
+    """Air being sucked in just before a pulse."""
+    n = int(sec * SR)
+    return ga.sweep(noise(sec), 300, 6000, "band", 0.5) * np.linspace(0, 1, n) ** 2.4
+
+
+def flutter():
+    """The flock bursting up: every bird's wingbeats, loud at first, fading as they fly off."""
+    sec = 2.2
+    x = np.zeros(int(sec * SR))
+    beat = bp(noise(0.03), 500, 2600) * decay(int(0.03 * SR), 0.008)
+    rng = np.random.default_rng(5)
+    for b in range(26):
+        t0 = 0.04 + rng.uniform(0, 0.32)
+        rate = 7 + rng.uniform(0, 3)
+        for j in range(14):
+            i = int((t0 + j / rate) * SR)
+            if i + len(beat) < len(x):
+                x[i : i + len(beat)] += beat * math.exp(-j / 5) * rng.uniform(0.5, 1)
+    return x
+
+
+def buzz(sec=0.6):
+    """Lights browning out as the wave rolls through: mains hum stuttering, a little crackle."""
+    tt = t_axis(sec)
+    hum = sum(np.sin(2 * np.pi * 60 * h * tt) / h for h in (1, 2, 3, 5, 7))
+    stutter = 0.6 + 0.4 * np.sign(np.sin(2 * np.pi * 11 * tt))
+    crackle = hp(noise(sec), 2500) * (np.random.default_rng(9).random(len(tt)) < 0.01)
+    return (hum * 0.5 * stutter + crackle * 0.8) * np.sin(np.pi * tt / sec) ** 0.5
+
+
+def fx():
+    b = np.zeros((N + SR * 4, 2))
+    for fr, k in zip(TR["pulses"], TR["pulseK"]):
+        tp = F(fr)
+        place(b, stereo(swell(0.7), 0, 0.5), tp - 0.7, 0.12 * k)
+        place(b, stereo(pulse_hit(k), 0, 0.4), tp, 0.5)
+        place(b, stereo(buzz(), 0.2, 0.6), tp + 1.15, 0.07 * k)
+    place(b, stereo(flutter(), -0.1, 0.8), F(TR["pulses"][0]), 0.5)
+    return b
+
+
 def thin_air(x):
     """As the air thins, everything but the body (heartbeat/breath) drains away: lowpass + level."""
     out = x.copy()
@@ -238,6 +296,7 @@ if __name__ == "__main__":
     drums = reverb(drums, 1.2, 0.12, 8000)[: len(drums)]
     world = thin_air(mus + drums * 0.9 + ambience())
     mix = world + reverb(body(), 0.6, 0.1, 9000)[: len(world)]
+    mix = mix + reverb(fx(), 1.6, 0.22, 6000)[: len(mix)]
     mix = mix[:N]
     fade = int(0.4 * SR)
     mix[-fade:] *= np.linspace(1, 0, fade)[:, None]

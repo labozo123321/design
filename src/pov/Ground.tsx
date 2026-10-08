@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { random } from "remotion";
 import { CITY_R, GROUND_Y, NS_STREETS, RIVER_Z0, RIVER_Z1, city, parked, traffic } from "./city";
 import { EARTH_R } from "./timeline";
+import { citySurge } from "./Spectacle";
 
 /* ------------------------------------------------------------------ */
 /* Planet: a log-polar cap on the true curvature                        */
@@ -361,7 +362,7 @@ const unitBox = (bay: number, storey: number) => {
   return { g, bay, storey };
 };
 
-const Buildings: React.FC = () => {
+const Buildings: React.FC<{ glow: number }> = ({ glow }) => {
   const groups = useMemo(() => {
     // split into towers (glass) and the rest; each instance gets its own UV scale via per-instance geometry groups
     const towers = city.buildings.filter((b) => b.h > 70);
@@ -374,19 +375,20 @@ const Buildings: React.FC = () => {
   return (
     <group>
       {groups.map((grp) => (
-        <BuildingSet key={grp.kind} {...grp} />
+        <BuildingSet key={grp.kind} {...grp} glow={glow} />
       ))}
     </group>
   );
 };
 
 /** Buildings merged into one geometry per kind, with UVs scaled per building (no stretched windows). */
-const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey: number; bay: number }> = ({
-  list,
-  kind,
-  storey,
-  bay,
-}) => {
+const BuildingSet: React.FC<{
+  list: typeof city.buildings;
+  kind: number;
+  storey: number;
+  bay: number;
+  glow: number;
+}> = ({ list, kind, storey, bay, glow }) => {
   const geo = useMemo(() => {
     const pos: number[] = [];
     const nor: number[] = [];
@@ -436,7 +438,7 @@ const BuildingSet: React.FC<{ list: typeof city.buildings; kind: number; storey:
         map={windowTex(kind)}
         emissiveMap={windowGlow(kind)}
         emissive="#FFFFFF"
-        emissiveIntensity={1.35}
+        emissiveIntensity={1.35 * glow}
         vertexColors
         roughness={kind ? 0.35 : 0.85}
         metalness={kind ? 0.25 : 0}
@@ -593,7 +595,7 @@ const Beacons: React.FC<{ t: number }> = ({ t }) => {
 export const City: React.FC<{ t: number; alt: number }> = ({ t, alt }) => (
   <group>
     <CityGround />
-    <Buildings />
+    <Buildings glow={1 - 0.7 * citySurge(t)} />
     <Beacons t={t} />
     <Roofs />
     <Trees />

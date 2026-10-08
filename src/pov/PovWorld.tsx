@@ -12,6 +12,8 @@ import { City, Planet } from "./Ground";
 import { Clouds, SUN_DIR, SkyDome, Stars, Sun, horizonDip, skyColor, spaceness } from "./Sky";
 import { PHYSICS, T, UPDRAFT_AT, camAt, gravity } from "./timeline";
 import { Plaza } from "./Plaza";
+import { Pigeons, RisingDebris, Shockwave } from "./Spectacle";
+import { Aurora, Meteors } from "./Space";
 
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const LOOKS = SPECS.map(lookFor);
@@ -147,6 +149,8 @@ export const PovWorld: React.FC = () => {
       <fog attach="fog" args={[horizon, 40, fogFar]} />
       <SkyDome cam={cam} alt={alt} />
       <Stars cam={cam} o={Math.max(0, (s - 0.35) / 0.65)} />
+      <Aurora cam={cam} alt={alt} t={t} o={interpolate(t, [57.5, 60.5, 65.3, 66], [0, 1, 1, 0.6], CLAMP)} />
+      <Meteors cam={cam} alt={alt} t={t} />
       <Sun cam={cam} alt={alt} />
       <hemisphereLight
         args={[
@@ -285,6 +289,9 @@ export const PovWorld: React.FC = () => {
           ))
         : null}
 
+      <Shockwave t={t} />
+      <Pigeons t={t} />
+      <RisingDebris t={t} cam={cam} />
       <Clouds cam={cam} sunlit={sunlit} />
       <Motes cam={cam} t={t} o={motes} />
       <LandingDust frame={frame} cam={cam} yaw={c.yaw} />

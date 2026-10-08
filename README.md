@@ -386,6 +386,9 @@ and one closing line.
    - a plaza crowd (`crowd.ts`, `Human.tsx`): 41 articulated people with faces that blink, glance at you and gape as gravity fails. They are simulated together on routes planned clear of every prop, so nobody walks through a cart, a bench, each other or you, and they float off at zero g. Two of them meet your eye: a balloon seller who waves as you pass the cart, and a woman by the river who watches you come down beside her and float away;
    - your arms and legs;
    - debris, wind streaks, motes and landing dust;
+   - golden hour with bloom (`Post.tsx`): lit windows, neon edges, LED screens and beacons on the towers, glowing lamps, fairy lights, an LED rail by the river (`Plaza.tsx`);
+   - gravity pulses at 0.9 s, 4 s and every further 20% of g (`Spectacle.tsx`): a ripple through the picture, a dust ring and wall rolling out across the city, lights browning out as it passes, a bass hit; a pigeon flock bursting up at the first one; pebbles, leaves and glints lifting off the ground as g fades;
+   - an aurora along the curve of the planet and meteors below you at the end (`Space.tsx`);
    - a lens flare hidden behind buildings, chromatic aberration, frost, eyelids and a heartbeat vignette.
 
 Render it in chunks, muted, then add the bed:
