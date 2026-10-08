@@ -35,6 +35,58 @@ const camColumnDist = (x: number, z: number) => {
   return Math.hypot(x - (ax + dx * u), z - (az + dz * u));
 };
 
+/**
+ * The sun, created imperatively so every shadow parameter (map size, frustum, far plane, bias) is applied
+ * on every frame. three.js only recomputes a shadow camera's projection when the map is first created,
+ * so prop changes alone would leave a render process stuck with whatever it saw first.
+ */
+const SunLight: React.FC<{
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+  intensity: number;
+  color: THREE.Color;
+  size: number;
+  r: number;
+  far: number;
+  bias: number;
+  normalBias: number;
+}> = ({ position, target, intensity, color, size, r, far, bias, normalBias }) => {
+  const light = useMemo(() => {
+    const l = new THREE.DirectionalLight();
+    l.castShadow = true;
+    return l;
+  }, []);
+  light.position.copy(position);
+  light.target.position.copy(target);
+  light.target.updateMatrixWorld();
+  light.intensity = intensity;
+  light.color.copy(color);
+  const sh = light.shadow;
+  if (sh.mapSize.x !== size) {
+    sh.mapSize.set(size, size);
+    if (sh.map) {
+      sh.map.dispose();
+      sh.map = null;
+    }
+  }
+  const cam = sh.camera as THREE.OrthographicCamera;
+  cam.left = -r;
+  cam.right = r;
+  cam.top = r;
+  cam.bottom = -r;
+  cam.near = 1;
+  cam.far = far;
+  cam.updateProjectionMatrix();
+  sh.bias = bias;
+  sh.normalBias = normalBias;
+  return (
+    <>
+      <primitive object={light} />
+      <primitive object={light.target} />
+    </>
+  );
+};
+
 const Rig: React.FC<{ frame: number }> = ({ frame }) => {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const c = camAt(frame);
@@ -102,24 +154,17 @@ export const PovWorld: React.FC = () => {
         ]}
       />
       <ambientLight intensity={0.14 * (1 - s) + 0.05} />
-      <directionalLight
+      <SunLight
         position={lightPos}
+        target={shadowTarget}
         intensity={2.35 + s * 0.9}
         color={new THREE.Color("#FFFFFF").lerp(new THREE.Color("#FFD2A0"), 0.55 * (1 - s))}
-        castShadow
-        shadow-mapSize-width={plazaShadow ? 2048 : 4096}
-        shadow-mapSize-height={plazaShadow ? 2048 : 4096}
-        shadow-camera-left={-shadowR}
-        shadow-camera-right={shadowR}
-        shadow-camera-top={shadowR}
-        shadow-camera-bottom={-shadowR}
-        shadow-camera-near={1}
-        shadow-camera-far={plazaShadow ? 220 : 9000}
-        shadow-bias={plazaShadow ? -0.0003 : -0.0008}
-        shadow-normalBias={plazaShadow ? 0.03 : 0.6}
-      >
-        <object3D attach="target" position={shadowTarget} />
-      </directionalLight>
+        size={plazaShadow ? 2048 : 4096}
+        r={shadowR}
+        far={plazaShadow ? 220 : 9000}
+        bias={plazaShadow ? -0.0003 : -0.0008}
+        normalBias={plazaShadow ? 0.03 : 0.6}
+      />
 
       <Planet />
       <City t={t} alt={alt} />
