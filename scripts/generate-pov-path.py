@@ -233,13 +233,23 @@ def main():
             if f < N:
                 fov[f] += 4 * math.sin(min(1, d / 4) * math.pi / 2) * math.exp(-d / 10)
 
+    # a head turn that leaves the body (and its sway) alone: passing the balloon cart, we keep our eyes on
+    # the seller who is waving at us, then look ahead again just before the first leap
+    GLANCE = [(6.3, 0.0), (7.0, 0.22), (7.5, 0.36), (8.0, 0.48), (8.5, 0.63), (9.0, 0.8), (9.5, 0.95), (10.0, 0.5), (10.45, 0.05), (10.9, 0.0)]
+    gt = [k[0] for k in GLANCE]
+    glance = np.where(
+        (t > gt[0]) & (t < gt[-1]),
+        PchipInterpolator(gt, [k[1] for k in GLANCE])(np.clip(t, gt[0], gt[-1])),
+        0.0,
+    )
+
     track = {
         "fps": FPS,
         "frames": N,
         "x": np.round(x + bob_x * np.cos(yaw), 3).tolist(),
         "y": np.round(alt + bob_y, 3).tolist(),
         "z": np.round(z - bob_x * np.sin(yaw), 3).tolist(),
-        "yaw": np.round(yaw, 4).tolist(),
+        "yaw": np.round(yaw + glance, 4).tolist(),
         "pitch": np.round(pitch + shake_p, 4).tolist(),
         "roll": np.round(roll + shake_r, 4).tolist(),
         "fov": np.round(fov, 2).tolist(),

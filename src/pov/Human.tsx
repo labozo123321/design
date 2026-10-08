@@ -1,7 +1,7 @@
 import React from "react";
 import * as THREE from "three";
 import { random } from "remotion";
-import type { PState, Spec } from "./crowd";
+import { watches, type PState, type Spec } from "./crowd";
 
 /**
  * Articulated person, modelled in metres for a 1.78 m adult (scaled per person).
@@ -72,7 +72,7 @@ export const lookFor = (sp: Spec): Look => {
     : female
       ? pick(["pants", "dress", "pants", "shorts"] as const, r("lg"))
       : pick(["pants", "pants", "shorts"] as const, r("lg"));
-  return {
+  const look: Look = {
     female,
     skin: pick(SKIN, r("skin")),
     hair: kid ? pick(HAIR.slice(0, 7), r("hair")) : pick(HAIR, r("hair")),
@@ -90,6 +90,38 @@ export const lookFor = (sp: Spec): Look => {
     bag: pick(["#2F2F3A", "#7E3A22", "#3E6FB0", "#4E9A6A"], r("bag")),
     width: (female ? 0.92 : 1.0) * (0.95 + r("w") * 0.14),
   };
+  // the two people who meet your eye are cast, not rolled: a clean-shaven balloon seller in a red cap
+  // (nothing over the smile), and a woman in a sky-blue top
+  if (sp.role === "greet")
+    return {
+      ...look,
+      female: false,
+      skin: SKIN[2],
+      hairStyle: "cap",
+      capColor: "#C0392B",
+      beard: false,
+      glasses: false,
+      top: "#F4F1EA",
+      sleeves: "short",
+      bottom: "#2E3A55",
+      legs: "pants",
+      width: 1.03,
+    };
+  if (sp.role === "stare")
+    return {
+      ...look,
+      female: true,
+      skin: SKIN[3],
+      hair: HAIR[1],
+      hairStyle: "long",
+      glasses: false,
+      top: "#5DA9C9",
+      sleeves: "long",
+      bottom: "#3B4A6B",
+      legs: "pants",
+      width: 0.92,
+    };
+  return look;
 };
 
 /* ------------------------------------------------------------------ */
@@ -424,6 +456,35 @@ const filming = (t: number, seed: number): Pose => ({
   spinePitch: -0.05 + 0.02 * Math.sin(t + seed),
 });
 
+/** Waving hello with the right hand (w: 0..1), the other arm relaxed. */
+const greeting = (t: number, seed: number, w: number): Pose => {
+  const sway = Math.sin(t * Math.PI * 2 * 1.6 + seed);
+  return {
+    ...P0,
+    pelvisRoll: 0.02 * Math.sin(t * 0.8 + seed),
+    hipZ: [-0.05, 0.05],
+    spineYaw: -0.06 * w,
+    shX: [-0.28 * w, 0.05],
+    shZ: [-0.08 - w * (2.45 + 0.28 * sway), 0.1],
+    elbow: [-0.15 - w * (0.45 + 0.22 * sway), -0.2],
+  };
+};
+
+/** Rooted to the spot, staring: hands half raised, leaning back to look up (up 0..1, shock 0..1). */
+const staring = (t: number, seed: number, up: number, shock: number): Pose =>
+  crouch(
+    {
+      ...P0,
+      spinePitch: -0.3 * up,
+      hipZ: [-0.07, 0.07],
+      shX: [-0.55 * shock, -0.5 * shock],
+      shZ: [-0.08 - 0.32 * shock, 0.08 + 0.3 * shock],
+      elbow: [-0.15 - 1.0 * shock, -0.15 - 0.95 * shock],
+      headRoll: 0.04 * Math.sin(t * 0.7 + seed),
+    },
+    0.1 * shock,
+  );
+
 /* ------------------------------------------------------------------ */
 /* Face                                                                 */
 /* ------------------------------------------------------------------ */
@@ -672,9 +733,30 @@ export const Human: React.FC<{
 
   // ---- base pose by role, then airborne / crouch / floating layers
   let pose: Pose;
+  // where the viewer is, seen from this person's head
+  const headY = st.y + 1.66 * k;
+  const rx = cam.x - st.x;
+  const rz = cam.z - st.z;
+  const flat = Math.hypot(rx, rz);
+  const dist = Math.hypot(flat, cam.y - headY);
+  const rel = wrap(Math.atan2(rx, rz) - st.heading - st.ty);
+  const elev = Math.atan2(cam.y - headY, flat);
+  // the balloon seller waves while you come past (until your first leap); the woman by the river is
+  // stunned from your last leap on
+  const waveW =
+    sp.role === "greet" && !st.free
+      ? smooth(2.6, 3.6, t) *
+        smooth(13, 9, dist) *
+        smooth(1.9, 1.3, Math.abs(rel)) *
+        (1 - smooth(11.2, 12.4, t))
+      : 0;
+  const shock = sp.role === "stare" ? smooth(25.2, 26.6, t) : 0;
+
   if (sp.role === "sit") pose = seated(t, sp.seed);
   else if (sp.role === "group") pose = talking(t, sp.seed);
   else if (sp.role === "photo") pose = filming(t, sp.seed);
+  else if (sp.role === "greet") pose = greeting(t, sp.seed, waveW);
+  else if (sp.role === "stare") pose = staring(t, sp.seed, smooth(0.25, 1.0, elev) * shock, shock);
   else
     pose = mixP(
       P0,
@@ -698,17 +780,16 @@ export const Human: React.FC<{
   }
   if (st.free) pose = mixP(pose, floating(t, sp.seed), smooth(st.freeAt, st.freeAt + 0.9, t));
 
-  // ---- glance at the viewer when they are near and in front
-  const headY = st.y + 1.66 * k;
-  const rx = cam.x - st.x;
-  const rz = cam.z - st.z;
-  const dist = Math.hypot(rx, rz, cam.y - headY);
-  const rel = wrap(Math.atan2(rx, rz) - st.heading - st.ty);
-  const lookW = smooth(10, 5, dist) * smooth(2.1, 1.4, Math.abs(rel)) * (st.free ? 0.6 : 1);
-  pose.headYaw = pose.headYaw * (1 - lookW) + Math.max(-1.0, Math.min(1.0, rel)) * lookW;
-  pose.headPitch =
-    pose.headPitch * (1 - lookW) -
-    Math.max(-0.6, Math.min(0.6, Math.atan2(cam.y - headY, Math.hypot(rx, rz)))) * lookW;
+  // ---- glance at the viewer when they are near and in front (the two watchers keep their eyes on you;
+  // their head stops turning sideways when you are nearly straight overhead, so it never swings)
+  const lookW =
+    watches(sp.role) && !st.free
+      ? smooth(16, 11, dist)
+      : smooth(10, 5, dist) * smooth(2.1, 1.4, Math.abs(rel)) * (st.free ? 0.6 : 1);
+  const yawW = lookW * smooth(0.6, 1.6, flat);
+  const pitchMax = sp.role === "stare" ? 1.05 : 0.6;
+  pose.headYaw = pose.headYaw * (1 - yawW) + Math.max(-1.0, Math.min(1.0, rel)) * yawW;
+  pose.headPitch = pose.headPitch * (1 - lookW) - Math.max(-pitchMax, Math.min(pitchMax, elev)) * lookW;
 
   // ---- face: blinking, surprise as gravity fails, kids grin
   const per = 3 + (sp.seed % 3);
@@ -719,9 +800,21 @@ export const Human: React.FC<{
     st.free ? smooth(st.freeAt, st.freeAt + 0.6, t) : 0,
     sp.kid ? 0 : smooth(0.7, 0.25, gNow) * 0.6,
   );
-  const mouthO = st.free ? surprise : sp.kid ? 0 : Math.max(0, surprise - 0.3);
-  const smile = sp.kid ? 1 : 0.55 - surprise * 0.4;
-  const brow = 0.007 * surprise;
+  let mouthO = st.free ? surprise : sp.kid ? 0 : Math.max(0, surprise - 0.3);
+  let smile = sp.kid ? 1 : 0.55 - surprise * 0.4;
+  let brow = 0.007 * surprise;
+  if (waveW > 0) {
+    // a big friendly grin, brows up
+    smile += (1 - smile) * waveW;
+    mouthO *= 1 - waveW;
+    brow += (0.004 - brow) * waveW;
+  }
+  if (shock > 0) {
+    // jaw dropped, brows high
+    mouthO = Math.max(mouthO, 0.85 * shock);
+    brow = Math.max(brow, 0.0075 * shock);
+    smile *= 1 - shock;
+  }
 
   const skin = mat(look.skin, 0.6);
   const top = mat(look.top, 0.92);

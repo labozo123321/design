@@ -84,7 +84,11 @@ const routeDist = (x: number, z: number) => Math.min(...ROUTE_PTS.map(([a, b]) =
 /* People                                                               */
 /* ------------------------------------------------------------------ */
 
-export type Role = "walk" | "group" | "sit" | "photo";
+export type Role = "walk" | "group" | "sit" | "photo" | "greet" | "stare";
+/** Roles that hold their spot until zero g (walkers step around them; nobody shoves them). */
+const anchored = (r: Role) => r === "sit" || r === "greet" || r === "stare";
+/** Roles that turn on the spot to keep facing the viewer. */
+export const watches = (r: Role) => r === "greet" || r === "stare";
 export type Spec = {
   i: number;
   role: Role;
@@ -236,6 +240,27 @@ export const SPECS: Spec[] = (() => {
     });
     i++;
   }
+  // two people who notice you: the balloon seller by the cart waves as you walk past, and someone by the
+  // river watches you come down beside them, then stays below, looking up, as you float away
+  const watcher = (role: Role, spot: [number, number], height: number, liftAt: number, faceFrame: number) => {
+    out.push({
+      i,
+      role,
+      kid: false,
+      height,
+      speed: 0,
+      jumpEvery: 0,
+      v0: 0,
+      route: [spot],
+      start: spot,
+      face0: Math.atan2(T.x[faceFrame] - spot[0], T.z[faceFrame] - spot[1]),
+      liftAt,
+      seed: r01(`${i}-seed`) * 1000,
+    });
+    i++;
+  };
+  watcher("greet", [4.4, 14.2], 1.74, 32.9, 150);
+  watcher("stare", [-5.6, -10.3], 1.66, 33.2, T.floatAt);
   return out;
 })();
 export const N_PEOPLE = SPECS.length;
@@ -508,6 +533,12 @@ const move = (P: PState[], n: number) => {
     if (sp.role === "walk" && v > 0.15 && !p.free) {
       const target = Math.atan2(p.vx, p.vz);
       p.heading += wrapAngle(target - p.heading) * Math.min(1, DT * 6);
+    } else if (watches(sp.role) && !p.free) {
+      // turn on the spot to keep facing the viewer (not while they are right overhead)
+      const ex = cam.x - p.x;
+      const ez = cam.z - p.z;
+      const e = Math.hypot(ex, ez);
+      if (e > 1.2 && e < 16) p.heading += wrapAngle(Math.atan2(ex, ez) - p.heading) * Math.min(1, DT * 2.5);
     }
   }
 };
@@ -522,7 +553,7 @@ const constrain = (P: PState[], n: number, passes = 3) => {
       const p = P[i];
       const sp = SPECS[i];
       const k = sp.height / 1.78;
-      const fixed = sp.role === "sit" && !p.free;
+      const fixed = anchored(sp.role) && !p.free;
       // props: footprint constraints apply while the feet are below the prop's top
       for (const o of OBSTACLES) {
         if (sp.role === "sit" && o.name === "bench") continue; // they sit on it, and float up off it
@@ -604,7 +635,7 @@ const constrain = (P: PState[], n: number, passes = 3) => {
       for (let j = i + 1; j < P.length; j++) {
         const q = P[j];
         const kq = SPECS[j].height / 1.78;
-        const qFixed = SPECS[j].role === "sit" && !q.free;
+        const qFixed = anchored(SPECS[j].role) && !q.free;
         if (p.free || q.free) {
           const ex = p.x - q.x;
           const ey = p.y + 0.9 * k - (q.y + 0.9 * kq);
