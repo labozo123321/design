@@ -283,9 +283,11 @@ export const Pov: React.FC = () => {
   const s = spaceness(alt);
   const g = gravity(t);
 
-  // cloud whiteout while inside the deck
+  // cloud whiteout while inside the deck: a plateau with smoothstep shoulders (a sharp peak would flash the
+  // single frame at the top), wide enough to cover both deck planes as we pass through them
   const mid = (CLOUD_BASE + CLOUD_TOP) / 2;
-  const white = Math.max(0, 1 - Math.abs(alt - mid) / ((CLOUD_TOP - CLOUD_BASE) * 0.62)) * 0.92;
+  const u = Math.min(1, Math.max(0, (300 - Math.abs(alt - mid)) / 150));
+  const white = u * u * (3 - 2 * u) * 0.92;
   // chromatic aberration: hard landings, the updraft surge
   let ca = interpolate(t, [38, 40, 44, 47], [0, 6, 6, 0], CLAMP);
   for (const [f0, v] of T.landings) {

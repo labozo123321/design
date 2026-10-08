@@ -280,6 +280,11 @@ export const Clouds: React.FC<{ cam: THREE.Vector3; sunlit: THREE.Color }> = ({ 
         { y: CLOUD_BASE + 60, seed: 1, cover: 0.6, rot: 0 },
         { y: CLOUD_TOP - 80, seed: 2, cover: 0.48, rot: 0.7 },
       ].map((l) => {
+        // a deck is infinitely thin, so passing through it would flip it from above to below in one frame:
+        // it thins out within ~200 m of the camera, where the whiteout takes over
+        const k = Math.min(1, Math.max(0, (Math.abs(cam.y - l.y) - 20) / 180));
+        const o = deckO * k * k * (3 - 2 * k);
+        if (o <= 0.005) return null;
         const tex = cloudTex(l.seed, l.cover);
         tex.repeat.set(1, 1);
         return (
@@ -295,7 +300,7 @@ export const Clouds: React.FC<{ cam: THREE.Vector3; sunlit: THREE.Color }> = ({ 
               color={sunlit}
               vertexColors
               transparent
-              opacity={deckO}
+              opacity={o}
               depthWrite={false}
               side={THREE.DoubleSide}
             />

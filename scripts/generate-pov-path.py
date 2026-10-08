@@ -199,6 +199,10 @@ def main():
     bob_x += np.where(on_ground, np.sin(phase) * 0.018, 0)
     shake_r += np.where(on_ground, np.sin(phase) * 0.006, 0)
     noise = rng.standard_normal((N, 2))
+    # the landing shake is band-limited (a few frames wide) with a 3-frame attack, so a touchdown reads as a
+    # thud and a nod rather than single frames popping
+    soft = np.stack([np.convolve(noise[:, k], np.hanning(9)[1:-1], mode="same") for k in range(2)], axis=1)
+    soft /= soft.std(axis=0)
     for f0, v in landings:
         amp = min(1.0, v / 5.0)
         for d in range(0, 22):
@@ -207,8 +211,9 @@ def main():
                 break
             e = amp * math.exp(-d / 5.0)
             bob_y[f] -= e * 0.16 * math.sin(d * 0.9)
-            shake_p[f] += e * 0.03 * noise[f, 0]
-            shake_r[f] += e * 0.02 * noise[f, 1]
+            es = e * min(1.0, (d + 1) / 3.0)
+            shake_p[f] += es * 0.03 * soft[f, 0] - e * 0.05 * math.sin(d * 0.5)
+            shake_r[f] += es * 0.02 * soft[f, 1]
     # turbulence in the updraft
     turb = np.clip((t - 38) / 3, 0, 1) * np.clip((53 - t) / 3, 0, 1)
     smooth_noise = np.convolve(rng.standard_normal(N + 40), np.hanning(21) / np.hanning(21).sum(), mode="same")[:N]
