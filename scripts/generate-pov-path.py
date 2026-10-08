@@ -242,6 +242,8 @@ def main():
         PchipInterpolator(gt, [k[1] for k in GLANCE])(np.clip(t, gt[0], gt[-1])),
         0.0,
     )
+    # eased over half a second, so the head never snaps from turning one way to the other
+    glance = np.convolve(glance, np.hanning(17)[1:-1] / np.hanning(17)[1:-1].sum(), mode="same")
 
     track = {
         "fps": FPS,
