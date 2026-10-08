@@ -227,7 +227,8 @@ def main():
     rising = np.clip((t - 38.5) / 2.5, 0, 1) * np.clip((55 - t) / 3, 0, 1)
     fov = 72 + rising * 18
     for f0 in takeoffs:
-        for d in range(0, 18):
+        # long enough to decay to nothing: cutting it off while still 0.7 deg wide snapped the view 1% in a frame
+        for d in range(0, 75):
             f = f0 + d
             if f < N:
                 fov[f] += 4 * math.sin(min(1, d / 4) * math.pi / 2) * math.exp(-d / 10)
