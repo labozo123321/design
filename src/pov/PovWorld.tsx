@@ -43,7 +43,7 @@ const camColumnDist = (x: number, z: number) => {
  * on every frame. three.js only recomputes a shadow camera's projection when the map is first created,
  * so prop changes alone would leave a render process stuck with whatever it saw first.
  */
-const SunLight: React.FC<{
+export const SunLight: React.FC<{
   position: THREE.Vector3;
   target: THREE.Vector3;
   intensity: number;

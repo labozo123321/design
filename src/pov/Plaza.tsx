@@ -369,7 +369,36 @@ const Flag: React.FC<{ t: number; g: number }> = ({ t, g }) => {
   );
 };
 
-export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
+let holedPlaza: THREE.ShapeGeometry | null = null;
+/** The plaza slab's top with a round hole where the fountain was (shape coords are (x, -z), in metres). */
+const plazaWithHole = () => {
+  if (holedPlaza) return holedPlaza;
+  const sh = new THREE.Shape();
+  sh.moveTo(-60, -38);
+  sh.lineTo(60, -38);
+  sh.lineTo(60, 14);
+  sh.lineTo(-60, 14);
+  sh.closePath();
+  const h = new THREE.Path();
+  h.absarc(FOUNTAIN.x, -FOUNTAIN.z, FOUNTAIN.rim, 0, Math.PI * 2, true);
+  sh.holes.push(h);
+  holedPlaza = new THREE.ShapeGeometry(sh, 96);
+  return holedPlaza;
+};
+let holedPaving: THREE.Texture | null = null;
+const pavingMetres = () => {
+  if (holedPaving) return holedPaving;
+  holedPaving = paving().clone();
+  holedPaving.repeat.set(0.25, 0.25);
+  holedPaving.needsUpdate = true;
+  return holedPaving;
+};
+
+/**
+ * `hole`: the Hole piece's version, where the fountain is gone and a shaft through the Earth opens in its
+ * place (the mosaic stays, ringing the edge).
+ */
+export const Plaza: React.FC<{ t: number; g: number; hole?: boolean }> = ({ t, g, hole = false }) => {
   const towers = useMemo(
     () =>
       BUILDINGS.map((b, i) => ({
@@ -395,12 +424,18 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
   return (
     <group>
       {/* plaza: warm stone, and a mosaic round the fountain */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 12]} receiveShadow>
-        <planeGeometry args={[120, 52]} />
-        <meshStandardMaterial map={paving()} roughness={0.82} />
-      </mesh>
+      {hole ? (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={plazaWithHole()} receiveShadow>
+          <meshStandardMaterial map={pavingMetres()} roughness={0.82} />
+        </mesh>
+      ) : (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 12]} receiveShadow>
+          <planeGeometry args={[120, 52]} />
+          <meshStandardMaterial map={paving()} roughness={0.82} />
+        </mesh>
+      )}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[FOUNTAIN.x, 0.006, FOUNTAIN.z]} receiveShadow>
-        <circleGeometry args={[8.2, 72]} />
+        {hole ? <ringGeometry args={[FOUNTAIN.rim, 8.2, 96, 1]} /> : <circleGeometry args={[8.2, 72]} />}
         <meshStandardMaterial
           map={mosaic()}
           roughness={0.8}
@@ -593,7 +628,7 @@ export const Plaza: React.FC<{ t: number; g: number }> = ({ t, g }) => {
         </group>
       ))}
       {/* fountain, with a lit rim */}
-      <group position={[FOUNTAIN.x, 0, FOUNTAIN.z]}>
+      <group position={[FOUNTAIN.x, 0, FOUNTAIN.z]} visible={!hole}>
         <mesh position={[0, 0.35, 0]} castShadow receiveShadow material={M("#E9E1D1")}>
           <cylinderGeometry args={[FOUNTAIN.rim + 0.3, FOUNTAIN.rim + 0.4, 0.7, 28]} />
         </mesh>

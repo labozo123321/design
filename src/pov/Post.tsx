@@ -56,13 +56,16 @@ export type Ripple = { radius: number; strength: number; flash: number };
  * than white glows: the sun, lit windows, neon, sparkles), the pulse ripple, then ACES tone mapping and
  * sRGB on the way out.
  */
-export const Post: React.FC<{ strength: number; radius: number; threshold: number; ripple: Ripple }> = ({
-  strength,
-  radius,
-  threshold,
-  ripple,
-}) => {
+export const Post: React.FC<{
+  strength: number;
+  radius: number;
+  threshold: number;
+  ripple: Ripple;
+  /** Optional tone curve for the OutputPass (default: whatever the renderer has, ACES). */
+  toneMapping?: THREE.ToneMapping;
+}> = ({ strength, radius, threshold, ripple, toneMapping }) => {
   const gl = useThree((s) => s.gl);
+  if (toneMapping !== undefined && gl.toneMapping !== toneMapping) gl.toneMapping = toneMapping;
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const post = useMemo(() => {

@@ -178,12 +178,16 @@ const streets = () => {
 };
 
 /** City disk (radius CITY_R + 60) split by the river: two shapes, no overlapping layers anywhere. */
+export type GroundHole = { x: number; z: number; r: number };
+
 const groundGeo = (() => {
-  let cache: THREE.ShapeGeometry[] | null = null;
-  return () => {
-    if (cache) return cache;
+  const cache = new Map<string, THREE.ShapeGeometry[]>();
+  return (hole?: GroundHole) => {
+    const key = hole ? `${hole.x},${hole.z},${hole.r}` : "";
+    const hit = cache.get(key);
+    if (hit) return hit;
     const R = CITY_R + 60;
-    const seg = (from: number, to: number, n: number) => {
+    const seg = (from: number, to: number, n: number, withHole: boolean) => {
       const sh = new THREE.Shape();
       for (let k = 0; k <= n; k++) {
         const a = from + ((to - from) * k) / n;
@@ -192,15 +196,39 @@ const groundGeo = (() => {
         else sh.lineTo(p[0], p[1]);
       }
       sh.closePath();
-      return new THREE.ShapeGeometry(sh, 1);
+      if (withHole && hole) {
+        const h = new THREE.Path();
+        h.absarc(hole.x, -hole.z, hole.r, 0, Math.PI * 2, true);
+        sh.holes.push(h);
+      }
+      return new THREE.ShapeGeometry(sh, withHole ? 48 : 1);
     };
     // shape coords are (x, -z): south of the river is -z <= -RIVER_Z1, north is -z >= -RIVER_Z0
     const as = Math.asin(-RIVER_Z1 / R);
     const an = Math.asin(-RIVER_Z0 / R);
-    cache = [seg(Math.PI - as, 2 * Math.PI + as, 720), seg(an, Math.PI - an, 360)];
-    return cache;
+    const out = [seg(Math.PI - as, 2 * Math.PI + as, 720, true), seg(an, Math.PI - an, 360, false)];
+    cache.set(key, out);
+    return out;
   };
 })();
+
+let slabWithHole: THREE.ExtrudeGeometry | null = null;
+/** The plaza's slab (under the paving, down to the streets) with the shaft cut through it. */
+const plazaSlab = (hole: GroundHole) => {
+  if (slabWithHole) return slabWithHole;
+  // shape (x, y) -> world (x, z) once rotated; extruded downward from the paving to the streets
+  const sh = new THREE.Shape();
+  sh.moveTo(-60, -14);
+  sh.lineTo(60, -14);
+  sh.lineTo(60, 42);
+  sh.lineTo(-60, 42);
+  sh.closePath();
+  const h = new THREE.Path();
+  h.absarc(hole.x, hole.z, hole.r, 0, Math.PI * 2, true);
+  sh.holes.push(h);
+  slabWithHole = new THREE.ExtrudeGeometry(sh, { depth: -GROUND_Y - 0.01, bevelEnabled: false, curveSegments: 48 });
+  return slabWithHole;
+};
 
 const StaticInstances: React.FC<{
   geometry: THREE.BufferGeometry;
@@ -240,7 +268,7 @@ const mtx = (x: number, y: number, z: number, sx: number, sy: number, sz: number
     new THREE.Vector3(sx, sy, sz),
   );
 
-export const CityGround: React.FC = () => {
+export const CityGround: React.FC<{ hole?: GroundHole }> = ({ hole }) => {
   const tex = streets();
   tex.repeat.set(1 / 96, 1 / 96);
   tex.offset.set(0, 0);
@@ -260,7 +288,7 @@ export const CityGround: React.FC = () => {
   const parks = useMemo(() => city.parks.map((p) => mtx(p.x, GROUND_Y + 0.075, p.z, p.w, 0.15, p.d)), []);
   return (
     <group>
-      {groundGeo().map((g, i) => (
+      {groundGeo(hole).map((g, i) => (
         <mesh key={i} geometry={g} rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
           <meshStandardMaterial map={tex} roughness={0.95} />
         </mesh>
@@ -279,9 +307,13 @@ export const CityGround: React.FC = () => {
       <StaticInstances geometry={BOX} matrices={bridges.rails} color="#B9B2A6" />
       <StaticInstances geometry={BOX} matrices={parks} color="#6E9A4E" shadow={false} />
       {/* the plaza and the far bank stand on solid slabs, 0.4 m above the streets */}
-      <mesh position={[0, (GROUND_Y - 0.01) / 2, 14]} material={MAT_PLAZA}>
-        <boxGeometry args={[120, -GROUND_Y - 0.01, 56]} />
-      </mesh>
+      {hole ? (
+        <mesh geometry={plazaSlab(hole)} rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={MAT_PLAZA} />
+      ) : (
+        <mesh position={[0, (GROUND_Y - 0.01) / 2, 14]} material={MAT_PLAZA}>
+          <boxGeometry args={[120, -GROUND_Y - 0.01, 56]} />
+        </mesh>
+      )}
       <mesh position={[0, (GROUND_Y + 0.19) / 2, -45]} material={MAT_BANK}>
         <boxGeometry args={[160, 0.19 - GROUND_Y, 42]} />
       </mesh>
@@ -592,9 +624,9 @@ const Beacons: React.FC<{ t: number }> = ({ t }) => {
   return <primitive object={mesh} />;
 };
 
-export const City: React.FC<{ t: number; alt: number }> = ({ t, alt }) => (
+export const City: React.FC<{ t: number; alt: number; hole?: GroundHole }> = ({ t, alt, hole }) => (
   <group>
-    <CityGround />
+    <CityGround hole={hole} />
     <Buildings glow={1 - 0.7 * citySurge(t)} />
     <Beacons t={t} />
     <Roofs />
