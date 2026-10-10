@@ -13,7 +13,7 @@ import { Mine } from "./pieces/Mine";
 import { Core } from "./pieces/Core";
 import { rigAt } from "./rig";
 import { rockTexture } from "./rock";
-import { ShaftParticles } from "./Particles";
+import { Diamonds, ShaftParticles } from "./Particles";
 import { Spectators } from "./Spectators";
 import { DiveArms, StandingBody } from "./HoleBody";
 import { Island, MOON_DIR, NightSky } from "./Island";
@@ -130,6 +130,9 @@ export const HoleWorld: React.FC<{ frame: number }> = ({ frame }) => {
           {near(20, 120) ? <Fossil y={surf - EV.fossils} th={-Math.PI / 2} /> : null}
           {near(35, 170) ? <Cave y={surf - EV.cave} /> : null}
           {near(110, 260) ? <Mine y={surf - EV.mine} /> : null}
+          {near(EV.diamonds - 120, EV.diamonds + 110) ? (
+            <Diamonds surf={surf} w0={EV.diamonds - 32} w1={EV.diamonds + 48} blur={blur} t={t} />
+          ) : null}
         </>
       ) : null}
       {near(kw[18] - 520, kw[21] + 140) ? (

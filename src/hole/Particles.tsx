@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { rng } from "./mats";
-import { HX, HZ, depthAtWall, tempAt } from "./timeline";
+import { HR, HX, HZ, depthAtWall, tempAt } from "./timeline";
 import { heatJS } from "./rig";
 
 /**
@@ -76,5 +76,58 @@ export const ShaftParticles: React.FC<{
     mesh.setMatrixAt(i, mtx);
   });
   mesh.instanceMatrix.needsUpdate = true;
+  return <primitive object={mesh} />;
+};
+
+/**
+ * Diamonds studding the kimberlite round 150 km down: little bright stones set in the wall, glinting as you
+ * fall past (blur-stretched into streaks like the specks; the shader's own glints are too small to survive
+ * its shutter samples at this speed).
+ */
+const ND = 460;
+export const Diamonds: React.FC<{ surf: number; w0: number; w1: number; blur: number; t: number }> = ({
+  surf,
+  w0,
+  w1,
+  blur,
+  t,
+}) => {
+  const { mesh, seeds, mat } = useMemo(() => {
+    const R = rng(24680);
+    const seeds = Array.from({ length: ND }).map(() => ({
+      th: R() * Math.PI * 2,
+      u: R(),
+      s: 0.025 + R() * 0.045,
+      ph: R() * Math.PI * 2,
+      f: 5 + R() * 9,
+    }));
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.3, 1.65, 2.15),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const m = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0), mat, ND);
+    m.frustumCulled = false;
+    m.renderOrder = 3;
+    return { mesh: m, seeds, mat };
+  }, []);
+  const mtx = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const sc = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  seeds.forEach((d, i) => {
+    const w = w0 + (w1 - w0) * d.u;
+    const r = HR - 0.03;
+    p.set(HX + Math.sin(d.th) * r, surf - w, HZ + Math.cos(d.th) * r);
+    // a glint comes and goes: each stone flashes when the light catches it
+    const tw = Math.pow(0.5 + 0.5 * Math.sin(t * d.f + d.ph), 3);
+    const size = d.s * (0.35 + 0.9 * tw);
+    sc.set(size, size + blur * 1.6 * (0.4 + 0.6 * tw), size);
+    mtx.compose(p, q, sc);
+    mesh.setMatrixAt(i, mtx);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mat.opacity = 0.9;
   return <primitive object={mesh} />;
 };
