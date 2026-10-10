@@ -180,13 +180,13 @@ type Card = { at: number; until: number; small: string; big: string; tag: string
 export const CARDS: Card[] = [
   {
     at: 6.55,
-    until: 8.55,
+    until: 8.25,
     small: "deeper than the world's deepest",
     big: "metro station",
     tag: "105 m",
     icon: "metro",
   },
-  { at: 8.75, until: 10.8, small: "the cave of", big: "giant crystals", tag: "300 m", icon: "crystal" },
+  { at: 8.7, until: 10.8, small: "the cave of", big: "giant crystals", tag: "300 m", icon: "crystal" },
   { at: 12.1, until: 14.3, small: "the deepest", big: "mine on Earth", tag: "4 km", icon: "mine" },
   { at: 15.2, until: 17.5, small: "the deepest hole", big: "ever dug", tag: "12.3 km", icon: "drill" },
   { at: 18.3, until: 20.5, small: "the crust ends.", big: "the mantle", tag: "35 km", icon: "layers" },
