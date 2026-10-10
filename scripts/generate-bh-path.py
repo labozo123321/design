@@ -76,7 +76,8 @@ def main():
     r_vis = pchip(r_keys, t)
     # hovering lower: the physical altitude above the horizon (m), log-interpolated
     # (the sky closes in over about 4 s, 40.5 to 45: then 1 km, 1 m, 1 mm, 1 um above the horizon)
-    alt_keys = [(T_DESCEND, 0.5 * RS), (40.5, 1.5e9), (42.5, 1.0e8), (44.0, 1.0e6), (45.3, 1.0e3), (46.3, 1.0),
+    # (the leading key holds the start level, so the descent eases in rather than lurching off at full speed)
+    alt_keys = [(T_DESCEND - 0.5, 0.5 * RS), (T_DESCEND, 0.5 * RS), (40.5, 1.5e9), (42.5, 1.0e8), (44.0, 1.0e6), (45.3, 1.0e3), (46.3, 1.0),
                 (47.2, 1.0e-3), (48.0, 1.0e-6), (T_RELEASE, 1.0e-6)]
     la = pchip([(a, math.log10(b)) for a, b in alt_keys], t)
     alt_hover = 10 ** la
