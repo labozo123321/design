@@ -84,7 +84,7 @@ export const ShaftParticles: React.FC<{
  * fall past (blur-stretched into streaks like the specks; the shader's own glints are too small to survive
  * its shutter samples at this speed).
  */
-const ND = 460;
+const ND = 170;
 export const Diamonds: React.FC<{ surf: number; w0: number; w1: number; blur: number; t: number }> = ({
   surf,
   w0,
@@ -102,7 +102,7 @@ export const Diamonds: React.FC<{ surf: number; w0: number; w1: number; blur: nu
       f: 5 + R() * 9,
     }));
     const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(1.3, 1.65, 2.15),
+      color: new THREE.Color(0.95, 1.15, 1.45),
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -118,12 +118,16 @@ export const Diamonds: React.FC<{ surf: number; w0: number; w1: number; blur: nu
   const p = new THREE.Vector3();
   seeds.forEach((d, i) => {
     const w = w0 + (w1 - w0) * d.u;
+    // fade in and out over the band's first and last 14 m, so they don't start or stop all at once
+    const edge = Math.min(1, Math.max(0, Math.min(w - w0, w1 - w) / 14));
     const r = HR - 0.03;
     p.set(HX + Math.sin(d.th) * r, surf - w, HZ + Math.cos(d.th) * r);
     // a glint comes and goes: each stone flashes when the light catches it
     const tw = Math.pow(0.5 + 0.5 * Math.sin(t * d.f + d.ph), 3);
-    const size = d.s * (0.35 + 0.9 * tw);
-    sc.set(size, size + blur * 1.6 * (0.4 + 0.6 * tw), size);
+    const size = d.s * (0.35 + 0.9 * tw) * edge;
+    // a streak as long as one frame's travel: each frame's glint meets the next, so it reads as one
+    // stone sliding past rather than a new flash every frame
+    sc.set(size, edge > 0 ? size + blur * 2.0 : 0, size);
     mtx.compose(p, q, sc);
     mesh.setMatrixAt(i, mtx);
   });
