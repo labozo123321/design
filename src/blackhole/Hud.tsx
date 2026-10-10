@@ -1,6 +1,6 @@
 import React from "react";
 import { interpolate } from "remotion";
-import { CONSTS, EV, T, camAt, clampF } from "./timeline";
+import { EV, T, camAt, clampF } from "./timeline";
 import { skyCentre, toScreen } from "./project";
 
 /**
@@ -436,7 +436,6 @@ export const MiniMap: React.FC<{ frame: number; f: Fonts }> = ({ frame, f }) => 
 /* ------------------------------------------------------------------ */
 
 type Card = { t0: number; t1: number; label: string; head: string; sub?: string; warn?: boolean };
-const insideS = Math.round(CONSTS.insideS);
 
 export const CARDS: Card[] = [
   {
@@ -501,7 +500,7 @@ export const CARDS: Card[] = [
     t0: 57.4,
     t1: 60.8,
     label: "THE SINGULARITY",
-    head: `${insideS} seconds left, at most`,
+    head: "Horizon to centre: 66.5 s at most",
     sub: "firing your thrusters would only make it shorter",
     warn: true,
   },

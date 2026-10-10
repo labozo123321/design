@@ -89,6 +89,31 @@ const diskTime = (frame: number) => {
   if (frame <= cap) return earthAt(frame) / T_RS;
   return earthAt(cap) / T_RS + (t - EV.descend) * 0.6;
 };
+/**
+ * Inside the horizon: how far the streams of gas have turned and flowed (texture units), integrated frame
+ * by frame from their speeds, which grow as you near the centre. (Multiplying the time by a growing speed
+ * instead would make them race far faster than the speed says, and strobe.)
+ */
+const INSIDE = (() => {
+  const spin = new Float32Array(BH_DURATION);
+  const flow = new Float32Array(BH_DURATION);
+  let a = 0;
+  let b = 0;
+  for (let f = 0; f < BH_DURATION; f++) {
+    const t = f / 30;
+    const x = Math.min(1, Math.max(0, (t - EV.horizon) / (EV.end - EV.horizon)));
+    const d = x * x * (3 - 2 * x);
+    const d2 = d * d;
+    if (t > EV.horizon) {
+      a += (0.03 + 0.12 * d2) / 30;
+      b += (0.08 + 0.42 * d2) / 30;
+    }
+    spin[f] = a;
+    flow[f] = b;
+  }
+  return { spin, flow };
+})();
+
 /** Seconds for the slow drifts in the picture, also running on into frame 0 at the end. */
 const loopTime = (frame: number) => {
   const t = frame / 30;
@@ -128,6 +153,8 @@ export const BlackHoleView: React.FC<{
           uTime: { value: 0 },
           uInside: { value: 0 },
           uDebris: { value: 0 },
+          uSpinIn: { value: 0 },
+          uFlowIn: { value: 0 },
           uShiftMax: { value: 8 },
         },
       }),
@@ -162,5 +189,8 @@ export const BlackHoleView: React.FC<{
   u.uDiskGain.value = diskGain;
   u.uInside.value = inside;
   u.uDebris.value = debris;
+  const fi = Math.max(0, Math.min(BH_DURATION - 1, frame));
+  u.uSpinIn.value = INSIDE.spin[fi];
+  u.uFlowIn.value = INSIDE.flow[fi];
   return <primitive object={mesh} />;
 };

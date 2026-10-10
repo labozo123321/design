@@ -48,6 +48,8 @@ uniform float uPx;
 uniform float uTime;
 uniform float uInside;
 uniform float uDebris;
+uniform float uSpinIn;
+uniform float uFlowIn;
 uniform float uShiftMax;
 varying vec2 vNdc;
 
@@ -229,12 +231,13 @@ vec3 interior(vec3 n, vec3 down, float k) {
   float az = atan(dot(n, a2), dot(n, a1));
   float dep = -log(max(th, 2e-3));
   float d2 = uDebris * uDebris;
-  // the streams twist round (the gas still has its orbital spin) and rush in towards the centre
-  float spin = uTime * (0.05 + 0.25 * d2);
-  float flow = uTime * (0.25 + 1.6 * d2);
+  // the streams twist round (the gas still has its orbital spin) and rush in towards the centre, ever
+  // faster (uSpinIn, uFlowIn: how far they've turned and flowed, integrated over time in the scene)
+  float spin = uSpinIn;
+  float flow = uFlowIn;
   float tw = dep * 0.18;
-  vec2 q = vec2(az / TAU * 9.0 + tw + spin, dep * 0.16 + flow * 0.22);
-  vec2 q2 = vec2(az / TAU * 23.0 + tw * 1.5 + spin * 1.3, dep * 0.3 + flow * 0.4);
+  vec2 q = vec2(az / TAU * 9.0 + tw + spin, dep * 0.16 + flow);
+  vec2 q2 = vec2(az / TAU * 23.0 + tw * 1.5 + spin * 1.3, dep * 0.3 + flow * 1.8);
   // filter over the pixel's footprint (seam-safe in angle)
   float dax = angDiff(dFdx(az)) / TAU;
   float day = angDiff(dFdy(az)) / TAU;
