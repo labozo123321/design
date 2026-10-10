@@ -395,6 +395,10 @@ void main() {
   }
   vec3 col = acc / float(n);
   col *= 1.0 + uHot;
+  // near the frame's edges nothing is brighter than white: a lamp's bloom fades out as the lamp leaves
+  // the picture instead of vanishing the frame it crosses the border
+  float edge = max(abs(vNdc.x), abs(vNdc.y));
+  col = mix(min(col, vec3(1.0)), col, smoothstep(1.0, 0.8, edge));
   gl_FragColor = vec4(col, 1.0);
   float viewZ = max(0.05, depthT * dot(rd, fwd));
   gl_FragDepth = log2(1.0 + min(viewZ, 1e7)) * uLogFC * 0.5;
