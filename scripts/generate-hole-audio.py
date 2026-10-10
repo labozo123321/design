@@ -517,6 +517,9 @@ def fx():
     # the lamps die: buzzing, popping
     for tb in (17.55, 17.9, 18.15, 18.45, 18.7):
         place(b, stereo(buzz(RNG.uniform(0.3, 0.6)), RNG.uniform(-0.7, 0.7)), tb, 0.12)
+    # the blue band of ringwoodite: a cool glassy shimmer passing through
+    place(b, chimes(2.0, 14, 79, 98), 23.7, 0.32)
+    place(b, stereo(hp(whoosh(2.2, 1200, 7000), 900), 0, 0.9), 23.6, 0.12)
     # the mantle: a roar that grows, rock cracking, magma
     roar_sec = 34.5 - 18.0
     roar = lp(noise(roar_sec), 160) * 1.3 + bp(noise(roar_sec), 160, 700) * 0.4
