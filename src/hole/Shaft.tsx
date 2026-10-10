@@ -5,7 +5,7 @@ import { SHAFT_FRAG, SHAFT_VERT } from "./shaftShader";
 import { EV, HR, HX, HZ, KNOT_KM, knotWalls, surfY } from "./timeline";
 
 /** The outer-core cavern's radius (m): the shaft runs down its middle as a glass tube. */
-export const CAVERN_R = 160;
+export const CAVERN_R = 260;
 
 export type ShaftLight = {
   sunDir: THREE.Vector3;

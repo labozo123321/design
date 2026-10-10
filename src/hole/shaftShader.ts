@@ -234,17 +234,15 @@ void main() {
         col = vec3(1.0, 0.5, 0.15) * (0.12 + 0.6 * smoothstep(0.05, 0.6, a.a) * (0.5 + 0.5 * a.r));
       }
       // the glowing haze of the core thickens with distance
-      float haze = (1.0 - exp(-dist / 700.0)) * 0.8;
-      col = mix(col, vec3(0.4, 0.11, 0.015), haze);
+      // a glowing murk: deep red overhead, brightening toward the white-hot inner core below
+      float haze = (1.0 - exp(-dist / 150.0)) * 0.93;
+      vec3 hz = mix(vec3(0.3, 0.06, 0.008), vec3(0.75, 0.3, 0.06), smoothstep(0.6, -0.9, rd.y));
+      col = mix(col, hz, haze);
       // the tube's ribs and struts, in front
-      float ws = w + off;
-      float rr = abs(fract(ws / 22.0) - 0.5) * 22.0;
-      float ribC = boxCov(rr, 0.16, fwW);
       float sq = uR * 1.5707963;
       float sx = abs(fract(s / sq + 0.5) - 0.5) * sq;
-      float strut = boxCov(sx, 0.045, fwS);
-      float cov = max(ribC, strut * 0.8);
-      col = mix(col * 0.93, vec3(0.3, 0.8, 1.0) * (2.6 * ribC + 0.7 * strut), cov);
+      float strut = boxCov(sx, 0.04, fwS);
+      col = mix(col * 0.95, vec3(0.3, 0.8, 1.0) * 0.9, strut * 0.7);
       acc += col;
     }
   } else {
@@ -340,9 +338,11 @@ void main() {
       } else {
         // the inner core: white-hot iron crystals
         alb = vec3(0.5, 0.45, 0.4);
-        float facet = smoothstep(0.05, 0.5, tn.a) * (0.5 + 0.5 * tm.r);
-        float big = 0.55 + 0.55 * tn.g;
-        emi += heat(T) * (0.08 + 1.05 * facet * big) + vec3(1.0, 0.8, 0.5) * smoothstep(0.85, 0.97, tm.b) * 0.5;
+        float facet = smoothstep(0.08, 0.45, tn.a) * (0.45 + 0.55 * tm.r);
+        float big = 0.45 + 0.75 * tn.g;
+        float edge = 1.0 - smoothstep(0.0, 0.1, tm.a);
+        emi += vec3(0.42, 0.15, 0.025) * (0.25 + 0.9 * facet * big);
+        emi += vec3(1.25, 0.82, 0.4) * (edge * 0.8 + smoothstep(0.88, 0.97, tm.b) * 1.4) * (0.5 + 0.5 * tn.g);
       }
 
       // incandescence: cool dark crusts, glowing cracks; molten seams running in the lower mantle

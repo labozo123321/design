@@ -5,10 +5,10 @@ import { FLOAT_AT, T } from "./timeline";
 
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const mats: Record<string, THREE.MeshStandardMaterial> = {};
-const mat = (c: string, rough = 0.8) =>
+export const mat = (c: string, rough = 0.8) =>
   (mats[c] ??= new THREE.MeshStandardMaterial({ color: c, roughness: rough }));
-const SKIN = "#D9A37A";
-const SLEEVE = "#3B4352"; // charcoal hoodie
+export const SKIN = "#D9A37A";
+export const SLEEVE = "#3B4352"; // charcoal hoodie
 const SHOE = "#EDEDED";
 
 /** How far the arms are raised into view (0 hidden at the sides, 1 reaching forward). */
@@ -27,7 +27,7 @@ const armReach = (frame: number) => {
   return Math.max(r, frame >= FLOAT_AT - 4 ? fl : 0);
 };
 
-const Hand: React.FC<{ side: number; spread: number; curl: number }> = ({ side, spread, curl }) => (
+export const Hand: React.FC<{ side: number; spread: number; curl: number }> = ({ side, spread, curl }) => (
   <group>
     <mesh scale={[0.085, 0.03, 0.1]} material={mat(SKIN, 0.6)}>
       <sphereGeometry args={[1, 16, 12]} />
@@ -100,13 +100,13 @@ export const Arms: React.FC<{ frame: number }> = ({ frame }) => {
 
 const geos: Record<string, THREE.BufferGeometry> = {};
 /** Profiles are written top to bottom; LatheGeometry wants them bottom to top (outward faces). */
-const lathe = (key: string, pts: [number, number][]) =>
+export const lathe = (key: string, pts: [number, number][]) =>
   (geos[key] ??= new THREE.LatheGeometry(
     (pts[0][1] > pts[pts.length - 1][1] ? [...pts].reverse() : pts).map(([r, y]) => new THREE.Vector2(r, y)),
     36,
   ));
 /** Shirt from the shoulders to the waist (radius, height below the eyes). */
-const TORSO: [number, number][] = [
+export const TORSO: [number, number][] = [
   [0.001, -0.27],
   [0.08, -0.275],
   [0.15, -0.31],
@@ -118,7 +118,7 @@ const TORSO: [number, number][] = [
   [0.171, -0.89],
   [0.001, -0.9],
 ];
-const THIGH: [number, number][] = [
+export const THIGH: [number, number][] = [
   [0.001, 0.03],
   [0.07, 0.015],
   [0.088, -0.04],
@@ -128,7 +128,7 @@ const THIGH: [number, number][] = [
   [0.057, -0.44],
   [0.001, -0.455],
 ];
-const SHIN: [number, number][] = [
+export const SHIN: [number, number][] = [
   [0.001, 0.015],
   [0.056, 0.0],
   [0.06, -0.07],
@@ -167,13 +167,13 @@ const denim = () => {
   return denimTex;
 };
 let jeansMat: THREE.MeshStandardMaterial | null = null;
-const jeans = () => (jeansMat ??= new THREE.MeshStandardMaterial({ map: denim(), roughness: 0.92 }));
+export const jeans = () => (jeansMat ??= new THREE.MeshStandardMaterial({ map: denim(), roughness: 0.92 }));
 
 const SHIRT = SLEEVE;
 const ACCENT = "#E4572E";
 
 /** A sneaker in the ankle's frame, toes toward -z. */
-const Sneaker: React.FC = () => (
+export const Sneaker: React.FC = () => (
   <group>
     <mesh
       position={[0, -0.035, -0.06]}

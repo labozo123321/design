@@ -725,6 +725,13 @@ const Hair: React.FC<{ look: Look }> = ({ look }) => {
 
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
+/**
+ * Optional direction for a person outside the crowd sim (the Hole piece's onlookers): what they do (`act`),
+ * whether they keep their eyes on you from further away (`watch`), how shocked they are (`react`, 0..1) and
+ * how far they lean forward (`lean`, rad).
+ */
+export type Direction = { act?: "stare" | "film" | "wave"; watch?: boolean; react?: number; lean?: number; wave?: number };
+
 export const Human: React.FC<{
   sp: Spec;
   look: Look;
@@ -732,7 +739,8 @@ export const Human: React.FC<{
   t: number;
   cam: THREE.Vector3;
   detail: boolean;
-}> = ({ sp, look, st, t, cam, detail }) => {
+  dir?: Direction;
+}> = ({ sp, look, st, t, cam, detail, dir }) => {
   const k = sp.height / 1.78;
   const w = look.width;
   const joy = sp.kid ? 1 : 0.65;
@@ -750,15 +758,20 @@ export const Human: React.FC<{
   // the balloon seller waves while you come past (until your first leap); the woman by the river is
   // stunned from your last leap on
   const waveW =
-    sp.role === "greet" && !st.free
-      ? smooth(2.6, 3.6, t) *
-        smooth(13, 9, dist) *
-        smooth(1.9, 1.3, Math.abs(rel)) *
-        (1 - smooth(11.2, 12.4, t))
-      : 0;
-  const shock = sp.role === "stare" ? smooth(25.2, 26.6, t) : 0;
+    dir?.wave !== undefined
+      ? dir.wave
+      : sp.role === "greet" && !st.free
+        ? smooth(2.6, 3.6, t) *
+          smooth(13, 9, dist) *
+          smooth(1.9, 1.3, Math.abs(rel)) *
+          (1 - smooth(11.2, 12.4, t))
+        : 0;
+  const shock = dir?.react !== undefined ? dir.react : sp.role === "stare" ? smooth(25.2, 26.6, t) : 0;
 
-  if (sp.role === "sit") pose = seated(t, sp.seed);
+  if (dir?.act === "stare") pose = staring(t, sp.seed, smooth(0.25, 1.0, elev) * shock, shock);
+  else if (dir?.act === "film") pose = filming(t, sp.seed);
+  else if (dir?.act === "wave") pose = greeting(t, sp.seed, waveW);
+  else if (sp.role === "sit") pose = seated(t, sp.seed);
   else if (sp.role === "group") pose = talking(t, sp.seed);
   else if (sp.role === "photo") pose = filming(t, sp.seed);
   else if (sp.role === "greet") pose = greeting(t, sp.seed, waveW);
@@ -788,12 +801,14 @@ export const Human: React.FC<{
 
   // ---- glance at the viewer when they are near and in front (the two watchers keep their eyes on you;
   // their head stops turning sideways when you are nearly straight overhead, so it never swings)
-  const lookW =
-    watches(sp.role) && !st.free
+  const lookW = dir?.watch
+    ? smooth(40, 25, dist)
+    : watches(sp.role) && !st.free
       ? smooth(16, 11, dist)
       : smooth(10, 5, dist) * smooth(2.1, 1.4, Math.abs(rel)) * (st.free ? 0.6 : 1);
   const yawW = lookW * smooth(0.6, 1.6, flat);
-  const pitchMax = sp.role === "stare" ? 1.05 : 0.6;
+  const pitchMax = sp.role === "stare" || dir?.watch ? 1.05 : 0.6;
+  if (dir?.lean) pose.spinePitch += dir.lean;
   pose.headYaw = pose.headYaw * (1 - yawW) + Math.max(-1.0, Math.min(1.0, rel)) * yawW;
   pose.headPitch = pose.headPitch * (1 - lookW) - Math.max(-pitchMax, Math.min(pitchMax, elev)) * lookW;
 

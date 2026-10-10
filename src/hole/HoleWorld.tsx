@@ -12,6 +12,10 @@ import { Cave } from "./pieces/Cave";
 import { Mine } from "./pieces/Mine";
 import { Core } from "./pieces/Core";
 import { rigAt } from "./rig";
+import { rockTexture } from "./rock";
+import { Spectators } from "./Spectators";
+import { DiveArms, StandingBody } from "./HoleBody";
+import { Island, MOON_DIR, NightSky } from "./Island";
 import { EV, HR, HX, HZ, T_CENTRE, T_DROP, camAt, knotWalls, sideAt, surfY, visAt, wallAt } from "./timeline";
 
 const Rig: React.FC<{ frame: number }> = ({ frame }) => {
@@ -27,9 +31,6 @@ const Rig: React.FC<{ frame: number }> = ({ frame }) => {
   camera.updateMatrixWorld();
   return null;
 };
-
-/** The night on the far side: where the moon is, and how it lights the top of the shaft. */
-export const MOON_DIR = new THREE.Vector3(0.42, 0.62, 0.66).normalize();
 
 const SUN_COL = new THREE.Color("#FFFFFF").lerp(new THREE.Color("#FFB26E"), 0.8).multiplyScalar(2.9);
 const DAY_SKY = new THREE.Color("#8FA7D8").multiplyScalar(0.95);
@@ -79,6 +80,7 @@ const Surface: React.FC<{ frame: number; cam: THREE.Vector3; lightK: number }> =
       <Planet />
       <City t={t} alt={alt} hole={{ x: HX, z: HZ, r: HR + 0.05 }} />
       <Plaza t={t} g={1} hole />
+      <Spectators t={t} cam={cam} />
       <Clouds cam={cam} sunlit={sunlit} />
     </>
   );
@@ -124,7 +126,19 @@ export const HoleWorld: React.FC<{ frame: number }> = ({ frame }) => {
           {near(110, 260) ? <Mine y={surf - EV.mine} /> : null}
         </>
       ) : null}
-      {near(kw[18] - 520, kw[21] + 140) ? <Core top={surf - kw[18]} bot={surf - kw[21]} t={t} /> : null}
+      {near(kw[18] - 520, kw[21] + 140) ? (
+        <Core top={surf - kw[18]} bot={surf - kw[21]} t={t} blur={blur} tex={rockTexture()} />
+      ) : null}
+      {side === 1 ? <NightSky cam={cam} t={t} /> : null}
+      {side === 1 && wall < 300 ? <Island t={t} cam={cam} y={surf} /> : null}
+
+      {/* your own body */}
+      <group position={cam} rotation={[0, c.yaw, 0]}>
+        <StandingBody t={t} />
+      </group>
+      <group position={cam} rotation={new THREE.Euler(c.pitch, c.yaw, c.roll, "YXZ")}>
+        <DiveArms t={t} speed={speed} />
+      </group>
     </>
   );
 };

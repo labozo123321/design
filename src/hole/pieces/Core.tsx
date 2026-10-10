@@ -109,7 +109,144 @@ const boltGeo = (seed: number, from: THREE.Vector3, to: THREE.Vector3) => {
   return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.55, 5, false);
 };
 
-export const Core: React.FC<{ top: number; bot: number; t: number }> = ({ top, bot, t }) => {
+/* ------------------------------------------------------------------ */
+/* Convection plumes and molten droplets                                */
+/* ------------------------------------------------------------------ */
+
+const PLUME_VERT = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+varying vec3 vN;
+varying vec3 vV;
+varying vec2 vUv;
+void main() {
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vN = normalize(mat3(modelMatrix) * normal);
+  vV = normalize(cameraPosition - w.xyz);
+  vUv = uv;
+  gl_Position = projectionMatrix * viewMatrix * w;
+  #include <logdepthbuf_vertex>
+}
+`;
+const PLUME_FRAG = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform sampler2D uTex;
+uniform float uTime;
+uniform float uLen;
+uniform float uK;
+varying vec3 vN;
+varying vec3 vV;
+varying vec2 vUv;
+void main() {
+  #include <logdepthbuf_fragment>
+  // a glowing column: bright through its middle, fading to its silhouette, streaming upward
+  float core = pow(abs(dot(normalize(vN), normalize(vV))), 1.6);
+  float flow = texture2D(uTex, vec2(vUv.x * 2.0, vUv.y * uLen / 90.0 - uTime * 0.18)).g;
+  float streak = texture2D(uTex, vec2(vUv.x * 6.0 + 0.3, vUv.y * uLen / 40.0 - uTime * 0.3)).b;
+  float ends = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
+  float a = core * ends * (0.35 + 0.65 * smoothstep(0.3, 0.8, flow)) * uK;
+  vec3 col = mix(vec3(1.0, 0.36, 0.05), vec3(1.0, 0.7, 0.3), smoothstep(0.6, 0.95, streak));
+  gl_FragColor = vec4(col * a * 1.1, 1.0);
+}
+`;
+
+type Plume = { az: number; r: number; w: number };
+const PLUMES: Plume[] = (() => {
+  const R = rng(4321);
+  return Array.from({ length: 10 }).map((_, i) => ({
+    az: (i / 10) * Math.PI * 2 + R() * 0.5,
+    r: 45 + R() * (CAVERN_R - 80),
+    w: 8 + R() * 16,
+  }));
+})();
+
+const Plumes: React.FC<{ top: number; bot: number; t: number; tex: THREE.Texture }> = ({ top, bot, t, tex }) => {
+  const h = top - bot;
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: PLUME_VERT,
+        fragmentShader: PLUME_FRAG,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uTex: { value: tex }, uTime: { value: 0 }, uLen: { value: 1000 }, uK: { value: 1 } },
+      }),
+    [tex],
+  );
+  mat.uniforms.uTime.value = t;
+  mat.uniforms.uLen.value = h;
+  const geo = useMemo(() => new THREE.CylinderGeometry(1, 1, 1, 20, 1, true), []);
+  return (
+    <group>
+      {PLUMES.map((p, i) => (
+        <mesh
+          key={i}
+          geometry={geo}
+          material={mat}
+          position={[Math.sin(p.az) * p.r, (top + bot) / 2, Math.cos(p.az) * p.r]}
+          scale={[p.w, h, p.w]}
+          renderOrder={2}
+          frustumCulled={false}
+        />
+      ))}
+    </group>
+  );
+};
+
+/** Glowing drops of iron drifting in the cavern: they stream past you, near and far (blur-stretched). */
+const Droplets: React.FC<{ top: number; bot: number; t: number; blur: number }> = ({ top, bot, t, blur }) => {
+  const N = 180;
+  const { mesh, seeds } = useMemo(() => {
+    const R = rng(2468);
+    const seeds = Array.from({ length: N }).map(() => ({
+      az: R() * Math.PI * 2,
+      r: 7 + Math.pow(R(), 1.6) * 90,
+      u: R(),
+      s: 0.18 + R() * 0.5,
+      drift: (R() - 0.5) * 0.6,
+    }));
+    const m = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(1, 8, 6),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1.6, 0.75, 0.22),
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+      N,
+    );
+    m.frustumCulled = false;
+    m.renderOrder = 3;
+    return { mesh: m, seeds };
+  }, []);
+  const h = top - bot;
+  const mtx = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  seeds.forEach((d, i) => {
+    const az = d.az + t * d.drift * 0.05;
+    const y = bot + d.u * h;
+    const stretch = Math.max(1, (blur * 2) / d.s);
+    mtx.compose(
+      new THREE.Vector3(Math.sin(az) * d.r, y, Math.cos(az) * d.r),
+      q,
+      new THREE.Vector3(d.s, d.s * stretch, d.s),
+    );
+    mesh.setMatrixAt(i, mtx);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  return <primitive object={mesh} />;
+};
+
+export const Core: React.FC<{ top: number; bot: number; t: number; blur?: number; tex?: THREE.Texture }> = ({
+  top,
+  bot,
+  t,
+  blur = 0,
+  tex,
+}) => {
   const h = top - bot;
   const mid = (top + bot) / 2;
   const loops = useMemo(() => {
@@ -193,6 +330,8 @@ export const Core: React.FC<{ top: number; bot: number; t: number }> = ({ top, b
           return <mesh key={i} geometry={bolts(i, h)} material={boltMat} renderOrder={4} frustumCulled={false} />;
         })}
       </group>
+      {tex ? <Plumes top={top} bot={bot} t={t} tex={tex} /> : null}
+      <Droplets top={top} bot={bot} t={t} blur={blur} />
       {/* the inner core's crystals standing on the cavern floor */}
       {SPIRES.map((s, i) => (
         <group key={i} position={[s.x, bot, s.z]} rotation={[Math.cos(s.dir) * s.tilt, 0, Math.sin(s.dir) * s.tilt]}>

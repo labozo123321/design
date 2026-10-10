@@ -202,9 +202,10 @@ def main():
     z = z + sway * 0.3 * np.cos(t * 0.38 + 0.5)
     # look: yaw 0 faces -z (south); + turns toward -x
     LOOK = [  # time, yaw, pitch, roll
-        (0.0, 0.0, -0.52, 0.0),
-        (2.2, 0.02, -0.6, 0.0),
-        (3.1, 0.0, -0.98, 0.0),
+        (0.0, 0.0, -0.26, 0.0),  # the hole, the people round it, the sign across it
+        (1.4, -0.03, -0.3, 0.0),
+        (2.3, 0.02, -0.62, 0.0),
+        (3.1, 0.0, -1.0, 0.0),  # your sneakers at the edge
         (4.0, 0.05, -1.4, 0.02),
         (5.4, 0.1, -1.48, 0.0),
         (5.9, 0.3, 1.2, -0.04),  # look up: the sky shrinking, faces peering over the rim
