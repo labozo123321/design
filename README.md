@@ -397,3 +397,41 @@ Render it in chunks, muted, then add the bed:
     npx remotion render Pov out/pov-b.mp4 --frames=660-1319 --muted --gl=angle
     npx remotion render Pov out/pov-c.mp4 --frames=1320-1979 --muted --gl=angle
     ffmpeg -f concat -safe 0 -i list.txt -i public/pov/bed.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k pov.mp4
+
+## Hole (first person, a fall through the Earth)
+
+"POV: you jump into a hole through the Earth". A 72 s first-person piece with
+no narration. Short on-screen facts appear as you pass each landmark, with a
+live readout of depth, temperature, gravity, speed and the real time since you
+jumped.
+
+1. **Physics and track:** `python3 scripts/generate-hole-path.py` integrates the PREM density model. It gives gravity rising to 1.09 g at the core-mantle boundary, a top speed of 35,708 km/h at the centre, and 38 minutes to the far side. It then compresses the fall into the video with depth keys and writes `src/hole/track.json`, which holds:
+   - the per-frame camera;
+   - the readouts;
+   - where each set piece sits along the shaft;
+   - tables from the walls' scroll to real depth.
+
+   In the shaft the camera never goes more than 80 m down; the walls scroll past it instead.
+2. **Sound:** `python3 scripts/generate-hole-audio.py` builds `public/hole/bed.mp3` from that track. Everything is synthesised:
+   - onlookers and their gasp;
+   - wind that follows your speed;
+   - lamps whipping past;
+   - the metro train;
+   - crystal chimes in the cave;
+   - the mantle's roar;
+   - lightning in the core;
+   - a silence at the centre;
+   - waves, crickets and a guitar by the fire on the island;
+   - a score that builds with the fall.
+3. **Picture:** `src/hole/`:
+   - the shaft and the outer core's cavern are ray-cast on one full-screen quad (`shaftShader.ts`, `Shaft.tsx`). The layers are soil, sedimentary strata, granite, gneiss, olive peridotite with diamonds, blue ringwoodite, the glowing lower mantle, liquid iron and the white-hot inner core. Each layer sits where its real depth falls, it is motion-blurred along the fall, and it is lit by daylight, spiralling service lamps (they die where the rock gets hot) and incandescence;
+   - set pieces (`pieces/`): a metro train crossing the shaft just below you, a dinosaur skeleton in the strata, a cave of giant crystals, five lit mine levels, and in the core the magnetic field as glowing loops, lightning, convection plumes, drifting drops of iron and the inner core's crystals;
+   - the plaza from the Pov piece with the hole where the fountain was: onlookers watching you (two lean over the rope to see you drop), a DO NOT JUMP sign, your sneakers at the edge and your arms in the dive (`Spectators.tsx`, `HoleBody.tsx`);
+   - the far side (`Island.tsx`): a beach at night with the sea under the moon, palms, the Milky Way and a bonfire whose people turn to stare when you pop out;
+   - overlays (`Overlay.tsx`): the title, the readout with a cut-away Earth, the fact cards, the white-out at the centre and "would you jump?".
+
+Render it in six chunks of 360 frames, muted, then add the bed (the chunked render needs `--timeout=240000` on software GL):
+
+    npx remotion render Hole out/hole/part-0.mp4 --frames=0-359 --muted --gl=angle
+    ...
+    ffmpeg -f concat -safe 0 -i list.txt -i public/hole/bed.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k hole.mp4
