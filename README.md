@@ -435,3 +435,34 @@ Render it in six chunks of 360 frames, muted, then add the bed (the chunked rend
     npx remotion render Hole out/hole/part-0.mp4 --frames=0-359 --muted --gl=angle
     ...
     ffmpeg -f concat -safe 0 -i list.txt -i public/hole/bed.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k hole.mp4
+
+## BlackHole (first person, a fall into Sagittarius A*)
+
+"POV: you fall into a black hole". A 70 s first-person piece with no
+narration: the black hole at the centre of our galaxy, ray-traced, seen
+through your helmet's visor. The numbers on the HUD come from the
+Schwarzschild metric.
+
+1. **Physics and track:** `python3 scripts/generate-bh-path.py` writes `src/blackhole/track.json`:
+   - the per-frame camera, in units of the Schwarzschild radius (12.7 million km);
+   - your velocity relative to observers hovering where you are, for the aberration;
+   - the readouts: distance to the horizon, speed, the thrust it takes to hover (up to 4×10¹³ g a micrometre up), the tidal stretch, your clock and Earth's (8 years go by while you hover for 16 seconds), and the time left to the singularity (66.5 s at most from the horizon).
+2. **Sky:** `python3 scripts/generate-bh-sky.py` bakes the galactic-centre sky into a cube map (`public/blackhole/sky_*.jpg`): the Milky Way's band with dust lanes, red streamers of ionised gas, millions of faint stars.
+3. **Sound:** `python3 scripts/generate-bh-audio.py` builds `public/blackhole/bed.mp3`. Everything is synthesised:
+   - an organ score with an arpeggio that builds into the brake;
+   - your breathing in the helmet and your heartbeat;
+   - the disk's roar and the thrusters;
+   - a clock ticking Earth's time that speeds up into a buzz while you hover;
+   - the whine of blueshifted light;
+   - the silence when the thrusters cut and the bell at the horizon;
+   - the groaning and tearing at the end.
+4. **Picture:** `src/blackhole/`:
+   - `bhShader.ts` traces each pixel's light ray back through curved spacetime on one full-screen quad. It integrates the orbit equation u'' = 1.5u² − u in the ray's own plane and records each crossing of the disk's plane in a fixed slot, so the texture footprints stay smooth. It shades the thin disk with Doppler and gravitational shifts (orbiting at up to half the speed of light), the lensed far side, the photon ring, and the sky with anisotropically filtered stars. Inside the horizon it draws the gas that fell in ahead of you, streaming in towards the centre;
+   - `BHPost.tsx`: bloom, then spaghettification (the picture pulled out along the fall and squeezed across it, with colours splitting) and the tear;
+   - `Hud.tsx`: the visor, the status line, the instruments, a top-down map, the fact cards, the title and "would you go in?"; `Suit.tsx`: your arms stretching out ahead of you in the last seconds.
+
+Render it in six chunks of 350 frames, muted (software GL needs `--timeout=240000`), then add the bed:
+
+    npx remotion render BlackHole out/bh/part-0.mp4 --frames=0-349 --muted --gl=angle
+    ...
+    ffmpeg -f concat -safe 0 -i list.txt -i public/blackhole/bed.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k blackhole.mp4

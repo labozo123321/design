@@ -199,14 +199,17 @@ vec4 diskAt(float r, float psi, float g, float mu, vec2 dr, vec2 dpsi) {
   float x = r / RIN;
   float T = pow(x, -0.75) * pow(max(0.0, 1.0 - inversesqrt(x)), 0.25) / 0.488;
   float Tv = max(T, 0.42) * inner;
-  float alpha = clamp(dens * (0.5 + 0.9 * T) * outer * smoothstep(RIN * 0.985, RIN * 1.06, r) * 1.5, 0.0, 1.0);
+  // opacity from the smooth structure only: what's behind a translucent part of the disk (the lensed far
+  // side, far brighter) is multiplied by 1 - alpha, and any fine noise in alpha would show up as a weave
+  float cover = 0.75 + 0.5 * clump;
+  float alpha = clamp(cover * (0.5 + 0.9 * T) * outer * smoothstep(RIN * 0.985, RIN * 1.06, r) * 1.5, 0.0, 1.0);
   // observed: a blackbody at g T (peak ~6000 K), brightness ~ (g T)^3
   float Tobs = 4500.0 * Tv * g;
   vec3 col = blackbody(Tobs);
   float b = pow(clamp(g, 0.0, 1e4) * Tv, 3.0);
   b = b / (1.0 + b / (0.4 * uShiftMax));
   // limb darkening: the disk's surface is dimmer seen edge-on
-  float limb = 0.3 + 0.7 * mu;
+  float limb = 0.62 + 0.38 * mu;
   vec3 em = col * b * (0.2 + 1.0 * dens) * limb * uDiskGain * outer * inner;
   // the plunging gas inside the innermost orbit: a faint hot haze spiralling in
   float plunge = smoothstep(1.6, 2.9, r) * (1.0 - smoothstep(2.95, 3.1, r));
@@ -286,9 +289,14 @@ void main() {
   float del = atan(et.y, er.y);
   float nextX = mod(del + 0.5 * PI, PI);
   if (nextX < 1e-6) nextX += PI;
-  // disk hits: (r, phi, du/dphi)
-  vec3 hit[3];
-  int nHit = 0;
+  // the ray's first three crossings of the disk's plane, in fixed slots: (r, phi, du/dphi), and whether
+  // each lands on the disk. Slots never shift, so a neighbouring pixel's slot k is the same crossing and
+  // the derivatives of r across it stay smooth (also where it runs off the disk's edge)
+  vec3 hit0 = vec3(60.0, 0.0, 0.0);
+  vec3 hit1 = hit0;
+  vec3 hit2 = hit0;
+  vec3 onDisk = vec3(0.0);
+  int nX = 0;
   float fate = 0.0;   // 1 escaped, 0 captured
   float phiEnd = 0.0;
   for (int i = 0; i < MAXSTEP; i++) {
@@ -304,12 +312,12 @@ void main() {
       if (nextX > phi + h) break;
       float s = (nextX - phi) / h;
       vec2 hv = herm(u, up * h, un, upn * h, s);
-      if (hv.x > 1.0 / ROUT && hv.x < 1.0 / 1.6 && nHit < 3) {
-        if (nHit == 0) hit[0] = vec3(1.0 / hv.x, nextX, hv.y / h);
-        else if (nHit == 1) hit[1] = vec3(1.0 / hv.x, nextX, hv.y / h);
-        else hit[2] = vec3(1.0 / hv.x, nextX, hv.y / h);
-        nHit++;
-      }
+      vec3 rec = vec3(1.0 / clamp(hv.x, 1.0 / 60.0, 1.2), nextX, hv.y / h);
+      float ok = (hv.x > 1.0 / ROUT && hv.x < 1.0 / 1.6) ? 1.0 : 0.0;
+      if (nX == 0) { hit0 = rec; onDisk.x = ok; }
+      else if (nX == 1) { hit1 = rec; onDisk.y = ok; }
+      else if (nX == 2) { hit2 = rec; onDisk.z = ok; }
+      nX++;
       nextX += PI;
     }
     if (un <= 0.0) {
@@ -334,9 +342,10 @@ void main() {
   vec3 dEsc = cos(phiEnd) * er + sin(phiEnd) * et;
   vec3 ddx = dFdx(dEsc);
   vec3 ddy = dFdy(dEsc);
-  // across the shadow's edge the neighbours' rays went somewhere else entirely: cap the footprint
+  // near the shadow lensing squeezes a whole hemisphere of sky into a few pixels: the footprint really is
+  // that big, and filtering over it gives the smooth glow of the ring (only cap the absurd)
   float dl = max(length(ddx), length(ddy));
-  float cap = min(1.0, 0.35 / max(dl, 1e-9));
+  float cap = min(1.0, 3.0 / max(dl, 1e-9));
   ddx *= cap;
   ddy *= cap;
   vec3 col = vec3(0.0);
@@ -344,16 +353,18 @@ void main() {
 
   // disk hits, back to front
   for (int k = 2; k >= 0; k--) {
-    vec3 hk = k == 0 ? hit[0] : (k == 1 ? hit[1] : hit[2]);
-    bool has = k < nHit;
-    float r = has ? hk.x : 6.0;
-    float ph = has ? hk.y : 0.0;
+    vec3 hk = k == 0 ? hit0 : (k == 1 ? hit1 : hit2);
+    bool has = (k == 0 ? onDisk.x : (k == 1 ? onDisk.y : onDisk.z)) > 0.5;
+    float r = hk.x;
+    float ph = hk.y;
     vec3 ep = cos(ph) * er + sin(ph) * et;
     vec3 xh = r * ep;
     float psi = atan(xh.z, xh.x);
-    vec2 drr = vec2(dFdx(r), dFdy(r));
-    vec2 dps = vec2(angDiff(dFdx(psi)), angDiff(dFdy(psi)));
-    // neighbours without this hit: keep the footprint sane
+    // the lensed images are squeezed thin: filter them a little wider
+    float wide = k == 0 ? 1.0 : 1.8;
+    vec2 drr = vec2(dFdx(r), dFdy(r)) * wide;
+    vec2 dps = vec2(angDiff(dFdx(psi)), angDiff(dFdy(psi))) * wide;
+    // at the shadow's edge the neighbour's ray fell in first: keep the footprint sane
     drr = clamp(drr, vec2(-0.6), vec2(0.6));
     dps = clamp(dps, vec2(-0.5), vec2(0.5));
     if (!has) continue;

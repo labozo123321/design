@@ -110,7 +110,8 @@ export const BHPost: React.FC<{
   const camera = useThree((s) => s.camera);
   const post = useMemo(() => {
     const size = gl.getDrawingBufferSize(new THREE.Vector2());
-    const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
+    // no multisampling: everything but the arms at the very end is the full-screen ray tracer
+    const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType });
     const composer = new EffectComposer(gl, target);
     composer.addPass(new RenderPass(scene, camera));
     const bloom = new UnrealBloomPass(size.clone(), strength, radius, threshold);

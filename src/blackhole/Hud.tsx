@@ -132,6 +132,30 @@ export const Visor: React.FC<{ t: number; tint: number; crack: number }> = ({ t,
   </svg>
 );
 
+/**
+ * The thrusters' glow on the visor's lower rim: a hard flicker while braking, a steady ember while you
+ * hover, gone when they cut out.
+ */
+export const ThrusterGlow: React.FC<{ t: number }> = ({ t }) => {
+  const brake = sm(EV.brake - 0.1, EV.brake + 0.4, t) * (1 - sm(EV.hover - 0.3, EV.hover + 1.0, t));
+  const hover = sm(EV.hover - 0.3, EV.hover + 1.0, t) * (1 - sm(EV.release - 0.05, EV.release + 0.08, t));
+  const flick = 0.75 + 0.25 * Math.sin(t * 47) * Math.sin(t * 13.3 + 1) + 0.1 * Math.sin(t * 91);
+  const k = (brake * 0.55 + hover * 0.22) * flick;
+  if (k < 0.003) return null;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        mixBlendMode: "screen",
+        opacity: k,
+        background:
+          "radial-gradient(ellipse 70% 32% at 50% 104%, rgba(255,150,60,0.95) 0%, rgba(255,90,30,0.45) 45%, rgba(255,60,20,0) 100%)",
+      }}
+    />
+  );
+};
+
 /* ------------------------------------------------------------------ */
 /* instruments                                                          */
 /* ------------------------------------------------------------------ */
@@ -187,7 +211,7 @@ export const statusAt = (t: number) => {
 export const Instruments: React.FC<{ frame: number; f: Fonts; glitch: number }> = ({ frame, f, glitch }) => {
   const t = frame / 30;
   const i = clampF(frame);
-  const show = sm(3.0, 3.8, t) * (1 - sm(EV.end - 0.05, EV.end + 0.1, t));
+  const show = sm(3.55, 4.2, t) * (1 - sm(EV.end - 0.05, EV.end + 0.1, t));
   if (show < 0.001) return null;
   const st = statusAt(t);
   const blinkOn = !st.blink || Math.floor(t * 3) % 2 === 0;
@@ -327,7 +351,7 @@ export const Instruments: React.FC<{ frame: number; f: Fonts; glitch: number }> 
 /** Top-down map, bottom left: the horizon, the photon sphere, the disk, and you (log scale out to 30 r_s). */
 export const MiniMap: React.FC<{ frame: number; f: Fonts }> = ({ frame, f }) => {
   const t = frame / 30;
-  const show = sm(3.4, 4.2, t) * (1 - sm(EV.end - 0.05, EV.end + 0.1, t));
+  const show = sm(3.7, 4.4, t) * (1 - sm(EV.end - 0.05, EV.end + 0.1, t));
   if (show < 0.001) return null;
   const R = 84;
   const cx = 100;
@@ -513,6 +537,19 @@ export const FactCards: React.FC<{ t: number; f: Fonts; y: number }> = ({ t, f, 
             textAlign: "center",
           }}
         >
+          {/* a soft shade behind the words, for when they sit over the bright disk */}
+          <div
+            style={{
+              position: "absolute",
+              left: -80,
+              right: -80,
+              top: -70,
+              bottom: -70,
+              background:
+                "radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 100%)",
+              zIndex: -1,
+            }}
+          />
           <div
             style={{
               fontFamily: f.hud,
@@ -564,7 +601,7 @@ export const FactCards: React.FC<{ t: number; f: Fonts; y: number }> = ({ t, f, 
 /* ------------------------------------------------------------------ */
 
 export const Title: React.FC<{ t: number; f: Fonts }> = ({ t, f }) => {
-  const a = sm(0.15, 0.6, t) * (1 - sm(3.1, 3.6, t));
+  const a = sm(0.15, 0.6, t) * (1 - sm(2.95, 3.45, t));
   if (a < 0.001) return null;
   const s = 1 + 0.04 * sm(0, 3.6, t);
   return (
@@ -604,6 +641,20 @@ export const Title: React.FC<{ t: number; f: Fonts }> = ({ t, f }) => {
       >
         you fall into
         <br />a black hole
+      </div>
+      <div
+        style={{
+          fontFamily: f.hud,
+          fontWeight: 600,
+          fontSize: 30,
+          letterSpacing: "0.18em",
+          color: "rgba(255,255,255,0.8)",
+          marginTop: 22,
+          textShadow: SHADOW,
+          opacity: sm(0.9, 1.4, t),
+        }}
+      >
+        EVERY NUMBER ON SCREEN IS REAL
       </div>
     </div>
   );

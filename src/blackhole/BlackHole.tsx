@@ -1,13 +1,23 @@
 import React from "react";
 import * as THREE from "three";
 import { ThreeCanvas } from "@remotion/three";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Html5Audio as Audio, staticFile, useCurrentFrame } from "remotion";
 import { loadFont as loadChakra } from "@remotion/google-fonts/ChakraPetch";
 import { loadFont as loadJetMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont as loadInterTight } from "@remotion/google-fonts/InterTight";
 import { BHPost } from "./BHPost";
 import { BlackHoleView, Rig } from "./BlackHoleScene";
-import { DotFlare, EndQuestion, FactCards, Fonts, Instruments, MiniMap, Title, Visor } from "./Hud";
+import {
+  DotFlare,
+  EndQuestion,
+  FactCards,
+  Fonts,
+  Instruments,
+  MiniMap,
+  ThrusterGlow,
+  Title,
+  Visor,
+} from "./Hud";
 import { Suit, SuitLight } from "./Suit";
 import { skyCentre } from "./project";
 import { EV, camAt } from "./timeline";
@@ -105,7 +115,8 @@ export const BlackHole: React.FC = () => {
   // spaghettification and the end
   const stretch = sm(62.0, 66.0, t) ** 1.6 * live;
   const tear = sm(65.1, 66.0, t) * live;
-  const fade = live ? 1 : sm(EV.end + 0.5, EV.end + 1.1, t);
+  // the tear whites out, then the signal's gone: black for half a second, and back to the start
+  const fade = t < EV.end ? 1 : t < EV.end + 0.5 ? 0 : sm(EV.end + 0.5, EV.end + 1.1, t);
   const ca = 2.5 + 10 * stretch;
   // the dot of sky: glare from the visor, and the visor darkening against it
   const flare = sm(41.6, 44.5, t) * (1 - sm(52.2, 52.9, t));
@@ -124,7 +135,7 @@ export const BlackHole: React.FC = () => {
           frame={frame}
           skyGain={0.14}
           starGain={1.1}
-          diskGain={0.55}
+          diskGain={1.0}
           inside={inside}
           debris={debris}
         />
@@ -140,6 +151,7 @@ export const BlackHole: React.FC = () => {
         />
       </ThreeCanvas>
       <DotFlare frame={frame} k={flare} />
+      <ThrusterGlow t={t} />
       <Visor t={t} tint={tint} crack={0} />
       <Grain frame={frame} />
       <Title t={t} f={FONTS} />
@@ -147,6 +159,7 @@ export const BlackHole: React.FC = () => {
       <MiniMap frame={frame} f={FONTS} />
       <FactCards t={t} f={FONTS} y={1250} />
       <EndQuestion t={t} f={FONTS} />
+      <Audio src={staticFile("blackhole/bed.mp3")} />
     </AbsoluteFill>
   );
 };
