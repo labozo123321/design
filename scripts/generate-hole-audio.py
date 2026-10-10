@@ -442,7 +442,10 @@ def score():
     place(m, strings([50, 57, 62, 64, 66, 69, 74], 5.0, 2600, 0.05, 2.5), 64.6, 0.2)
     place(m, choir([66, 69, 74, 78], 4.5, 0.3), 64.6, 0.13)
     for i, nn in enumerate([78, 81, 86, 85, 81]):
-        place(m, stereo(bell(midi(nn), 3.0), -0.3 + i * 0.15, 0.6), 65.3 + i * 0.55, 0.05)
+        place(m, stereo(bell(midi(nn), 3.0), -0.3 + i * 0.15, 0.6), 65.3 + i * 0.55, 0.09)
+    # a soft held chord under the island until you drop
+    place(m, strings([50, 57, 62, 66, 69], 4.6, 1500, 1.2, 1.0), 65.2, 0.2)
+    place(m, choir([62, 66, 69], 4.4, 1.0), 65.4, 0.13)
     # the drop back in, and the question
     place(m, stereo(whoosh(1.6, 2000, 200), 0, 0.8), T_DROP, 0.25)
     place(d, stereo(impact(4.0, 75, 28), 0, 0.5), 69.45, 0.85)
@@ -545,9 +548,9 @@ def fx():
     place(b, stereo(roar2, 0, 0.9), 52.0, 0.35)
     place(b, crackles(7.0, 18), 53.0, 0.3)
     # the island: waves, crickets, the fire, a guitar that stops dead, a gasp
-    place(b, stereo(waves(12.0), -0.4, 0.9), 62.0, 0.3)
-    place(b, crickets(10.0), 64.4, 0.12)
-    place(b, fire(9.0), 64.4, 0.18)
+    place(b, stereo(waves(12.0), -0.4, 0.9), 62.0, 0.85)
+    place(b, crickets(10.0), 64.4, 0.22)
+    place(b, fire(9.0), 64.4, 0.45)
     chords = [[55, 59, 62, 67, 71, 79], [48, 55, 60, 64, 67, 72], [50, 57, 62, 66, 69, 74], [52, 59, 64, 67, 71, 76]]
     t = 61.2
     k = 0
