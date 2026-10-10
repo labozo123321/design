@@ -75,8 +75,9 @@ def main():
     ]
     r_vis = pchip(r_keys, t)
     # hovering lower: the physical altitude above the horizon (m), log-interpolated
-    alt_keys = [(T_DESCEND, 0.5 * RS), (40.5, 1.0e8), (42.0, 1.0e3), (44.0, 1.0), (46.0, 1.0e-3), (48.0, 1.0e-6),
-                (T_RELEASE, 1.0e-6)]
+    # (the sky closes in over about 4 s, 40.5 to 45: then 1 km, 1 m, 1 mm, 1 um above the horizon)
+    alt_keys = [(T_DESCEND, 0.5 * RS), (40.5, 1.5e9), (42.5, 1.0e8), (44.0, 1.0e6), (45.3, 1.0e3), (46.3, 1.0),
+                (47.2, 1.0e-3), (48.0, 1.0e-6), (T_RELEASE, 1.0e-6)]
     la = pchip([(a, math.log10(b)) for a, b in alt_keys], t)
     alt_hover = 10 ** la
     hovering_lower = t >= T_DESCEND
@@ -86,7 +87,7 @@ def main():
     # the picture can't resolve the sky shrinking below ~5 px: hold the visual radius there
     r_vis = np.where(hovering_lower, 1 + np.maximum(alt_hover / RS, 2.0e-6), r_vis)
     # falling from the hover: physically you're at the horizon almost at once; the picture takes 3.5 s
-    r_vis = np.where(t >= T_RELEASE, 1 + 2.0e-6 * (1 - smooth(T_RELEASE, T_HORIZON, t)) + 1.0e-6, r_vis)
+    r_vis = np.where(t >= T_RELEASE, 1 + 1.0e-6 * (1 - smooth(T_RELEASE, T_HORIZON, t)) + 1.0e-6, r_vis)
 
     y_keys = [(0, 3.4), (10, 2.0), (20, 0.78), (25, 0.48), (29, 0.4), (31.5, 0.36), (T_HOVER, 0.35)]
     el = np.arcsin(np.clip(pchip(y_keys, t) / np.maximum(r_vis, 1.0), -1, 1))
@@ -111,8 +112,14 @@ def main():
     beta_ff = np.sqrt(1.0 / np.maximum(r_phys, 1.0))  # free fall from rest far away
     brake = 1 - smooth(T_BRAKE, T_HOVER, t)
     beta = np.where(t < T_HOVER, beta_ff * brake, 0.0)
-    fall = smooth(T_RELEASE, T_HORIZON, t) ** 0.6
-    beta = np.where(t >= T_RELEASE, 0.999 * fall, beta)
+    # dropped from rest at height eps0: relative to observers hovering where you pass, you reach
+    # beta = sqrt(1 - (1 - 1/r) / (1 - 1/r0)), close to c at the horizon (in the picture's scaled-up heights,
+    # so the dot of sky above you grows the way it really would: about twofold)
+    eps_vis = r_vis - 1
+    i_rel = int(round(T_RELEASE * FPS))
+    e0 = eps_vis[i_rel]
+    beta_drop = np.sqrt(np.clip(1 - (eps_vis / (1 + eps_vis)) / (e0 / (1 + e0)), 0, 1))
+    beta = np.where(t >= T_RELEASE, beta_drop, beta)
     vdir = np.where((t >= T_RELEASE)[:, None], -radial, move)
     # the picture uses a softened aberration on the way in (0.6 of it), the full effect in the last plunge
     vis_k = np.where(t >= T_RELEASE, 1.0, 0.6)
@@ -126,8 +133,10 @@ def main():
         "out": radial,
     }
     # weights: (time, in, tan, out)
+    # once the shadow fills the view ahead (about 28 s), turn to look along the orbit: braking, the black
+    # hole rises below you like a planet's horizon, until at the photon sphere it is exactly half the sky
     LW = [
-        (0.0, 1, 0, 0), (T_HOVER, 1, 0, 0), (T_HOVER + 1.6, 0, 1, 0), (T_DESCEND, 0, 1, 0),
+        (0.0, 1, 0, 0), (27.6, 1, 0, 0), (31.2, 0, 1, 0), (T_DESCEND, 0, 1, 0),
         (T_DESCEND + 2.2, 0, 0, 1), (52.3, 0, 0, 1), (52.95, 0, 1, 0), (53.6, 1, 0, 0), (DUR, 1, 0, 0),
     ]
     lt = [k[0] for k in LW]
@@ -140,7 +149,16 @@ def main():
     # aim a little below the hole on the way in, so its lensed halo sits mid-frame; tilt up along the
     # photon sphere so the shadow's edge runs across the lower half
     fwd = fwd + (w_in * (1 - smooth(T_BRAKE, T_HOVER, t)) * -0.04)[:, None] * up_w
-    fwd = fwd + (w_tan * 0.18)[:, None] * up_w
+    fwd = fwd + (w_tan * 0.16)[:, None] * radial
+    fwd /= np.linalg.norm(fwd, axis=1, keepdims=True)
+    # that's where things are for an observer hovering here; you're moving, so aim where you see them
+    # (aberration: n_o = [n_s + (g - 1)(n_s.b^)b^ + g b] / [g (1 + b.n_s)])
+    bv = beta_vis[:, None] * vdir
+    bm = np.maximum(np.linalg.norm(bv, axis=1, keepdims=True), 1e-12)
+    bh = bv / bm
+    gm = 1 / np.sqrt(1 - bm**2)
+    ns_b = np.sum(fwd * bh, axis=1, keepdims=True)
+    fwd = (fwd + (gm - 1) * ns_b * bh + gm * bv) / (gm * (1 + np.sum(fwd * bv, axis=1, keepdims=True)))
     fwd /= np.linalg.norm(fwd, axis=1, keepdims=True)
     # drift and shake: a slow wander on the way in; thrusters shake you braking and hovering
     rng = np.random.default_rng(7)
@@ -159,11 +177,11 @@ def main():
     shake = np.stack([band_noise(1.0, 9), band_noise(1.0, 9), band_noise(1.0, 9)], axis=1) * 0.035 * shake_k[:, None]
     fwd = fwd + wander + shake
     fwd /= np.linalg.norm(fwd, axis=1, keepdims=True)
-    # up: world up, but roll slowly while you stare at the shrinking sky
+    # up: the galaxy's "up" looking in; away from the hole looking along the orbit (it's below you); and
+    # looking straight out, the way you were facing (so turning between them is a plain tilt, no spin).
+    # Roll slowly while you stare at the shrinking sky.
     roll = 0.25 * smooth(T_DESCEND + 2, 50, t) * np.sin((t - T_DESCEND) * 0.35)
-    upv = np.tile(up_w, (N, 1))
-    # when looking (nearly) straight out, keep "up" as the orbit's tangent so the frame doesn't spin
-    upv = upv * (1 - w_out)[:, None] + tang * w_out[:, None]
+    upv = w_in[:, None] * up_w + w_tan[:, None] * radial - w_out[:, None] * tang
     right = np.cross(fwd, upv)
     right /= np.linalg.norm(right, axis=1, keepdims=True)
     upv = np.cross(right, fwd)
@@ -180,6 +198,8 @@ def main():
     fov[end] = fov[0]
     beta_vis[end] = beta_vis[0]
     vdir[end] = vdir[0]
+    eps_vis = eps_vis.copy()
+    eps_vis[end] = eps_vis[0]
 
     # ---------------- readouts
     # after you let go, the last micrometre to the horizon goes by as you fall
@@ -232,8 +252,11 @@ def main():
     time_left = np.where(t > T_HORIZON, time_left_in, T_INSIDE)
     # tidal stretch across your 2 m body (g)
     tidal = C**2 * 2.0 / (RS**2 * np.maximum(1e-5, r_in) ** 3) / 9.81
-    # speed shown: relative to hovering observers (outside), none inside
-    speed = np.where(t < T_HORIZON, beta, 1.0)
+    # speed shown: relative to hovering observers (outside), none inside; dropped from 1 um you reach
+    # nearly c by the horizon
+    e0p = eps[i_rel]
+    beta_phys_drop = np.sqrt(np.clip(1 - (eps_show / (1 + eps_show)) / (e0p / (1 + e0p)), 0, 1))
+    speed = np.where(t < T_RELEASE, beta, np.where(t < T_HORIZON, beta_phys_drop, 1.0))
 
     out = {
         "fps": FPS,
@@ -245,6 +268,7 @@ def main():
         "beta": np.round(beta_vis, 5).tolist(),
         "vdir": np.round(vdir, 5).tolist(),
         "rVis": np.round(r_vis, 8).tolist(),
+        "eVis": [float(f"{x:.6g}") for x in eps_vis],
         "rPhys": [float(f"{x:.12g}") for x in r_phys],
         "distKm": [float(f"{x:.6g}") for x in dist_km],
         "speed": np.round(speed, 4).tolist(),
@@ -265,7 +289,7 @@ def main():
         json.dump(out, fh, separators=(",", ":"))
     print(f"r_s = {RS_KM:,.0f} km (horizon {2 * RS_KM / 1e6:.1f} million km across = {2 * RS_KM / SUN_D_KM:.1f} Suns)")
     print(f"light-crossing r_s/c = {T_RS:.1f} s; horizon to singularity (from rest) = {math.pi * GM_C3:.1f} s")
-    for tt in (0, 10, 20, 29, 34.3, 38.5, 41, 42, 44, 46, 48, 49.9, 52, 53.4, 56, 60, 64, 65.9):
+    for tt in (0, 10, 20, 29, 34.3, 38.5, 40.5, 42.5, 44, 45.3, 46.3, 47.2, 48.0, 49.0, 49.9, 52, 53.4, 56, 60, 64, 65.9):
         i = min(N - 1, int(round(tt * FPS)))
         yrs = earth[i] / 3.156e7
         print(f"t={tt:5.1f} r={r_phys[i]:.10g} dist={dist_km[i]:.4g} km beta={speed[i]:.3f} thrust={thrust[i]:.3g} g "
