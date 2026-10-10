@@ -351,8 +351,11 @@ void main() {
         float fine = smoothstep(0.82, 0.95, tm.b);
         float crust = 0.06 + 0.75 * smoothstep(0.25, 0.85, tn.r) * (0.6 + 0.4 * tm.g);
         emi += heat(T) * crust + heat(T + 600.0) * (crack * 2.2 + fine * 0.5);
+        // the transition zone's ringwoodite is blue: its crystals glint blue between the glowing cracks
+        float tz = smoothstep(k410 - 12.0, k410 + 12.0, ws) * (1.0 - smoothstep(k660 - 12.0, k660 + 12.0, ws));
+        emi += vec3(0.07, 0.17, 0.62) * crust * tz * 1.6;
         float flow = smoothstep(0.82, 0.95, textureGrad(uTex, vec2(uvA.x * 1.5 + uTime * 0.02, ws / 30.0 - uTime * 0.05), gx * 1.5, gy).b);
-        emi += vec3(1.0, 0.38, 0.05) * flow * 1.3 * smoothstep(k660, k660 + 60.0, ws);
+        emi += vec3(1.0, 0.55, 0.12) * flow * 2.1 * smoothstep(k660, k660 + 60.0, ws);
       }
 
       // ---- light on the rock

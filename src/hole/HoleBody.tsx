@@ -74,8 +74,6 @@ export const StandingBody: React.FC<{ t: number }> = ({ t }) => {
 export const armReach = (t: number) =>
   Math.max(
     interpolate(t, [3.25, 3.6, 5.1, 5.7], [0, 1, 1, 0], CLAMP),
-    interpolate(t, [33.7, 34.5, 36.4, 37.4], [0, 1, 1, 0], CLAMP),
-    interpolate(t, [45.4, 46.2, 47.35, 47.5], [0, 0.85, 1, 0], CLAMP),
     interpolate(
       t,
       [60.4, 61.3, 63.2, 64.0, 65.2, 66.0, 68.4, 69.0, 72],

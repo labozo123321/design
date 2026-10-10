@@ -168,6 +168,7 @@ type Icon =
   | "drill"
   | "layers"
   | "diamond"
+  | "water"
   | "flame"
   | "iron"
   | "magnet"
@@ -191,6 +192,14 @@ export const CARDS: Card[] = [
   { at: 15.2, until: 17.5, small: "the deepest hole", big: "ever dug", tag: "12.3 km", icon: "drill" },
   { at: 18.3, until: 20.5, small: "the crust ends.", big: "the mantle", tag: "35 km", icon: "layers" },
   { at: 21.3, until: 23.5, small: "this is where", big: "diamonds form", tag: "150 km", icon: "diamond" },
+  {
+    at: 24.0,
+    until: 26.2,
+    small: "the rock here may hold as much",
+    big: "water as the oceans",
+    tag: "520 km",
+    icon: "water",
+  },
   {
     at: 27.0,
     until: 29.3,
@@ -299,6 +308,13 @@ const IconFor: React.FC<{ icon: Icon }> = ({ icon }) => {
             strokeWidth={2}
             fill="none"
           />
+        </svg>
+      );
+    case "water":
+      return (
+        <svg {...S}>
+          <path d="M0 -36 C12 -16 26 -2 26 14 A26 26 0 0 1 -26 14 C-26 -2 -12 -16 0 -36 Z" fill="#3E8FE0" />
+          <path d="M-12 12 A12 12 0 0 0 2 26" stroke="#BFE3FF" strokeWidth={5} fill="none" />
         </svg>
       );
     case "flame":
