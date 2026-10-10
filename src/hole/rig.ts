@@ -39,7 +39,10 @@ const OFF: PLight = { pos: new THREE.Vector3(HX, -1e4, HZ), color: new THREE.Col
 export const lampPos = (k: number, surf: number) => {
   const la = ((k * GOLD) % TAU) - Math.PI;
   const w = LAMP_W0 + k * LAMP_DW;
-  return { w, pos: new THREE.Vector3(HX + Math.sin(la) * (HR - 0.3), surf - w, HZ + Math.cos(la) * (HR - 0.3)) };
+  return {
+    w,
+    pos: new THREE.Vector3(HX + Math.sin(la) * (HR - 0.3), surf - w, HZ + Math.cos(la) * (HR - 0.3)),
+  };
 };
 
 export const rigAt = (frame: number) => {
@@ -53,8 +56,14 @@ export const rigAt = (frame: number) => {
   // ambient: the glow of the rock around you (and a little lamp bounce in the crust)
   const glow = heatJS(T);
   const env = {
-    sky: glow.clone().multiplyScalar(1.6).add(new THREE.Color(0.03, 0.028, 0.025)),
-    ground: glow.clone().multiplyScalar(1.2).add(new THREE.Color(0.02, 0.016, 0.012)),
+    sky: glow
+      .clone()
+      .multiplyScalar(1.6)
+      .add(new THREE.Color(0.03, 0.028, 0.025)),
+    ground: glow
+      .clone()
+      .multiplyScalar(1.2)
+      .add(new THREE.Color(0.02, 0.016, 0.012)),
     k: 1,
   };
   // the two nearest service lamps
@@ -68,7 +77,11 @@ export const rigAt = (frame: number) => {
   for (const c of cand) {
     const Tl = tempAt(depthAtWall(side, c.w));
     const life = 1 - Math.min(1, Math.max(0, (Tl - 520) / 120));
-    lamps.push({ pos: c.pos, color: new THREE.Color(1.0, 0.8, 0.56), intensity: 26 * life * (wall > 2 ? 1 : 0) });
+    lamps.push({
+      pos: c.pos,
+      color: new THREE.Color(1.0, 0.8, 0.56),
+      intensity: 26 * life * (wall > 2 ? 1 : 0),
+    });
   }
   while (lamps.length < 2) lamps.push(OFF);
   // set pieces
@@ -77,7 +90,11 @@ export const rigAt = (frame: number) => {
   if (side === 0 && t > 3 && t < 7.6) {
     const tl = trainLight(t, surf);
     if (tl) p3 = { pos: tl, color: new THREE.Color("#FFE6C0"), intensity: 160 };
-    p4 = { pos: new THREE.Vector3(HX + 7, surf - EV.train + 1, HZ), color: new THREE.Color("#FFE2B8"), intensity: 60 };
+    p4 = {
+      pos: new THREE.Vector3(HX + 7, surf - EV.train + 1, HZ),
+      color: new THREE.Color("#FFE2B8"),
+      intensity: 60,
+    };
   } else if (side === 0 && t >= 7.6 && t < 8.5) {
     // a work lamp in front of the fossil, low down
     const y = surf - EV.fossils;
@@ -102,7 +119,11 @@ export const rigAt = (frame: number) => {
     for (const b of BOLTS) {
       const k = boltK(t, b.t);
       if (k > 0) {
-        p3 = { pos: new THREE.Vector3(HX + 40, surf - wEye - 20, HZ + 30), color: new THREE.Color("#BFD8FF"), intensity: 60000 * k };
+        p3 = {
+          pos: new THREE.Vector3(HX + 40, surf - wEye - 20, HZ + 30),
+          color: new THREE.Color("#BFD8FF"),
+          intensity: 60000 * k,
+        };
         break;
       }
     }

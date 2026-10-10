@@ -182,9 +182,22 @@ export const NightSky: React.FC<{ cam: THREE.Vector3; t: number }> = ({ cam, t }
       <mesh position={cam} scale={9e6} material={sky} renderOrder={-10} frustumCulled={false}>
         <sphereGeometry args={[1, 64, 32]} />
       </mesh>
-      <points geometry={stars.g} material={stars.m} position={cam} scale={8.6e6} renderOrder={-9} frustumCulled={false} />
+      <points
+        geometry={stars.g}
+        material={stars.m}
+        position={cam}
+        scale={8.6e6}
+        renderOrder={-9}
+        frustumCulled={false}
+      />
       <sprite position={moonP} scale={[1.1e6, 1.1e6, 1]} renderOrder={-8} frustumCulled={false}>
-        <spriteMaterial map={moonTex} color={new THREE.Color(2.2, 2.2, 2.1)} transparent depthWrite={false} fog={false} />
+        <spriteMaterial
+          map={moonTex}
+          color={new THREE.Color(2.2, 2.2, 2.1)}
+          transparent
+          depthWrite={false}
+          fog={false}
+        />
       </sprite>
     </>
   );
@@ -308,7 +321,10 @@ const Beach: React.FC = () => {
       const dry = new THREE.Color("#CDBB95");
       const wet = new THREE.Color("#6E6352");
       const grass = new THREE.Color("#3E4A2C");
-      const c = wet.clone().lerp(dry, smooth(-1, 4, d)).lerp(grass, smooth(26, 40, d) * 0.85);
+      const c = wet
+        .clone()
+        .lerp(dry, smooth(-1, 4, d))
+        .lerp(grass, smooth(26, 40, d) * 0.85);
       c.offsetHSL(0, 0, (R() - 0.5) * 0.03);
       col.set([c.r, c.g, c.b], i * 3);
     }
@@ -379,7 +395,10 @@ const PalmTree: React.FC<{ p: Palm; t: number; mats: { trunk: THREE.Material; le
     for (let k = 0; k <= 8; k++) {
       const u = k / 8;
       pts.push(
-        base.clone().addScaledVector(dir, p.lean * p.h * u * u).add(new THREE.Vector3(0, p.h * u, 0)),
+        base
+          .clone()
+          .addScaledVector(dir, p.lean * p.h * u * u)
+          .add(new THREE.Vector3(0, p.h * u, 0)),
       );
     }
     const curve = new THREE.CatmullRomCurve3(pts);
@@ -545,7 +564,11 @@ const FireCircle: React.FC<{ t: number; cam: THREE.Vector3 }> = ({ t, cam }) => 
         {Array.from({ length: 9 }).map((_, k) => {
           const a = (k / 9) * Math.PI * 2;
           return (
-            <mesh key={k} position={[Math.sin(a) * 0.62, 0.07, Math.cos(a) * 0.62]} material={std("#4A4844", { flatShading: true })}>
+            <mesh
+              key={k}
+              position={[Math.sin(a) * 0.62, 0.07, Math.cos(a) * 0.62]}
+              material={std("#4A4844", { flatShading: true })}
+            >
               <icosahedronGeometry args={[0.13, 0]} />
             </mesh>
           );
@@ -672,12 +695,22 @@ export const Island: React.FC<{ t: number; cam: THREE.Vector3; y: number }> = ({
       <group position={[0, y, 0]}>
         <directionalLight position={MOON_DIR.clone().multiplyScalar(200)} color="#A9C0EA" intensity={0.55} />
         <hemisphereLight args={["#22355C", "#0C0B09", 0.38]} />
-        <pointLight position={[FIRE.x, gy + 0.9, FIRE.z]} color="#FF8A3A" intensity={38 * fl} distance={0} decay={2} />
+        <pointLight
+          position={[FIRE.x, gy + 0.9, FIRE.z]}
+          color="#FF8A3A"
+          intensity={38 * fl}
+          distance={0}
+          decay={2}
+        />
         <Sea cam={cam} t={t} />
         <Surf t={t} />
         <Beach />
         {/* the concrete ring round the shaft's top, with a few cyan bollards */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[HX, 0.012, HZ]} material={std("#8E8B85", { roughness: 0.9 })}>
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[HX, 0.012, HZ]}
+          material={std("#8E8B85", { roughness: 0.9 })}
+        >
           <ringGeometry args={[HR, HR + 1.3, 96, 1]} />
         </mesh>
         {[0.4, 1.97, 3.54, 5.11].map((a) => (

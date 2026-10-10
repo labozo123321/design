@@ -13,6 +13,7 @@ import { Mine } from "./pieces/Mine";
 import { Core } from "./pieces/Core";
 import { rigAt } from "./rig";
 import { rockTexture } from "./rock";
+import { ShaftParticles } from "./Particles";
 import { Spectators } from "./Spectators";
 import { DiveArms, StandingBody } from "./HoleBody";
 import { Island, MOON_DIR, NightSky } from "./Island";
@@ -48,7 +49,11 @@ const Surface: React.FC<{ frame: number; cam: THREE.Vector3; lightK: number }> =
   const alt = Math.max(0, c.y);
   const dip = horizonDip(alt);
   const horizon = skyColor(
-    new THREE.Vector3(-Math.sin(c.yaw) * Math.cos(dip), Math.sin(-dip + 0.012), -Math.cos(c.yaw) * Math.cos(dip)),
+    new THREE.Vector3(
+      -Math.sin(c.yaw) * Math.cos(dip),
+      Math.sin(-dip + 0.012),
+      -Math.cos(c.yaw) * Math.cos(dip),
+    ),
     alt,
   );
   const sunlit = new THREE.Color("#FFF4E6").lerp(new THREE.Color("#FFC39A"), 0.7);
@@ -118,6 +123,7 @@ export const HoleWorld: React.FC<{ frame: number }> = ({ frame }) => {
         <pointLight key={i} position={l.pos} color={l.color} intensity={l.intensity} distance={0} decay={2} />
       ))}
       <Shaft frame={frame} side={side} blur={blur} light={light} hot={hot} />
+      <ShaftParticles surf={surf} wEye={wall - 1.7} side={side} blur={blur} t={t} />
       {side === 0 && t < T_CENTRE ? (
         <>
           {wall < 130 ? <Metro y={surf - EV.train} t={t} /> : null}

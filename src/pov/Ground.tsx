@@ -226,7 +226,11 @@ const plazaSlab = (hole: GroundHole) => {
   const h = new THREE.Path();
   h.absarc(hole.x, hole.z, hole.r, 0, Math.PI * 2, true);
   sh.holes.push(h);
-  slabWithHole = new THREE.ExtrudeGeometry(sh, { depth: -GROUND_Y - 0.01, bevelEnabled: false, curveSegments: 48 });
+  slabWithHole = new THREE.ExtrudeGeometry(sh, {
+    depth: -GROUND_Y - 0.01,
+    bevelEnabled: false,
+    curveSegments: 48,
+  });
   return slabWithHole;
 };
 
@@ -308,7 +312,12 @@ export const CityGround: React.FC<{ hole?: GroundHole }> = ({ hole }) => {
       <StaticInstances geometry={BOX} matrices={parks} color="#6E9A4E" shadow={false} />
       {/* the plaza and the far bank stand on solid slabs, 0.4 m above the streets */}
       {hole ? (
-        <mesh geometry={plazaSlab(hole)} rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={MAT_PLAZA} />
+        <mesh
+          geometry={plazaSlab(hole)}
+          rotation={[Math.PI / 2, 0, 0]}
+          position={[0, -0.01, 0]}
+          material={MAT_PLAZA}
+        />
       ) : (
         <mesh position={[0, (GROUND_Y - 0.01) / 2, 14]} material={MAT_PLAZA}>
           <boxGeometry args={[120, -GROUND_Y - 0.01, 56]} />
@@ -627,7 +636,7 @@ const Beacons: React.FC<{ t: number }> = ({ t }) => {
 export const City: React.FC<{ t: number; alt: number; hole?: GroundHole }> = ({ t, alt, hole }) => (
   <group>
     <CityGround hole={hole} />
-    <Buildings glow={1 - 0.7 * citySurge(t)} />
+    <Buildings glow={hole ? 1 : 1 - 0.7 * citySurge(t)} />
     <Beacons t={t} />
     <Roofs />
     <Trees />

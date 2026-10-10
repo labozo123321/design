@@ -22,7 +22,10 @@ const BEAMS: Beam[] = (() => {
       const p = b.c.clone().addScaledVector(b.dir, (k / 12 - 0.5) * b.len);
       if (Math.hypot(p.x, p.z) < 2.1 + b.r) return false;
       // inside the room (with a little allowance for the ends going into the rock)
-      const q = (p.x - CAVE_C.dx) ** 2 / ROOM.rx ** 2 + p.y ** 2 / ROOM.ry ** 2 + (p.z - CAVE_C.dz) ** 2 / ROOM.rz ** 2;
+      const q =
+        (p.x - CAVE_C.dx) ** 2 / ROOM.rx ** 2 +
+        p.y ** 2 / ROOM.ry ** 2 +
+        (p.z - CAVE_C.dz) ** 2 / ROOM.rz ** 2;
       if (q > 1.25) return false;
     }
     return true;
@@ -37,7 +40,11 @@ const BEAMS: Beam[] = (() => {
     );
     const yaw = R() * Math.PI * 2;
     const pitch = (R() * 2 - 1) * (R() < 0.7 ? 0.35 : 0.9);
-    const dir = new THREE.Vector3(Math.cos(pitch) * Math.sin(yaw), Math.sin(pitch), Math.cos(pitch) * Math.cos(yaw));
+    const dir = new THREE.Vector3(
+      Math.cos(pitch) * Math.sin(yaw),
+      Math.sin(pitch),
+      Math.cos(pitch) * Math.cos(yaw),
+    );
     const len = 4 + R() * 7.5;
     const r = 0.22 + R() * 0.6 * (len / 11);
     const b = { c, dir, len, r };
@@ -52,7 +59,12 @@ const BEAMS: Beam[] = (() => {
   for (const [base, tipP, r] of reach) {
     const a = new THREE.Vector3(...base);
     const b = new THREE.Vector3(...tipP);
-    out.push({ c: a.clone().add(b).multiplyScalar(0.5), dir: b.clone().sub(a).normalize(), len: a.distanceTo(b), r });
+    out.push({
+      c: a.clone().add(b).multiplyScalar(0.5),
+      dir: b.clone().sub(a).normalize(),
+      len: a.distanceTo(b),
+      r,
+    });
   }
   return out;
 })();
@@ -81,7 +93,12 @@ export const Cave: React.FC<{ y: number }> = ({ y }) => {
   const mats = useMemo(
     () => ({
       rock: clipOutsideShaft(
-        new THREE.MeshStandardMaterial({ color: "#5A4636", roughness: 0.95, flatShading: true, side: THREE.BackSide }),
+        new THREE.MeshStandardMaterial({
+          color: "#5A4636",
+          roughness: 0.95,
+          flatShading: true,
+          side: THREE.BackSide,
+        }),
       ),
       crystals: [
         ["#E6F0EE", "#7FC4D6", 0.3, 0.8],
@@ -114,8 +131,20 @@ export const Cave: React.FC<{ y: number }> = ({ y }) => {
         const end = b.c.clone().addScaledVector(b.dir, b.len / 2 + b.r * 0.7);
         return (
           <group key={i}>
-            <mesh geometry={prism} position={b.c} quaternion={q} scale={[b.r, b.len, b.r]} material={mats.crystals[i % 3]} />
-            <mesh geometry={tip} position={end} quaternion={q} scale={[b.r, b.r * 1.4, b.r]} material={mats.crystals[i % 3]} />
+            <mesh
+              geometry={prism}
+              position={b.c}
+              quaternion={q}
+              scale={[b.r, b.len, b.r]}
+              material={mats.crystals[i % 3]}
+            />
+            <mesh
+              geometry={tip}
+              position={end}
+              quaternion={q}
+              scale={[b.r, b.r * 1.4, b.r]}
+              material={mats.crystals[i % 3]}
+            />
           </group>
         );
       })}
@@ -126,7 +155,12 @@ export const Cave: React.FC<{ y: number }> = ({ y }) => {
       ].map(([x, yy, z], i) => (
         <group key={i} position={[x, yy, z]}>
           {[0, 2.1, 4.2].map((a) => (
-            <mesh key={a} position={[Math.sin(a) * 0.35, -0.7, Math.cos(a) * 0.35]} rotation={[Math.cos(a) * 0.4, 0, -Math.sin(a) * 0.4]} material={std("#2A2A2E")}>
+            <mesh
+              key={a}
+              position={[Math.sin(a) * 0.35, -0.7, Math.cos(a) * 0.35]}
+              rotation={[Math.cos(a) * 0.4, 0, -Math.sin(a) * 0.4]}
+              material={std("#2A2A2E")}
+            >
               <cylinderGeometry args={[0.025, 0.025, 1.5, 6]} />
             </mesh>
           ))}

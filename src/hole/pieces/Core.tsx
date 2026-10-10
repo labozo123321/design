@@ -161,7 +161,12 @@ const PLUMES: Plume[] = (() => {
   }));
 })();
 
-const Plumes: React.FC<{ top: number; bot: number; t: number; tex: THREE.Texture }> = ({ top, bot, t, tex }) => {
+const Plumes: React.FC<{ top: number; bot: number; t: number; tex: THREE.Texture }> = ({
+  top,
+  bot,
+  t,
+  tex,
+}) => {
   const h = top - bot;
   const mat = useMemo(
     () =>
@@ -327,15 +332,26 @@ export const Core: React.FC<{ top: number; bot: number; t: number; blur?: number
           const k = boltK(t, b.t);
           if (k <= 0) return null;
           boltMat.opacity = k;
-          return <mesh key={i} geometry={bolts(i, h)} material={boltMat} renderOrder={4} frustumCulled={false} />;
+          return (
+            <mesh key={i} geometry={bolts(i, h)} material={boltMat} renderOrder={4} frustumCulled={false} />
+          );
         })}
       </group>
       {tex ? <Plumes top={top} bot={bot} t={t} tex={tex} /> : null}
       <Droplets top={top} bot={bot} t={t} blur={blur} />
       {/* the inner core's crystals standing on the cavern floor */}
       {SPIRES.map((s, i) => (
-        <group key={i} position={[s.x, bot, s.z]} rotation={[Math.cos(s.dir) * s.tilt, 0, Math.sin(s.dir) * s.tilt]}>
-          <mesh geometry={spireGeo} position={[0, s.h / 2, 0]} scale={[s.r, s.h, s.r]} material={i % 5 === 0 ? spireEdge : spireMat} />
+        <group
+          key={i}
+          position={[s.x, bot, s.z]}
+          rotation={[Math.cos(s.dir) * s.tilt, 0, Math.sin(s.dir) * s.tilt]}
+        >
+          <mesh
+            geometry={spireGeo}
+            position={[0, s.h / 2, 0]}
+            scale={[s.r, s.h, s.r]}
+            material={i % 5 === 0 ? spireEdge : spireMat}
+          />
         </group>
       ))}
     </group>

@@ -399,6 +399,9 @@ const pavingMetres = () => {
  * place (the mosaic stays, ringing the edge).
  */
 export const Plaza: React.FC<{ t: number; g: number; hole?: boolean }> = ({ t, g, hole = false }) => {
+  // the Hole piece has no gravity pulses: nothing browns out
+  const surge = (tt: number, x: number, z: number) => (hole ? 0 : surgeAt(tt, x, z));
+  const burst = (tt: number, x: number, z: number) => (hole ? 0 : burstAt(tt, x, z));
   const towers = useMemo(
     () =>
       BUILDINGS.map((b, i) => ({
@@ -494,7 +497,7 @@ export const Plaza: React.FC<{ t: number; g: number; hole?: boolean }> = ({ t, g
       {towers.map(({ b, i, mats, neon: neonMat }) => {
         const front = b.z + b.d / 2;
         // the pulse browns the tower out for a moment as its wave rolls past
-        const dip = surgeAt(t, b.x, front);
+        const dip = surge(t, b.x, front);
         mats.forEach((m) => {
           if (m.emissiveMap) m.emissiveIntensity = 1.2 * (1 - 0.85 * dip);
         });
@@ -541,7 +544,7 @@ export const Plaza: React.FC<{ t: number; g: number; hole?: boolean }> = ({ t, g
             <mesh position={[0, 0, 0.06]}>
               <planeGeometry args={[s.w, s.h]} />
               <meshBasicMaterial
-                map={drawScreen(k, s.kind, t, burstAt(t, b.x, b.z + b.d / 2))}
+                map={drawScreen(k, s.kind, t, burst(t, b.x, b.z + b.d / 2))}
                 color={hot("#FFFFFF", 1.35)}
               />
             </mesh>
@@ -609,7 +612,7 @@ export const Plaza: React.FC<{ t: number; g: number; hole?: boolean }> = ({ t, g
           <mesh
             position={[0, 4.95, 0]}
             material={(() => {
-              lamps[li].color.copy(hot("#FFD9A0", 2.6 * (1 - 0.9 * surgeAt(t, x, z))));
+              lamps[li].color.copy(hot("#FFD9A0", 2.6 * (1 - 0.9 * surge(t, x, z))));
               return lamps[li];
             })()}
           >

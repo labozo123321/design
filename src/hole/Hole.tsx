@@ -22,9 +22,18 @@ const bloomAt = (t: number) => {
 };
 
 const Grain: React.FC<{ frame: number }> = ({ frame }) => (
-  <svg width={W} height={H} style={{ position: "absolute", inset: 0, opacity: 0.07, mixBlendMode: "overlay" }}>
+  <svg
+    width={W}
+    height={H}
+    style={{ position: "absolute", inset: 0, opacity: 0.07, mixBlendMode: "overlay" }}
+  >
     <filter id="hole-grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves={1} seed={Math.floor(frame / 2) % 50} />
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.8"
+        numOctaves={1}
+        seed={Math.floor(frame / 2) % 50}
+      />
       <feColorMatrix type="saturate" values="0" />
     </filter>
     <rect width="100%" height="100%" filter="url(#hole-grain)" />
@@ -71,10 +80,25 @@ export const Hole: React.FC = () => {
       </AbsoluteFill>
       <svg width={0} height={0} style={{ position: "absolute" }}>
         <filter id="hole-ca" x="0" y="0" width="100%" height="100%">
-          <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+          <feColorMatrix
+            in="SourceGraphic"
+            type="matrix"
+            values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="r"
+          />
           <feOffset in="r" dx={ca} dy={0} result="r2" />
-          <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
-          <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
+          <feColorMatrix
+            in="SourceGraphic"
+            type="matrix"
+            values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="g"
+          />
+          <feColorMatrix
+            in="SourceGraphic"
+            type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
+            result="b"
+          />
           <feOffset in="b" dx={-ca} dy={0} result="b2" />
           <feBlend in="r2" in2="g" mode="screen" result="rg" />
           <feBlend in="rg" in2="b2" mode="screen" />

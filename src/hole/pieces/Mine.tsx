@@ -40,13 +40,21 @@ const Gallery: React.FC<{ y: number; k: number; rock: THREE.Material }> = ({ y, 
       <boxGeometry args={[LEN, 0.02, 0.02]} />
     </mesh>
     {Array.from({ length: 13 }).map((_, i) => (
-      <mesh key={i} position={[-LEN / 2 + 1.2 + i * 3.1, HGT / 2 - 0.5, 0.5]} material={glowMat("#FFC77A", 7)}>
+      <mesh
+        key={i}
+        position={[-LEN / 2 + 1.2 + i * 3.1, HGT / 2 - 0.5, 0.5]}
+        material={glowMat("#FFC77A", 7)}
+      >
         <sphereGeometry args={[0.07, 8, 6]} />
       </mesh>
     ))}
     {/* rails and sleepers */}
     {[-0.45, 0.45].map((z) => (
-      <mesh key={z} position={[0, -HGT / 2 + 0.12, z]} material={std("#9A958C", { metalness: 0.7, roughness: 0.35 })}>
+      <mesh
+        key={z}
+        position={[0, -HGT / 2 + 0.12, z]}
+        material={std("#9A958C", { metalness: 0.7, roughness: 0.35 })}
+      >
         <boxGeometry args={[LEN, 0.08, 0.06]} />
       </mesh>
     ))}

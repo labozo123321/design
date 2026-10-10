@@ -89,7 +89,14 @@ const Gauge: React.FC<{ frac: number; mono: string }> = ({ frac, mono }) => {
       <line x1={cx} y1={cy - R} x2={cx} y2={y} stroke="#7FE6FF" strokeWidth={2.5} />
       <circle cx={cx} cy={y} r={16} fill="url(#hg-you)" />
       <circle cx={cx} cy={y} r={4.5} fill="#fff" />
-      <text x={cx + 26} y={y + 7} fontFamily={mono} fontSize={20} fill="#fff" style={{ letterSpacing: "0.12em" }}>
+      <text
+        x={cx + 26}
+        y={y + 7}
+        fontFamily={mono}
+        fontSize={20}
+        fill="#fff"
+        style={{ letterSpacing: "0.12em" }}
+      >
         YOU
       </text>
     </svg>
@@ -109,9 +116,13 @@ export const Instruments: React.FC<{ frame: number; mono: string }> = ({ frame, 
   const el = T.elapsed[f];
   const frac = Math.min(1, T.dist[f] / 12742);
   // highlights: gravity at its peak at the core-mantle boundary, zero at the centre
-  const gHi = smooth(33.6, 34.2, t) * (1 - smooth(35.6, 36.4, t)) + smooth(47.3, 47.6, t) * (1 - smooth(49.4, 50.2, t));
+  const gHi =
+    smooth(33.6, 34.2, t) * (1 - smooth(35.6, 36.4, t)) + smooth(47.3, 47.6, t) * (1 - smooth(49.4, 50.2, t));
   const gCol = gHi > 0.05 ? (t < 40 ? "#FF9A6A" : "#7FE6FF") : undefined;
-  const hotCol = temp > 500 ? `rgb(255,${Math.round(255 - 150 * Math.min(1, (temp - 500) / 3000))},${Math.round(255 - 215 * Math.min(1, (temp - 500) / 2000))})` : undefined;
+  const hotCol =
+    temp > 500
+      ? `rgb(255,${Math.round(255 - 150 * Math.min(1, (temp - 500) / 3000))},${Math.round(255 - 215 * Math.min(1, (temp - 500) / 2000))})`
+      : undefined;
   return (
     <div
       style={{
@@ -167,19 +178,61 @@ type Icon =
 type Card = { at: number; until: number; small: string; big: string; tag: string; icon: Icon };
 
 export const CARDS: Card[] = [
-  { at: 6.55, until: 8.55, small: "deeper than the world's deepest", big: "metro station", tag: "105 m", icon: "metro" },
+  {
+    at: 6.55,
+    until: 8.55,
+    small: "deeper than the world's deepest",
+    big: "metro station",
+    tag: "105 m",
+    icon: "metro",
+  },
   { at: 8.75, until: 10.8, small: "the cave of", big: "giant crystals", tag: "300 m", icon: "crystal" },
   { at: 12.1, until: 14.3, small: "the deepest", big: "mine on Earth", tag: "4 km", icon: "mine" },
   { at: 15.2, until: 17.5, small: "the deepest hole", big: "ever dug", tag: "12.3 km", icon: "drill" },
   { at: 18.3, until: 20.5, small: "the crust ends.", big: "the mantle", tag: "35 km", icon: "layers" },
   { at: 21.3, until: 23.5, small: "this is where", big: "diamonds form", tag: "150 km", icon: "diamond" },
-  { at: 27.0, until: 29.3, small: "the rock here is", big: "hotter than lava", tag: "2,000 °C", icon: "flame" },
+  {
+    at: 27.0,
+    until: 29.3,
+    small: "the rock here is",
+    big: "hotter than lava",
+    tag: "over 2,000 °C",
+    icon: "flame",
+  },
   { at: 33.9, until: 36.4, small: "an ocean of", big: "liquid iron", tag: "2,890 km", icon: "iron" },
-  { at: 37.8, until: 40.2, small: "this is where", big: "Earth's magnetic field", tag: "is made", icon: "magnet" },
+  {
+    at: 37.8,
+    until: 40.2,
+    small: "this is where",
+    big: "Earth's magnetic field",
+    tag: "is made",
+    icon: "magnet",
+  },
   { at: 43.0, until: 45.3, small: "as hot as the surface of", big: "the Sun", tag: "5,400 °C", icon: "sun" },
-  { at: 47.75, until: 50.3, small: "the centre of the Earth", big: "you're weightless", tag: "35,708 km/h", icon: "centre" },
-  { at: 50.8, until: 53.0, small: "now gravity pulls you back", big: "you're falling up", tag: "slowing down", icon: "up" },
-  { at: 64.9, until: 67.7, small: "38 minutes later", big: "the other side of the world", tag: "12,742 km", icon: "palm" },
+  {
+    at: 47.75,
+    until: 50.3,
+    small: "the centre of the Earth",
+    big: "you're weightless",
+    tag: "35,708 km/h",
+    icon: "centre",
+  },
+  {
+    at: 50.8,
+    until: 53.0,
+    small: "now gravity pulls you back",
+    big: "you're falling up",
+    tag: "slowing down",
+    icon: "up",
+  },
+  {
+    at: 64.9,
+    until: 67.7,
+    small: "38 minutes later",
+    big: "the other side of the world",
+    tag: "12,742 km",
+    icon: "palm",
+  },
 ];
 
 const IconFor: React.FC<{ icon: Icon }> = ({ icon }) => {
@@ -234,14 +287,27 @@ const IconFor: React.FC<{ icon: Icon }> = ({ icon }) => {
     case "diamond":
       return (
         <svg {...S}>
-          <path d="M-30 -10 L-16 -28 L16 -28 L30 -10 L0 32 Z" fill="#DFF4FF" stroke="#8FCDEB" strokeWidth={2} />
-          <path d="M-30 -10 L30 -10 M-16 -28 L-6 -10 L0 32 L6 -10 L16 -28" stroke="#8FCDEB" strokeWidth={2} fill="none" />
+          <path
+            d="M-30 -10 L-16 -28 L16 -28 L30 -10 L0 32 Z"
+            fill="#DFF4FF"
+            stroke="#8FCDEB"
+            strokeWidth={2}
+          />
+          <path
+            d="M-30 -10 L30 -10 M-16 -28 L-6 -10 L0 32 L6 -10 L16 -28"
+            stroke="#8FCDEB"
+            strokeWidth={2}
+            fill="none"
+          />
         </svg>
       );
     case "flame":
       return (
         <svg {...S}>
-          <path d="M0 36 C-28 34 -30 6 -12 -10 C-10 4 -2 6 0 -2 C2 -14 -4 -26 6 -38 C16 -20 30 -6 26 14 C24 30 12 36 0 36 Z" fill="#FF8A2A" />
+          <path
+            d="M0 36 C-28 34 -30 6 -12 -10 C-10 4 -2 6 0 -2 C2 -14 -4 -26 6 -38 C16 -20 30 -6 26 14 C24 30 12 36 0 36 Z"
+            fill="#FF8A2A"
+          />
           <path d="M0 34 C-12 32 -14 18 -4 8 C-2 16 4 16 6 8 C14 18 14 32 0 34 Z" fill="#FFE29A" />
         </svg>
       );
@@ -257,10 +323,30 @@ const IconFor: React.FC<{ icon: Icon }> = ({ icon }) => {
         <svg {...S}>
           <circle r={14} fill="#F08A1C" />
           {[16, 24, 33].map((r) => (
-            <ellipse key={r} cx={0} cy={0} rx={r * 0.55} ry={r} fill="none" stroke="#7FE6FF" strokeWidth={2.4} transform="rotate(0)" />
+            <ellipse
+              key={r}
+              cx={0}
+              cy={0}
+              rx={r * 0.55}
+              ry={r}
+              fill="none"
+              stroke="#7FE6FF"
+              strokeWidth={2.4}
+              transform="rotate(0)"
+            />
           ))}
           {[16, 24, 33].map((r) => (
-            <ellipse key={`b${r}`} cx={0} cy={0} rx={r} ry={r * 0.55} fill="none" stroke="#7FE6FF" strokeWidth={1.2} opacity={0.5} />
+            <ellipse
+              key={`b${r}`}
+              cx={0}
+              cy={0}
+              rx={r}
+              ry={r * 0.55}
+              fill="none"
+              stroke="#7FE6FF"
+              strokeWidth={1.2}
+              opacity={0.5}
+            />
           ))}
         </svg>
       );
@@ -270,7 +356,12 @@ const IconFor: React.FC<{ icon: Icon }> = ({ icon }) => {
           {Array.from({ length: 12 }).map((_, k) => {
             const a = (k / 12) * Math.PI * 2;
             return (
-              <path key={k} d={`M${Math.cos(a) * 24} ${Math.sin(a) * 24} L${Math.cos(a) * 36} ${Math.sin(a) * 36}`} stroke="#FFD24A" strokeWidth={4} />
+              <path
+                key={k}
+                d={`M${Math.cos(a) * 24} ${Math.sin(a) * 24} L${Math.cos(a) * 36} ${Math.sin(a) * 36}`}
+                stroke="#FFD24A"
+                strokeWidth={4}
+              />
             );
           })}
           <circle r={19} fill="#FFC22E" />
@@ -295,17 +386,34 @@ const IconFor: React.FC<{ icon: Icon }> = ({ icon }) => {
       return (
         <svg {...S}>
           <path d="M4 36 Q0 6 -4 -18" stroke="#8A6A3A" strokeWidth={5} fill="none" />
-          <path d="M-4 -18 Q-26 -30 -36 -10 M-4 -18 Q-18 -38 0 -40 M-4 -18 Q14 -36 30 -24 M-4 -18 Q22 -16 34 4" stroke="#4E9A4F" strokeWidth={5} fill="none" strokeLinecap="round" />
+          <path
+            d="M-4 -18 Q-26 -30 -36 -10 M-4 -18 Q-18 -38 0 -40 M-4 -18 Q14 -36 30 -24 M-4 -18 Q22 -16 34 4"
+            stroke="#4E9A4F"
+            strokeWidth={5}
+            fill="none"
+            strokeLinecap="round"
+          />
           <path d="M-40 36 Q0 26 40 36 Z" fill="#E8D7A8" />
         </svg>
       );
   }
 };
 
-const CardView: React.FC<{ card: Card; t: number; serif: string; mono: string }> = ({ card, t, serif, mono }) => {
-  const inK = interpolate(t, [card.at, card.at + 0.28], [0, 1], { ...CLAMP, easing: Easing.out(Easing.back(2)) });
+const CardView: React.FC<{ card: Card; t: number; serif: string; mono: string }> = ({
+  card,
+  t,
+  serif,
+  mono,
+}) => {
+  const inK = interpolate(t, [card.at, card.at + 0.28], [0, 1], {
+    ...CLAMP,
+    easing: Easing.out(Easing.back(2)),
+  });
   const fadeIn = interpolate(t, [card.at, card.at + 0.18], [0, 1], CLAMP);
-  const out = interpolate(t, [card.until, card.until + 0.35], [0, 1], { ...CLAMP, easing: Easing.in(Easing.quad) });
+  const out = interpolate(t, [card.until, card.until + 0.35], [0, 1], {
+    ...CLAMP,
+    easing: Easing.in(Easing.quad),
+  });
   const o = fadeIn * (1 - out);
   if (o <= 0.001) return null;
   const long = card.big.length > 15;

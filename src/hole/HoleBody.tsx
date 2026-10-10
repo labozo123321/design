@@ -48,7 +48,11 @@ export const StandingBody: React.FC<{ t: number }> = ({ t }) => {
         const knee = -(0.08 + walkW * 0.55 * Math.max(0, Math.cos(ph) * side) + crouch * 1.0 + dive * 0.25);
         const ankle = -0.05 + crouch * 0.4 + walkW * 0.15 * Math.max(0, Math.cos(ph) * side) - dive * 0.6;
         return (
-          <group key={side} position={[side * 0.1, HIP_Y, Z + 0.1]} rotation={[hip, side * 0.04, side * 0.03]}>
+          <group
+            key={side}
+            position={[side * 0.1, HIP_Y, Z + 0.1]}
+            rotation={[hip, side * 0.04, side * 0.03]}
+          >
             <mesh geometry={lathe("thigh", THIGH)} scale={[1, 0.93, 1]} material={jeans()} />
             <group position={[0, -0.41, 0]} rotation={[knee, 0, 0]}>
               <mesh scale={0.06} material={jeans()}>
@@ -72,7 +76,12 @@ export const armReach = (t: number) =>
     interpolate(t, [3.25, 3.6, 5.1, 5.7], [0, 1, 1, 0], CLAMP),
     interpolate(t, [33.7, 34.5, 36.4, 37.4], [0, 1, 1, 0], CLAMP),
     interpolate(t, [45.4, 46.2, 47.35, 47.5], [0, 0.85, 1, 0], CLAMP),
-    interpolate(t, [60.4, 61.3, 63.2, 64.0, 65.2, 66.0, 68.4, 69.0, 72], [0, 1, 1, 0.55, 0.55, 0.75, 0.75, 1, 0.85], CLAMP),
+    interpolate(
+      t,
+      [60.4, 61.3, 63.2, 64.0, 65.2, 66.0, 68.4, 69.0, 72],
+      [0, 1, 1, 0.55, 0.55, 0.75, 0.75, 1, 0.85],
+      CLAMP,
+    ),
   );
 
 /** Arms flailing as you drop back into the hole at the end. */

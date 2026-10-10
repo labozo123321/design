@@ -134,7 +134,11 @@ const Car: React.FC<{ x: number; front: boolean; back: boolean }> = ({ x, front,
         <boxGeometry args={[CAR_L - 0.2, 0.14, 2.3]} />
       </mesh>
       {[-4.6, 4.6].map((ax) => (
-        <mesh key={ax} position={[ax, bodyY + 1.8, 0]} material={std("#9AA0A8", { metalness: 0.4, roughness: 0.5 })}>
+        <mesh
+          key={ax}
+          position={[ax, bodyY + 1.8, 0]}
+          material={std("#9AA0A8", { metalness: 0.4, roughness: 0.5 })}
+        >
           <boxGeometry args={[2.4, 0.36, 1.7]} />
         </mesh>
       ))}
@@ -184,7 +188,9 @@ export const Metro: React.FC<{ y: number; t: number }> = ({ y, t }) => {
         }),
       ),
       bed: clipOutsideShaft(new THREE.MeshStandardMaterial({ color: "#3A3733", roughness: 0.95 })),
-      rail: clipOutsideShaft(new THREE.MeshStandardMaterial({ color: "#B8B4AC", metalness: 0.8, roughness: 0.3 })),
+      rail: clipOutsideShaft(
+        new THREE.MeshStandardMaterial({ color: "#B8B4AC", metalness: 0.8, roughness: 0.3 }),
+      ),
     };
   }, []);
   const head = trainHead(t);
@@ -205,12 +211,7 @@ export const Metro: React.FC<{ y: number; t: number }> = ({ y, t }) => {
       ))}
       {showTrain
         ? Array.from({ length: CARS }).map((_, i) => (
-            <Car
-              key={i}
-              x={head - CAR_L / 2 - i * (CAR_L + GAP)}
-              front={i === 0}
-              back={i === CARS - 1}
-            />
+            <Car key={i} x={head - CAR_L / 2 - i * (CAR_L + GAP)} front={i === 0} back={i === CARS - 1} />
           ))
         : null}
     </group>

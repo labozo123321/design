@@ -24,7 +24,14 @@ const SKELETON: Bone[] = (() => {
   // neck, curving up into the skull
   for (let i = 0; i < 5; i++) {
     const u = i / 4;
-    b.push({ s: -2.9 + u * 0.75, v: 0.35 - Math.sin(u * 2.4) * 0.22, len: 0.16, r: 0.09, ang: 0.4, kind: "ell" });
+    b.push({
+      s: -2.9 + u * 0.75,
+      v: 0.35 - Math.sin(u * 2.4) * 0.22,
+      len: 0.16,
+      r: 0.09,
+      ang: 0.4,
+      kind: "ell",
+    });
   }
   // back: vertebrae with spines
   for (let i = 0; i < 11; i++) {

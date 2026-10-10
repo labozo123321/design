@@ -20,7 +20,15 @@ export const ROPE_R = 5.3;
 /** The gap in the rope you walk through (angles from +z, rad). */
 const GAP = 0.42;
 
-type Onlooker = { th: number; r: number; h: number; kid?: boolean; act: Direction["act"]; lean?: number; react?: number };
+type Onlooker = {
+  th: number;
+  r: number;
+  h: number;
+  kid?: boolean;
+  act: Direction["act"];
+  lean?: number;
+  react?: number;
+};
 
 const ONLOOKERS: Onlooker[] = [
   { th: Math.PI - 0.22, r: 5.75, h: 1.78, act: "stare", react: 1 },

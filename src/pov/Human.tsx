@@ -730,7 +730,13 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
  * whether they keep their eyes on you from further away (`watch`), how shocked they are (`react`, 0..1) and
  * how far they lean forward (`lean`, rad).
  */
-export type Direction = { act?: "stare" | "film" | "wave"; watch?: boolean; react?: number; lean?: number; wave?: number };
+export type Direction = {
+  act?: "stare" | "film" | "wave";
+  watch?: boolean;
+  react?: number;
+  lean?: number;
+  wave?: number;
+};
 
 export const Human: React.FC<{
   sp: Spec;
