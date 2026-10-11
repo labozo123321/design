@@ -71,7 +71,8 @@ export const Inserts: React.FC<{ show: Show }> = ({ show }) => {
     <group>
       {items.map(({ ins, geo, mat }) => {
         const i = (groupIdx[ins.group] = (groupIdx[ins.group] ?? -1) + 1);
-        const k = show.lamp(ins.group, i);
+        // (half the show's level: an insert right under the camera at full HDR would flood the picture)
+        const k = 0.5 * show.lamp(ins.group, i);
         mat.color.set(ins.color).multiplyScalar(k);
         if (k < 0.01) return null;
         return <mesh key={ins.id} geometry={geo} material={mat} position={[ins.x, 0.0004, -ins.y]} />;
@@ -89,7 +90,7 @@ const GI_POS: [number, number, number][] = [
   [0.33, 0.11, -0.6],
   [0.25, 0.115, -0.9],
   [0.24, 0.11, -0.13],
-  [0.13, 0.1, -0.98],
+  [0.22, 0.11, -0.97],
   [0.35, 0.1, -0.98],
 ];
 
@@ -105,10 +106,11 @@ export const Lighting: React.FC<{ show: Show }> = ({ show }) => {
   const gi = DEBUG.has("nogi") ? 0 : show.gi;
   return (
     <group>
-      <hemisphereLight args={["#9A7BF0", "#2A1440", 0.3 + 0.55 * gi]} />
-      <directionalLight position={[0.3, 1.0, 0.4]} color="#FFE8D0" intensity={0.75 * gi + 0.05} />
+      <hemisphereLight args={["#9A7BF0", "#2A1440", 0.4 + 0.7 * gi]} />
+      {/* from straight above: its sheen on the clear coat stays out of a camera looking along the floor */}
+      <directionalLight position={[0.05, 1.0, 0.08]} color="#FFE8D0" intensity={0.95 * gi + 0.05} />
       {GI_POS.map((p, i) => (
-        <pointLight key={i} position={p} color="#FFD3A0" intensity={0.028 * gi} distance={0} decay={2} />
+        <pointLight key={i} position={p} color="#FFD3A0" intensity={0.019 * gi} distance={0} decay={2} />
       ))}
       <pointLight
         position={[0.1, 0.03, -0.235]}
@@ -138,7 +140,7 @@ export const Lighting: React.FC<{ show: Show }> = ({ show }) => {
         distance={0}
         decay={2}
       />
-      <pointLight position={[0.3, -0.03, -0.01]} color="#FF3020" intensity={0.0006} distance={0} decay={2} />
+      <pointLight position={[0.3, -0.03, -0.01]} color="#FF3020" intensity={0.0015} distance={0} decay={2} />
     </group>
   );
 };

@@ -408,7 +408,9 @@ def camera(V, T, rate, you, tau, pos, t_events):
         x, y, z = you[f][:3]
         if z > 0.03 and y > 0.9:  # in the mouth: looking out at the playfield
             v = np.array([0.30, 0.30, 0.0]) - np.array([x, y, 0.0])
-        elif z < R - 0.002 and y < 0.04 and x < LANE_C - 0.004:  # falling into the trough, in it
+        elif -0.026 < z < R - 0.002 and y < 0.04 and x < LANE_C - 0.004:  # falling: down into the trough
+            v = np.array([0.55, -0.25, -0.8])
+        elif z < R - 0.002 and y < 0.04 and x < LANE_C - 0.004:  # in the trough, along it to the eject
             v = np.array([1.0, 0.12, 0.0])
         elif TILT_LOOK[0] < V[f] < TILT_LOOK[1]:  # flippers dead: staring down at the drain
             v = np.array([ps.XC, 0.0, 0.0]) - np.array([x, y, 0.0])

@@ -184,11 +184,14 @@ const fleshTexture = (() => {
     return t;
   };
 })();
+/** Inside the mouth the table's lights would shine straight through the head (no shadows), so the flesh
+ * glows with its own colour and only takes the wet highlights from outside. */
 const fleshProps = () => ({
   map: fleshTexture(),
-  color: "#FFFFFF",
-  emissive: "#5A0A22",
-  emissiveIntensity: 0.6,
+  color: "#2A0A14",
+  emissive: "#FFFFFF",
+  emissiveMap: fleshTexture(),
+  emissiveIntensity: 0.55,
   roughness: 0.35,
   clearcoat: 1,
   clearcoatRoughness: 0.12,
@@ -204,8 +207,8 @@ const toothM = () =>
       new THREE.MeshPhysicalMaterial({
         color: "#FFFDF4",
         emissive: "#FFF6E8",
-        emissiveIntensity: 0.12,
-        roughness: 0.2,
+        emissiveIntensity: 0.05,
+        roughness: 0.3,
         clearcoat: 0.8,
       }),
   );
@@ -218,6 +221,11 @@ const tongueFloor = () =>
     m.roughness = 0.6;
     m.clearcoat = 0.2;
     m.clearcoatRoughness = 0.5;
+    // self-lit like the flesh round it
+    m.color.set("#301018");
+    m.emissive.set("#FFFFFF");
+    m.emissiveMap = m.map;
+    m.emissiveIntensity = 0.5;
     return m;
   });
 
@@ -327,9 +335,9 @@ export const Monster: React.FC<{ ctx: Ctx; inside: boolean }> = ({ ctx, inside }
       {/* a glow inside the mouth to see by (always there, dark when you're not inside: changing the number
           of lights would recompile every shader) */}
       <pointLight
-        position={MOUTH_C.clone().add(new THREE.Vector3(0, 0.03, 0).applyQuaternion(caveQ))}
+        position={MOUTH_IN.clone().add(new THREE.Vector3(0, 0.03, 0))}
         color="#FF7A9A"
-        intensity={inside ? 0.0009 : 0}
+        intensity={inside ? 0.0005 : 0}
         distance={0}
         decay={2}
       />
