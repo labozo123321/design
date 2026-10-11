@@ -159,7 +159,9 @@ void main() {
   vec2 cq = mix(fp * 0.55, vec2(vW.x * 0.1, vW.y * 0.1 + vW.z * 0.03), faceK);
   float fn = tsFbm(cq + vec2(uTime * 0.05, -uTime * 0.25 * faceK)) * 0.7 + tsNoise(cq * 4.0) * 0.3;
   float foamAmt = smoothstep(1.0 - fo, 1.0 - fo + 0.3, fn) * smoothstep(0.0, 0.08, fo);
-  foamAmt = max(foamAmt, smoothstep(0.6, 0.85, fo) * (0.85 + 0.15 * fn));
+  // solid whitewater on the wave itself; elsewhere only the very thickest foam goes solid
+  float solidFrom = mix(0.86, 0.6, smoothstep(0.0, 0.05, vFace));
+  foamAmt = max(foamAmt, smoothstep(solidFrom, solidFrom + 0.25, fo) * (0.85 + 0.15 * fn));
   foamAmt = max(foamAmt, streak * midFace * 0.22);
   // lace: the net of bubbles on a thin wash of water over sand
   float lw = smoothstep(0.35, 0.015, dep) * smoothstep(-0.002, 0.004, dep) * exp(-dist / 60.0) * (1.0 - faceK);

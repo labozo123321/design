@@ -315,9 +315,10 @@ export const waterAt = (x: number, z: number, u: number, g: number, w: Wave, out
       }
     }
   }
-  // a white edge where the water runs thin over the sand
+  // a bubbly white edge where the water runs out to nothing over the sand (the lace behind it is drawn
+  // in the shader)
   const depth = lvl - g;
-  foam = Math.max(foam, smooth(0.1, 0.0, depth) * 0.85);
+  foam = Math.max(foam, smooth(0.025, 0.0, depth) * 0.6);
   out.y = lvl;
   out.foam = foam;
   out.face = face;
