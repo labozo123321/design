@@ -80,29 +80,60 @@ export const Inserts: React.FC<{ show: Show }> = ({ show }) => {
 };
 
 const GI_POS: [number, number, number][] = [
-  [0.04, 0.075, -0.26],
-  [0.43, 0.075, -0.28],
-  [0.04, 0.08, -0.62],
-  [0.42, 0.08, -0.62],
-  [0.26, 0.085, -0.93],
-  [0.24, 0.075, -0.16],
+  [0.09, 0.11, -0.25],
+  [0.39, 0.11, -0.27],
+  [0.1, 0.11, -0.6],
+  [0.38, 0.11, -0.6],
+  [0.25, 0.115, -0.9],
+  [0.24, 0.11, -0.13],
 ];
 
 /**
  * Light levels are physical (candela at a few centimetres): a bulb 7 cm off the playfield at 0.012 cd
  * gives a pool of light about as bright as the white of the display, not a blown-out hotspot.
+ *
+ * General illumination (warm bulbs up under the glass and under the slingshots' plastics), the flashers (the monster's pink, the jackpot's white), a dim red glow
+ * in the trough from its circuit board, and a purple fill from the room. The pop bumpers carry their own
+ * lights (Parts.tsx).
  */
 export const Lighting: React.FC<{ show: Show }> = ({ show }) => {
   const gi = show.gi;
   return (
     <group>
-      <hemisphereLight args={["#8A6BE0", "#1A0E2A", 0.25 + 0.55 * gi]} />
-      <directionalLight position={[0.3, 1.0, 0.4]} color="#FFE8D0" intensity={0.55 * gi + 0.05} />
+      <hemisphereLight args={["#8A6BE0", "#1A0E2A", 0.2 + 0.45 * gi]} />
+      <directionalLight position={[0.3, 1.0, 0.4]} color="#FFE8D0" intensity={0.6 * gi + 0.04} />
       {GI_POS.map((p, i) => (
-        <pointLight key={i} position={p} color="#FFD3A0" intensity={0.012 * gi} distance={0} decay={2} />
+        <pointLight key={i} position={p} color="#FFD3A0" intensity={0.022 * gi} distance={0} decay={2} />
       ))}
-      <pointLight position={[0.13, 0.12, -0.9]} color="#FF4FB8" intensity={0.004 + 0.05 * show.flash.monster} distance={0} decay={2} />
-      <pointLight position={[0.24, 0.1, -0.42]} color="#FFFFFF" intensity={0.04 * show.flash.centre} distance={0} decay={2} />
+      <pointLight
+        position={[0.1, 0.03, -0.235]}
+        color="#FFC890"
+        intensity={0.0035 * gi}
+        distance={0}
+        decay={2}
+      />
+      <pointLight
+        position={[0.375, 0.03, -0.235]}
+        color="#FFC890"
+        intensity={0.0035 * gi}
+        distance={0}
+        decay={2}
+      />
+      <pointLight
+        position={[0.13, 0.12, -0.9]}
+        color="#FF4FB8"
+        intensity={0.002 + 0.012 * show.flash.monster}
+        distance={0}
+        decay={2}
+      />
+      <pointLight
+        position={[0.24, 0.1, -0.42]}
+        color="#FFFFFF"
+        intensity={0.025 * show.flash.centre}
+        distance={0}
+        decay={2}
+      />
+      <pointLight position={[0.3, -0.03, -0.01]} color="#FF3020" intensity={0.0006} distance={0} decay={2} />
     </group>
   );
 };

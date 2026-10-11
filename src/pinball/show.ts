@@ -39,7 +39,8 @@ export const scoreAt = (tau: number) => {
 
 export const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
-const firstT = (kind: string, ball = "you") => MAIN.find((e) => e.kind === kind && (e.ball === ball || !e.ball))?.t ?? 1e9;
+const firstT = (kind: string, ball = "you") =>
+  MAIN.find((e) => e.kind === kind && (e.ball === ball || !e.ball))?.t ?? 1e9;
 export const KEY = {
   skill: MAIN.find((e) => e.kind === "lane" && e.ball === "you")?.t ?? 13,
   drop: firstT("drop"),
@@ -49,7 +50,7 @@ export const KEY = {
   chomp: M.chomp,
   burp: M.burp,
   multiball: M.multiball,
-  coin1: 5.0,
+  coin1: 5.5,
   coin2: 64.6,
   gameOver: M.drain + 1.6,
 };
@@ -80,12 +81,14 @@ export const showAt = (t: number, te: number, frame: number): Show => {
   let gi = 1;
   if (tilted) {
     const d = t - KEY.tilt;
-    gi = d < 0.35 ? (Math.floor(d * 40) % 2 ? 0.2 : 1) : 0.12;
+    gi = d < 0.35 ? (Math.floor(d * 40) % 2 ? 0.2 : 1) : 0.3;
   }
   if (t >= M.rewind[0] && t < M.rewind[1]) gi = 0.7 + 0.3 * Math.sin(t * 60);
   // lamps
   const jackFlash = Math.exp(-Math.max(0, te - KEY.jackpot) / 0.6) * (te >= KEY.jackpot ? 1 : 0);
-  const coldJack = cold ? Math.exp(-Math.max(0, Math.min(te, M.freeze) - 0.53) / 0.6) * (te >= 0.53 ? 1 : 0) : 0;
+  const coldJack = cold
+    ? Math.exp(-Math.max(0, Math.min(te, M.freeze) - 0.53) / 0.6) * (te >= 0.53 ? 1 : 0)
+    : 0;
   const lamp = (group: string, i: number) => {
     if (tilted) return 0;
     if (attract) {
@@ -107,7 +110,11 @@ export const showAt = (t: number, te: number, frame: number): Show => {
       case "multiball":
         return multiball ? blink(t + i * 0.15, 0.3) * 3 + jf * 3 : 0;
       case "lanes":
-        return t > M.launch && t < KEY.skill ? blink(t + i * 0.12, 0.36) * 3 : t >= KEY.skill && i === 1 ? 2.5 : 0.0;
+        return t > M.launch && t < KEY.skill
+          ? blink(t + i * 0.12, 0.36) * 3
+          : t >= KEY.skill && i === 1
+            ? 2.5
+            : 0.0;
       case "lanesLow":
         return 1.2;
       case "ring":
@@ -121,7 +128,10 @@ export const showAt = (t: number, te: number, frame: number): Show => {
   // flashers
   const fl = (at: number, k = 0.12) => (te >= at ? Math.exp(-(te - at) / k) : 0);
   const flash = {
-    monster: fl(KEY.chomp, 0.3) * 6 + fl(KEY.burp, 0.25) * 5 + (t > 19.5 && t < KEY.chomp ? blink(t, 0.22) * 1.2 : 0),
+    monster:
+      fl(KEY.chomp, 0.3) * 6 +
+      fl(KEY.burp, 0.25) * 5 +
+      (t > 19.5 && t < KEY.chomp ? blink(t, 0.22) * 1.2 : 0),
     bumpers: 0,
     centre: Math.max(jackFlash, coldJack) * 8 * (0.6 + 0.4 * blink(t, 0.08)),
   };
@@ -131,26 +141,44 @@ export const showAt = (t: number, te: number, frame: number): Show => {
   const scoreLine = (y = 21): DmdLine => ({ text: fmt(score), y });
   if (cold) {
     if (t < M.rewind[0]) {
-      dmd = [{ text: "JACKPOT", y: 3, scale: 2 }, { text: "1,000,000", y: 22 }];
+      dmd = [
+        { text: "JACKPOT", y: 3, scale: 2 },
+        { text: "1,000,000", y: 22 },
+      ];
       dmdExtra = { sparkle: 1, flash: coldJack * 0.3 };
     } else dmd = [{ text: "<< REWIND", y: 12 }];
   } else if (t < KEY.coin1) {
-    dmd = [{ text: "PRESS START", y: 5 }, { text: "INSERT COIN", y: 19, blink: true }];
+    dmd = [
+      { text: "PRESS START", y: 5 },
+      { text: "INSERT COIN", y: 19, blink: true },
+    ];
   } else if (t < M.launch) {
     const k = t - KEY.coin1;
     dmd =
       k < 0.7
         ? [{ text: "CREDIT 1", y: 12 }]
         : k < 1.6
-          ? [{ text: "PLAYER 1", y: 5 }, { text: "BALL 1", y: 19 }]
-          : [{ text: "GET READY", y: 5, blink: true }, { text: "PULL THE PLUNGER", y: 19 }];
+          ? [
+              { text: "PLAYER 1", y: 5 },
+              { text: "BALL 1", y: 19 },
+            ]
+          : [
+              { text: "GET READY", y: 5, blink: true },
+              { text: "PULL THE PLUNGER", y: 19 },
+            ];
   } else if (t < KEY.skill) {
     dmd = [{ text: "SKILL SHOT?", y: 5 }, scoreLine(19)];
   } else if (t < KEY.skill + 1.5) {
-    dmd = [{ text: "SKILL SHOT!", y: 3, scale: 1 }, { text: "25,000", y: 14, scale: 2 }];
+    dmd = [
+      { text: "SKILL SHOT!", y: 3, scale: 1 },
+      { text: "25,000", y: 14, scale: 2 },
+    ];
     dmdExtra = { sparkle: 0.6 };
   } else if (t < 19.5) {
-    dmd = [{ text: "BALL 1", y: 3 }, { text: fmt(score), y: 13, scale: 2 }];
+    dmd = [
+      { text: "BALL 1", y: 3 },
+      { text: fmt(score), y: 13, scale: 2 },
+    ];
   } else if (t < KEY.chomp) {
     dmd = [{ text: "FEED THE MONSTER", y: 5, blink: true }, scoreLine(19)];
   } else if (t < KEY.multiball + 0.4) {
@@ -166,22 +194,37 @@ export const showAt = (t: number, te: number, frame: number): Show => {
   } else if (t < KEY.jackpot) {
     dmd = [{ text: "JACKPOT IS LIT", y: 5, blink: true }, scoreLine(19)];
   } else if (t < KEY.jackpot + 1.6) {
-    dmd = [{ text: "JACKPOT", y: 2, scale: 2 }, { text: "1,000,000", y: 21 }];
+    dmd = [
+      { text: "JACKPOT", y: 2, scale: 2 },
+      { text: "1,000,000", y: 21 },
+    ];
     dmdExtra = { sparkle: 1, invert: blink(t, 0.16) > 0 };
   } else if (t < KEY.tilt) {
     const warn = NUDGES.findIndex((n) => t >= n && t < n + 0.8);
-    dmd = warn >= 0 && warn < 2 ? [{ text: "DANGER", y: 5, scale: 3 }] : [{ text: "BALL 1", y: 3 }, { text: fmt(score), y: 13, scale: 2 }];
+    dmd =
+      warn >= 0 && warn < 2
+        ? [{ text: "DANGER", y: 5, scale: 3 }]
+        : [
+            { text: "BALL 1", y: 3 },
+            { text: fmt(score), y: 13, scale: 2 },
+          ];
     if (warn >= 0 && warn < 2) dmdExtra = { invert: blink(t, 0.1) > 0 };
   } else if (t < KEY.drain + 0.4) {
     dmd = [{ text: "TILT", y: 2, scale: 4, blink: t - KEY.tilt > 1.0 }];
   } else if (t < KEY.gameOver) {
     dmd = [{ text: "BALL LOST", y: 12 }];
   } else if (t < KEY.coin2) {
-    dmd = [{ text: "GAME OVER", y: 3, scale: 2 }, { text: fmt(score), y: 21 }];
+    dmd = [
+      { text: "GAME OVER", y: 3, scale: 2 },
+      { text: fmt(score), y: 21 },
+    ];
   } else if (t < KEY.coin2 + 0.8) {
     dmd = [{ text: "CREDIT 1", y: 12 }];
   } else {
-    dmd = [{ text: "HERE WE GO", y: 1, scale: 2 }, { text: "AGAIN", y: 17, scale: 2 }];
+    dmd = [
+      { text: "HERE WE GO", y: 1, scale: 2 },
+      { text: "AGAIN", y: 17, scale: 2 },
+    ];
   }
   return { gi, lamp, dmd, dmdExtra, flash, score, glass: tilted ? 0.35 : 1 };
 };

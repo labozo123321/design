@@ -12,9 +12,16 @@ export const steelDull = () =>
 export const rubber = (c = "#F4F1EA") =>
   std("rubber" + c, () => new THREE.MeshStandardMaterial({ color: c, roughness: 0.65, metalness: 0 }));
 export const plastic = (c: string, rough = 0.3) =>
-  std(`plastic${c}${rough}`, () => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0 }));
+  std(
+    `plastic${c}${rough}`,
+    () => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0 }),
+  );
 export const glossy = (c: string) =>
-  std("glossy" + c, () => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.08 }));
+  std(
+    "glossy" + c,
+    () =>
+      new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.08 }),
+  );
 export const translucent = (c: string, opacity = 0.78, emissive = 0.35) =>
   std(`transl${c}${opacity}${emissive}`, () => {
     const col = new THREE.Color(c);
@@ -27,5 +34,7 @@ export const translucent = (c: string, opacity = 0.78, emissive = 0.35) =>
       depthWrite: false,
     });
   });
-export const wood = () => std("wood", () => new THREE.MeshStandardMaterial({ color: "#1A0F24", roughness: 0.6 }));
-export const black = () => std("black", () => new THREE.MeshStandardMaterial({ color: "#0B0A10", roughness: 0.5 }));
+export const wood = () =>
+  std("wood", () => new THREE.MeshStandardMaterial({ color: "#1A0F24", roughness: 0.6 }));
+export const black = () =>
+  std("black", () => new THREE.MeshStandardMaterial({ color: "#0B0A10", roughness: 0.5 }));

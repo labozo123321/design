@@ -110,19 +110,23 @@ const BB_Z = -(LAY.L + 0.05);
 const BB_W = 0.62;
 const BB_X = LAY.W / 2;
 
-export const Backbox: React.FC<{ lines: DmdLine[]; frame: number; extra?: { flash?: number; sparkle?: number; invert?: boolean }; glow: number; font: string }> = ({
-  lines,
-  frame,
-  extra,
-  glow,
-  font,
-}) => {
+export const Backbox: React.FC<{
+  lines: DmdLine[];
+  frame: number;
+  extra?: { flash?: number; sparkle?: number; invert?: boolean };
+  glow: number;
+  font: string;
+}> = ({ lines, frame, extra, glow, font }) => {
   const dmdMat = useMemo(
     () =>
       new THREE.ShaderMaterial({
         vertexShader: DMD_VERT,
         fragmentShader: DMD_FRAG,
-        uniforms: { uDots: { value: null }, uColor: { value: new THREE.Color(1.0, 0.45, 0.08) }, uGain: { value: 3.5 } },
+        uniforms: {
+          uDots: { value: null },
+          uColor: { value: new THREE.Color(1.0, 0.45, 0.08) },
+          uGain: { value: 3.5 },
+        },
         toneMapped: false,
       }),
     [],
@@ -130,7 +134,12 @@ export const Backbox: React.FC<{ lines: DmdLine[]; frame: number; extra?: { flas
   dmdMat.uniforms.uDots.value = dmdTexture(lines, frame, extra);
   const glassMat = std(
     "backglass",
-    () => new THREE.MeshBasicMaterial({ map: backglass(font), toneMapped: false, color: new THREE.Color(1, 1, 1) }),
+    () =>
+      new THREE.MeshBasicMaterial({
+        map: backglass(font),
+        toneMapped: false,
+        color: new THREE.Color(1, 1, 1),
+      }),
   ) as THREE.MeshBasicMaterial;
   glassMat.color.setScalar(glow);
   return (
@@ -144,14 +153,24 @@ export const Backbox: React.FC<{ lines: DmdLine[]; frame: number; extra?: { flas
         <planeGeometry args={[BB_W - 0.04, 0.5]} />
       </mesh>
       {/* the display panel: dot matrix, speaker grilles */}
-      <mesh position={[0, 0.23, 0.002]} material={std("dmdPanel", () => new THREE.MeshStandardMaterial({ color: "#0A0A0C", roughness: 0.6 }))}>
+      <mesh
+        position={[0, 0.23, 0.002]}
+        material={std("dmdPanel", () => new THREE.MeshStandardMaterial({ color: "#0A0A0C", roughness: 0.6 }))}
+      >
         <planeGeometry args={[BB_W - 0.02, 0.2]} />
       </mesh>
       <mesh position={[0, 0.23, 0.004]} material={dmdMat}>
         <planeGeometry args={[0.36, 0.09]} />
       </mesh>
       {[-1, 1].map((sd) => (
-        <mesh key={sd} position={[sd * 0.24, 0.23, 0.003]} material={std("grille", () => new THREE.MeshStandardMaterial({ color: "#26232B", roughness: 0.8, metalness: 0.3 }))}>
+        <mesh
+          key={sd}
+          position={[sd * 0.24, 0.23, 0.003]}
+          material={std(
+            "grille",
+            () => new THREE.MeshStandardMaterial({ color: "#26232B", roughness: 0.8, metalness: 0.3 }),
+          )}
+        >
           <circleGeometry args={[0.045, 32]} />
         </mesh>
       ))}

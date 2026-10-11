@@ -287,6 +287,11 @@ def main():
 # ---------------------------------------------------------------- the video
 V_PLUNGE0 = 4.0  # the plunger scene starts (after the cold open and the rewind)
 V_LAUNCH = 8.6  # the plunger lets go
+DRAIN_EDGE = 0.030  # the playfield ends under the apron: past here a ball falls into the trough
+TROUGH_STOP = 0.470  # the ball stop at the right-hand end of the trough
+LANE_C = 0.4945  # the shooter lane's centre line
+# (video t0, t1, fade, table point): look at the jackpot bumper as it fires, not past it
+LOOK_AT = [(48.4, 50.45, 0.6, (ps.BUMPERS[1][0], ps.BUMPERS[1][1], 0.032))]
 T_FREEZE_PRE = 0.9  # the cold open plays this long before the freeze frame
 V_REWIND = (3.0, 4.0)
 
@@ -310,16 +315,19 @@ def assemble(table, balls, rec, t_drain, t_tilt, warp_keys, tau_freeze):
     flipL = np.array([r[2] for r in rec])
     flipR = np.array([r[3] for r in rec])
 
-    # after the drain: down under the apron into the trough, along it, then kicked into the shooter lane
+    # after the drain: off the end of the playfield (it stops under the raised apron), down into the
+    # trough, along it to the ball stop, then the eject: along the pocket under the shooter lane and up
+    # through the trapdoor in front of the plunger
     xd, yd = pos["you"][-1][0], pos["you"][-1][1]
-    trough = []
-    T_TROUGH = [(0.0, (xd, yd, R)), (0.18, (xd, 0.022, -0.02)), (0.3, (xd + 0.01, 0.02, -0.03)),
-                (1.6, (0.445, 0.02, -0.03)), (5.6, (0.445, 0.02, -0.03)), (6.0, (0.4945, 0.04, -0.01)),
-                (6.35, (0.4945, 0.075, R)), (12.0, (0.4945, 0.075, R))]
+    T_TROUGH = [(0.0, (xd, yd, R)), (0.05, (xd, 0.019, 0.010)), (0.13, (xd, 0.012, -0.012)),
+                (0.22, (xd, 0.008, -0.030)), (0.34, (xd + 0.014, 0.008, -0.029)),
+                (1.7, (TROUGH_STOP, 0.008, -0.030)), (5.6, (TROUGH_STOP, 0.008, -0.030)),
+                (5.8, (LANE_C, 0.008, -0.030)), (6.0, (LANE_C, 0.075, -0.030)),
+                (6.3, (LANE_C, 0.075, R)), (6.4, (LANE_C, 0.075, R)), (12.0, (LANE_C, 0.075, R))]
     kt = np.array([k[0] for k in T_TROUGH])
     kp = np.array([k[1] for k in T_TROUGH])
     extra_t = np.arange(1, int(12.0 * SIM_HZ)) / SIM_HZ
-    ext = np.stack([np.interp(extra_t, kt, kp[:, j]) for j in range(3)], axis=1)
+    ext = np.stack([PchipInterpolator(kt, kp[:, j])(extra_t) for j in range(3)], axis=1)
     tau = np.concatenate([tau, t_drain + extra_t])
     for n in names:
         last = pos[n][-1].copy()
@@ -330,6 +338,14 @@ def assemble(table, balls, rec, t_drain, t_tilt, warp_keys, tau_freeze):
         else:
             add[:, 3] = 0.0  # the other balls have drained by now
         pos[n] = np.vstack([pos[n], add])
+    # the other balls: off the end of the playfield they drop into the trough and out of sight
+    for n in names:
+        if n == "you":
+            continue
+        P = pos[n]
+        low = P[:, 1] < DRAIN_EDGE
+        P[low, 2] = R - (DRAIN_EDGE - P[low, 1]) * 2.2
+        P[low & (P[:, 2] < -0.04), 3] = 0.0
     flipL = np.concatenate([flipL, np.full(len(extra_t), flipL[-1])])
     flipR = np.concatenate([flipR, np.full(len(extra_t), flipR[-1])])
 
@@ -382,22 +398,36 @@ def camera(V, T, rate, you, tau, pos, t_events):
         b = np.interp(t + 0.01, tau, P[:, 0]), np.interp(t + 0.01, tau, P[:, 1]), np.interp(t + 0.01, tau, P[:, 2])
         d[f] = np.array(b) - np.array(a)
     sp = np.linalg.norm(d, axis=1) / 0.02  # m/s
+    sph = np.linalg.norm(d[:, :2], axis=1) / 0.02  # along the playfield
     # where you'd look standing still: up the shooter lane; out of the monster's mouth; along the trough
+    # to the eject, then up the lane again
     look_rest = np.zeros((n, 3))
     for f in range(n):
         x, y, z = you[f][:3]
         if z > 0.03 and y > 0.9:  # in the mouth: looking out at the playfield
             v = np.array([0.30, 0.30, 0.0]) - np.array([x, y, 0.0])
-        elif z < -0.005:  # in the trough
-            v = np.array([1.0, 0.25, 0.0])
+        elif z < R - 0.002 and y < 0.04 and x < LANE_C - 0.004:  # falling into the trough, in it
+            v = np.array([1.0, 0.12, 0.0])
         else:
             v = np.array([0.0, 1.0, 0.0])
         look_rest[f] = v / np.linalg.norm(v)
-    moving = np.clip((sp - 0.05) / 0.25, 0, 1)
-    dirs = np.where(sp[:, None] > 1e-6, d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-9), look_rest)
-    dirs = dirs * moving[:, None] + look_rest * (1 - moving[:, None])
+    moving = np.clip((sph - 0.05) / 0.25, 0, 1)
+    dirs = np.where(sph[:, None] > 1e-6, d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-9), look_rest)
     # flatten (look along the playfield, a little up), except on the tongue where you climb
     dirs[:, 2] = np.where(you[:, 2] > R + 0.002, dirs[:, 2], 0.0)
+    dirs = dirs / np.maximum(np.linalg.norm(dirs, axis=1, keepdims=True), 1e-9)
+    dirs = dirs * moving[:, None] + look_rest * (1 - moving[:, None])
+    dirs = dirs / np.maximum(np.linalg.norm(dirs, axis=1, keepdims=True), 1e-9)
+    # moments where you'd stare at what's hitting you rather than where you're going
+    for t0, t1, fade, target in LOOK_AT:
+        for f in range(n):
+            w = smooth(t0, t0 + fade, V[f]) * (1 - smooth(t1 - fade, t1, V[f]))
+            if w <= 0:
+                continue
+            v = np.array(target, dtype=float) - np.asarray(you[f][:3], dtype=float)
+            v /= np.linalg.norm(v)
+            mix = dirs[f] * (1 - w) + v * w
+            dirs[f] = mix / max(np.linalg.norm(mix), 1e-9)
     # zero-phase smoothing (forward then backward exponential, about 0.15 s): whips round after each bounce
     # without snapping
     k = 0.2
