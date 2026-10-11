@@ -54,12 +54,14 @@ export const plungerTip = (frame: number) => {
   return inLane ? Math.min(0.0605, y - R - 0.0005) : 0.0605;
 };
 
-/** The trapdoor in the shooter lane: open (0..1) while the trough's eject brings you up through it. */
+/** The trapdoor in the shooter lane: open (0..1) while the trough's eject brings you up through it. It
+ * drops open while you're still rolling to the end of the trough, so it's hanging out of the way (light
+ * pouring in) by the time you come along the pocket under it, and shuts once you're through. */
 export const flapOpen = (frame: number) => {
   const t = frame / FPS;
   if (t < M.drain) return 0;
   const u = T.tau[clampF(frame)] - TAU_DRAIN;
-  return smooth(5.86, 5.97, u) * (1 - smooth(6.31, 6.4, u));
+  return smooth(5.62, 5.75, u) * (1 - smooth(6.31, 6.4, u));
 };
 
 /* ------------------------------------------------------------------ */

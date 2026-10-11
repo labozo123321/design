@@ -495,8 +495,8 @@ told in on-screen words and synthesised sound.
    - `PinPost.tsx` adds motion blur (reprojected from the logarithmic depth buffer), bloom, and grades for the freeze frame, the VHS rewind and the TILT;
    - `Overlay.tsx` draws the words: the meme ("yep. that's me."), the time card, the title, comic words where things hit you, score pop-ups, five fun facts, the ball's thoughts, and "here we go again".
 
-Render it in six chunks of 350 frames, muted (software GL: `--gl=swangle --timeout=240000`), then add the bed:
+Render it in three chunks of 700 frames, muted (with software GL use `--gl=swangle --timeout=400000`: each tab takes several minutes to build its textures and compile its shaders), then add the bed:
 
-    npx remotion render Pinball out/pb/part-0.mp4 --frames=0-349 --muted --gl=angle
+    npx remotion render Pinball out/pb/part-0.mp4 --frames=0-699 --muted --gl=angle
     ...
     ffmpeg -f concat -safe 0 -i list.txt -i out/pinball/bed.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k pinball.mp4

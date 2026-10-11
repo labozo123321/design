@@ -159,7 +159,7 @@ const Playfield: React.FC<{ flap: number }> = ({ flap }) => {
       <mesh geometry={geos.laneR} material={mat} />
       <group position={[0, 0, -FLAP.y1]} rotation={[flap * 1.52, 0, 0]}>
         <mesh geometry={geos.flapTop} material={mat} />
-        <mesh geometry={geos.flapUnder} material={steelDull()} />
+        <mesh geometry={geos.flapUnder} material={black()} />
       </group>
       <mesh geometry={geos.laneUnder} material={black()} />
       <mesh geometry={geos.pocketUnder} material={black()} />
