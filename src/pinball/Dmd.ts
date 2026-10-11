@@ -124,16 +124,26 @@ export const dmdTexture = (
   return tex!;
 };
 
+// (the scene uses a logarithmic depth buffer: a custom shader has to write the same depth, or it loses
+// every depth test to the panel it's mounted on)
 export const DMD_VERT = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
 varying vec2 vUv;
-void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  #include <logdepthbuf_vertex>
+}
 `;
 export const DMD_FRAG = /* glsl */ `
+#include <logdepthbuf_pars_fragment>
 uniform sampler2D uDots;
 uniform vec3 uColor;
 uniform float uGain;
 varying vec2 vUv;
 void main() {
+  #include <logdepthbuf_fragment>
   vec2 g = vUv * vec2(128.0, 32.0);
   vec2 cell = floor(g);
   vec2 f = fract(g) - 0.5;

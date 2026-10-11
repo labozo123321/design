@@ -210,7 +210,16 @@ const toothM = () =>
       }),
   );
 const coinM = () =>
-  std("coin", () => new THREE.MeshStandardMaterial({ color: "#C9CDD4", metalness: 1, roughness: 0.3 }));
+  std("coin", () => new THREE.MeshStandardMaterial({ color: "#9EA3AC", metalness: 0.85, roughness: 0.5 }));
+/** The tongue's back end inside the mouth: right under the camera, so matte (no flare). */
+const tongueFloor = () =>
+  std("tongueFloor", () => {
+    const m = (tongueMat() as THREE.MeshPhysicalMaterial).clone();
+    m.roughness = 0.6;
+    m.clearcoat = 0.2;
+    m.clearcoatRoughness = 0.5;
+    return m;
+  });
 
 /** How open the jaws are: 1 wide open; closes on the chomp, chews, opens for the burp. */
 const jawOpen = (t: number) => {
@@ -315,6 +324,15 @@ export const Monster: React.FC<{ ctx: Ctx; inside: boolean }> = ({ ctx, inside }
   return (
     <group>
       <Tongue />
+      {/* a glow inside the mouth to see by (always there, dark when you're not inside: changing the number
+          of lights would recompile every shader) */}
+      <pointLight
+        position={MOUTH_C.clone().add(new THREE.Vector3(0, 0.03, 0).applyQuaternion(caveQ))}
+        color="#FF7A9A"
+        intensity={inside ? 0.0009 : 0}
+        distance={0}
+        decay={2}
+      />
       {!inside ? (
         <>
           {head}
@@ -342,7 +360,7 @@ export const Monster: React.FC<{ ctx: Ctx; inside: boolean }> = ({ ctx, inside }
           <mesh
             position={[MOUTH_IN.x, MOUTH_IN.y - LAY.R - 0.0003, MOUTH_IN.z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            material={tongueMat()}
+            material={tongueFloor()}
           >
             <circleGeometry args={[0.034, 40]} />
           </mesh>
@@ -369,8 +387,6 @@ export const Monster: React.FC<{ ctx: Ctx; inside: boolean }> = ({ ctx, inside }
             <mesh material={flesh()}>
               <sphereGeometry args={[0.045, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.72]} />
             </mesh>
-            {/* a glow to see by */}
-            <pointLight position={[0, 0.02, 0]} color="#FF7A9A" intensity={0.0016} distance={0} decay={2} />
             {/* the uvula */}
             <mesh
               position={[0, 0.03, 0.012]}

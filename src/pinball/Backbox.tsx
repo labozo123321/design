@@ -106,8 +106,66 @@ const backglass = (font: string) => {
   return glassTex;
 };
 
+/** The speaker panel round the display: printed purple with neon trim, punched grilles. */
+let panelTex: THREE.CanvasTexture | null = null;
+const panelTexture = () => {
+  if (panelTex) return panelTex;
+  const c = document.createElement("canvas");
+  c.width = 1200;
+  c.height = 400;
+  const g = c.getContext("2d")!;
+  const bg = g.createLinearGradient(0, 0, 0, 400);
+  bg.addColorStop(0, "#3A0E6E");
+  bg.addColorStop(1, "#14052A");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, 1200, 400);
+  // stars and a neon border
+  for (let i = 0; i < 120; i++) {
+    const x = (i * 97.3) % 1200;
+    const y = (i * 53.7) % 400;
+    g.fillStyle = `rgba(255,255,230,${0.3 + ((i * 7) % 10) / 15})`;
+    g.beginPath();
+    g.arc(x, y, 1.5 + (i % 3), 0, Math.PI * 2);
+    g.fill();
+  }
+  g.strokeStyle = "#FF4FB8";
+  g.lineWidth = 10;
+  g.strokeRect(12, 12, 1176, 376);
+  g.strokeStyle = "#3FD8FF";
+  g.lineWidth = 4;
+  g.strokeRect(30, 30, 1140, 340);
+  // the grilles: rings of holes either side
+  for (const cx of [130, 1070]) {
+    g.fillStyle = "#0A0410";
+    g.beginPath();
+    g.arc(cx, 200, 120, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#2A2238";
+    for (let r = 14; r < 112; r += 16) {
+      const n = Math.floor((2 * Math.PI * r) / 16);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2;
+        g.beginPath();
+        g.arc(cx + Math.cos(a) * r, 200 + Math.sin(a) * r, 4.5, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+  }
+  panelTex = new THREE.CanvasTexture(c);
+  panelTex.colorSpace = THREE.SRGBColorSpace;
+  panelTex.anisotropy = 8;
+  return panelTex;
+};
+
 const BB_Z = -(LAY.L + 0.05);
 const BB_W = 0.62;
+const ringMats: Record<number, THREE.MeshBasicMaterial> = {};
+/** LED rings round the speakers: pink on the left, cyan on the right, brightness = the beat. */
+const ringMat = (sd: number, k: number) => {
+  const m = (ringMats[sd] ??= new THREE.MeshBasicMaterial({ toneMapped: false }));
+  m.color.set(sd < 0 ? "#FF4FB8" : "#3FD8FF").multiplyScalar(0.4 + 3.5 * k);
+  return m;
+};
 const BB_X = LAY.W / 2;
 
 export const Backbox: React.FC<{
@@ -116,7 +174,9 @@ export const Backbox: React.FC<{
   extra?: { flash?: number; sparkle?: number; invert?: boolean };
   glow: number;
   font: string;
-}> = ({ lines, frame, extra, glow, font }) => {
+  /** The speakers' light rings, pulsing with the music (0..1+). */
+  beat: number;
+}> = ({ lines, frame, extra, glow, font, beat }) => {
   const dmdMat = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -155,10 +215,18 @@ export const Backbox: React.FC<{
       {/* the display panel: dot matrix, speaker grilles */}
       <mesh
         position={[0, 0.23, 0.002]}
-        material={std("dmdPanel", () => new THREE.MeshStandardMaterial({ color: "#0A0A0C", roughness: 0.6 }))}
+        material={std(
+          "dmdPanel",
+          () => new THREE.MeshBasicMaterial({ map: panelTexture(), color: new THREE.Color(0.9, 0.9, 0.9) }),
+        )}
       >
         <planeGeometry args={[BB_W - 0.02, 0.2]} />
       </mesh>
+      {[-1, 1].map((sd) => (
+        <mesh key={"ring" + sd} position={[sd * 0.24, 0.23, 0.0035]} material={ringMat(sd, beat * glow)}>
+          <ringGeometry args={[0.047, 0.052, 48]} />
+        </mesh>
+      ))}
       <mesh position={[0, 0.23, 0.004]} material={dmdMat}>
         <planeGeometry args={[0.36, 0.09]} />
       </mesh>
@@ -168,7 +236,14 @@ export const Backbox: React.FC<{
           position={[sd * 0.24, 0.23, 0.003]}
           material={std(
             "grille",
-            () => new THREE.MeshStandardMaterial({ color: "#26232B", roughness: 0.8, metalness: 0.3 }),
+            () =>
+              new THREE.MeshStandardMaterial({
+                color: "#26232B",
+                roughness: 0.8,
+                metalness: 0.3,
+                transparent: true,
+                opacity: 0.35,
+              }),
           )}
         >
           <circleGeometry args={[0.045, 32]} />

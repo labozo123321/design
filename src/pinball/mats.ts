@@ -35,6 +35,9 @@ export const translucent = (c: string, opacity = 0.78, emissive = 0.35) =>
     });
   });
 export const wood = () =>
-  std("wood", () => new THREE.MeshStandardMaterial({ color: "#1A0F24", roughness: 0.6 }));
+  std(
+    "wood",
+    () => new THREE.MeshStandardMaterial({ color: "#1A0F24", roughness: 0.85, envMapIntensity: 0.3 }),
+  );
 export const black = () =>
   std("black", () => new THREE.MeshStandardMaterial({ color: "#0B0A10", roughness: 0.5 }));

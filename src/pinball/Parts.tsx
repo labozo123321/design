@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { Brow, Googly } from "./Googly";
 import { chrome, glossy, plastic, rubber, std } from "./mats";
-import { EVENTS, LAY, T, clampF, inColdOpen } from "./timeline";
+import { EVENTS, LAY, M, T, clampF, inColdOpen } from "./timeline";
 
 /**
  * The moving parts: pop bumpers (cap and body light up, ring snaps down, eyebrows jump), flippers (angry
@@ -350,6 +350,8 @@ export const Flippers: React.FC<{ ctx: Ctx }> = ({ ctx }) => {
         const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), th);
         // how far up it is (0 at rest, 1 fully up): the eyebrows strain
         const up = Math.max(0, Math.min(1, (ang - fl.rest) / (fl.up - fl.rest)));
+        // after the TILT the flippers are dead, and they know it: worried brows, eyes drooping
+        const dead = ctx.cold ? 0 : Math.min(1, Math.max(0, (ctx.t - M.tilt - 0.3) / 0.5));
         const eyes = [0.013, 0.032].map((x) => new THREE.Vector3(x, 0.0275, 0));
         const worlds = eyes.map((e) => e.clone().applyQuaternion(q).add(pv));
         const mid = worlds[0].clone().add(worlds[1]).multiplyScalar(0.5);
@@ -373,10 +375,10 @@ export const Flippers: React.FC<{ ctx: Ctx }> = ({ ctx }) => {
                 jolt={s}
                 seed={(side === "L" ? 7 : 9) + i}
                 t={ctx.t}
-                stare={0.85}
+                stare={0.85 - 0.6 * dead}
                 parentQ={q}
                 side={screenSide(worlds[i], mid, ctx.cam)}
-                brow={{ tilt: 0.5 + 0.15 * up, lift: -0.15 * up }}
+                brow={{ tilt: (0.5 + 0.15 * up) * (1 - dead) - 0.35 * dead, lift: -0.15 * up + 0.12 * dead }}
               />
             ))}
           </group>

@@ -290,8 +290,10 @@ V_LAUNCH = 8.6  # the plunger lets go
 DRAIN_EDGE = 0.030  # the playfield ends under the apron: past here a ball falls into the trough
 TROUGH_STOP = 0.470  # the ball stop at the right-hand end of the trough
 LANE_C = 0.4945  # the shooter lane's centre line
+# after the TILT, while the ball rocks on the dead flippers, it looks down at the drain (video seconds)
+TILT_LOOK = (53.8, 60.5)
 # (video t0, t1, fade, table point): look at the jackpot bumper as it fires, not past it
-LOOK_AT = [(48.4, 50.45, 0.6, (ps.BUMPERS[1][0], ps.BUMPERS[1][1], 0.032))]
+LOOK_AT = [(48.4, 50.45, 0.6, (ps.BUMPERS[1][0], ps.BUMPERS[1][1], 0.058))]  # its cap and eyes
 T_FREEZE_PRE = 0.9  # the cold open plays this long before the freeze frame
 V_REWIND = (3.0, 4.0)
 
@@ -408,6 +410,8 @@ def camera(V, T, rate, you, tau, pos, t_events):
             v = np.array([0.30, 0.30, 0.0]) - np.array([x, y, 0.0])
         elif z < R - 0.002 and y < 0.04 and x < LANE_C - 0.004:  # falling into the trough, in it
             v = np.array([1.0, 0.12, 0.0])
+        elif TILT_LOOK[0] < V[f] < TILT_LOOK[1]:  # flippers dead: staring down at the drain
+            v = np.array([ps.XC, 0.0, 0.0]) - np.array([x, y, 0.0])
         else:
             v = np.array([0.0, 1.0, 0.0])
         look_rest[f] = v / np.linalg.norm(v)

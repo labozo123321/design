@@ -117,7 +117,7 @@ const shakeAt = (te: number, cold: boolean) => {
   for (const k of cold ? COLD_KICKS : KICKS) {
     const d = te - k.t;
     if (d < 0 || d > k.tau * 6) continue;
-    const e = k.amp * Math.exp(-d / k.tau);
+    const e = 0.7 * k.amp * Math.exp(-d / k.tau);
     const w = 2 * Math.PI * k.f * d;
     yaw += e * Math.sin(w + k.t * 7.1);
     pitch += e * 0.8 * Math.sin(w * 1.13 + k.t * 3.3 + 1.0);

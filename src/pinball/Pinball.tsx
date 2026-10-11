@@ -19,6 +19,7 @@ import { Overlay } from "./Overlay";
 import { fxTime, impactAt, poseAt } from "./camera";
 import { KEY } from "./show";
 import { M } from "./timeline";
+import { DEBUG } from "./debug";
 
 const LUCKIEST = loadLuckiest("normal", { weights: ["400"], subsets: ["latin"] });
 const BANGERS = loadBangers("normal", { weights: ["400"], subsets: ["latin"] });
@@ -67,12 +68,12 @@ const gradeAt = (frame: number): Grade => {
   const vhs = t >= M.rewind[0] && t < M.rewind[1] ? 1 : 0;
   const tiltK = t >= KEY.tilt ? Math.exp(-(t - KEY.tilt) / 0.9) : 0;
   const flash =
-    0.06 * hit +
-    0.5 * decay(te, KEY.chomp, 0.12) +
-    0.35 * decay(te, KEY.burp, 0.15) +
-    0.7 * decay(te, KEY.jackpot, 0.18) +
-    0.3 * decay(te, M.launch, 0.12) +
-    (freeze ? 0.6 * decay(t, M.freeze, 0.05) : 0);
+    0.05 * hit +
+    0.4 * decay(te, KEY.chomp, 0.08) +
+    0.3 * decay(te, KEY.burp, 0.1) +
+    0.6 * decay(te, KEY.jackpot, 0.12) +
+    0.25 * decay(te, M.launch, 0.07) +
+    (freeze ? 0.5 * decay(t, M.freeze, 0.05) : 0);
   return {
     ca: 0.0025 + 0.012 * Math.min(1, hit) + 0.012 * vhs,
     flash,
@@ -105,7 +106,12 @@ export const Pinball: React.FC = () => {
           gl={{ antialias: false, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}
         >
           <PinballWorld frame={frame} pose={pose} font={LUCKIEST.fontFamily} />
-          <PinPost prev={prev} blur={cut ? 0 : 1} grade={gradeAt(frame)} bloom={bloom} />
+          <PinPost
+            prev={prev}
+            blur={cut || DEBUG.has("noblur") ? 0 : 1}
+            grade={gradeAt(frame)}
+            bloom={DEBUG.has("nobloom") ? 0 : bloom}
+          />
         </ThreeCanvas>
       ) : null}
       <Overlay frame={frame} fonts={FONTS} />

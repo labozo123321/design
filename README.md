@@ -466,3 +466,37 @@ Render it in six chunks of 350 frames, muted (software GL needs `--timeout=24000
     npx remotion render BlackHole out/bh/part-0.mp4 --frames=0-349 --muted --gl=angle
     ...
     ffmpeg -f concat -safe 0 -i list.txt -i public/blackhole/bed.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k blackhole.mp4
+
+## Pinball (first person, the life of a pinball)
+
+"POV: you're a pinball". A 70 s first-person comedy with no voice: a ball's
+whole life on a cartoon monster-themed table, from the plunger to the drain,
+told in on-screen words and synthesised sound.
+
+1. **Physics:** `scripts/pinball_sim.py` simulates a standard playfield tilted 6.5°:
+   - a 27 mm steel ball rolling (5/7 g sin θ);
+   - walls, the top arch, pop bumpers that kick, slingshots;
+   - flippers swung by their solenoids, drop targets, a one-way gate;
+   - ball-to-ball collisions for the multiball.
+2. **Track:** `python3 scripts/generate-pinball-path.py` writes `src/pinball/track.json`.
+   - It plays the story with search-found flips: launch, skill shot, the bumpers, the right flipper up the monster's tongue (a ramp), chomped and held while two more balls launch, burped out, a flipper shot into the jackpot bumper, the player shoves the machine (TILT, the flippers die), down the middle, the drain, the trough, and the eject back into the shooter lane.
+   - It maps video time to pinball time: slow motion where it's fast, and a cold-open freeze frame plus a rewind at the start.
+   - It also writes the ball-cam's look direction, every ball, the flippers and every event (for picture and sound).
+3. **Sound:** `python3 scripts/generate-pinball-audio.py` builds `public/pinball/bed.mp3` (and `out/pinball/bed.wav` for mastering). Everything is synthesised:
+   - a funky chiptune song in F at 128 BPM. It stops for the record scratch, goes muffled inside the monster, and tape-stops at the TILT;
+   - a sound for every physics event, pitched down in the slow motion;
+   - the set pieces: the chomp, the chewing, the burp, the multiball siren, the jackpot fanfare, the buzzers, the power-down, a sad trombone, a falling whistle into the trough, the game-over jingle, coins and the eject;
+   - the VHS rewind, a time-card jingle, and pops and whooshes for the captions (from `src/pinball/script.json`).
+4. **Picture:** `src/pinball/`:
+   - `art.ts` draws the 4096×8192 playfield print. It has road markings for a reader who is a ball ("YOU GOT THIS", "NO BRAKES", "THE VOID"), printed eyeballs, tentacles and slime, and the baked shadows of everything that stands on it. It also draws the walls' art, a clear-coat scratch tile and the trough's circuit board;
+   - `Table.tsx`, `Parts.tsx`, `Monster.tsx`, `Backbox.tsx`, `Dmd.ts`, `Lights.tsx` build the machine. Bumpers, flippers and balls have googly eyes that turn to look at you. The monster's tongue is the ramp and its mouth has an inside. A dot-matrix display tells the story, the lamps run light shows, and the TILT kills the lights;
+   - `camera.ts` holds the pose for every frame: the third-person cold open, the ball-cam, the plunger pulling you back, shakes on hits, and a lens that widens with speed;
+   - `PinballWorld.tsx` renders the table into a cube from the ball every frame, so the chrome reflects it;
+   - `PinPost.tsx` adds motion blur (reprojected from the logarithmic depth buffer), bloom, and grades for the freeze frame, the VHS rewind and the TILT;
+   - `Overlay.tsx` draws the words: the meme ("yep. that's me."), the time card, the title, comic words where things hit you, score pop-ups, five fun facts, the ball's thoughts, and "here we go again".
+
+Render it in six chunks of 350 frames, muted (software GL: `--gl=swangle --timeout=240000`), then add the bed:
+
+    npx remotion render Pinball out/pb/part-0.mp4 --frames=0-349 --muted --gl=angle
+    ...
+    ffmpeg -f concat -safe 0 -i list.txt -i out/pinball/bed.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k pinball.mp4

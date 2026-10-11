@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { detailTexture, pcbTexture, playfieldTexture, sideTexture } from "./art";
 import { black, chrome, plastic, rubber, std, steelDull, translucent, wood } from "./mats";
 import { LAY } from "./timeline";
+import { DEBUG } from "./debug";
 
 /**
  * Everything on the table that doesn't move: the printed playfield (clear-coated), the cabinet walls with
@@ -94,11 +95,12 @@ export const Post: React.FC<{ x: number; y: number; ring?: string; h?: number }>
   </group>
 );
 
-/** Polished stainless steel for the ball guides and the arch. */
-const guideSteel = () =>
+/** Stainless steel for the ball guides and the arch: satin, not mirror (seen edge-on down a lane, a mirror
+ * finish catches a lamp and blooms into a haze). */
+const guideSteelReal = () =>
   std(
     "guideSteel",
-    () => new THREE.MeshStandardMaterial({ color: "#D9DEE6", metalness: 1, roughness: 0.18 }),
+    () => new THREE.MeshStandardMaterial({ color: "#B4BAC4", metalness: 1, roughness: 0.38 }),
   );
 
 /** The top arch: a curved steel band with a rolled top edge. */
@@ -297,6 +299,46 @@ const Trough: React.FC = () => {
     () => new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 0.2, 0.15), toneMapped: false }),
     [],
   );
+  const stickerMat = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const g = c.getContext("2d")!;
+    g.fillStyle = "#FFD21F";
+    g.fillRect(0, 0, 512, 256);
+    g.fillStyle = "#14051F";
+    for (let x = -64; x < 512; x += 48) {
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x + 24, 0);
+      g.lineTo(x + 54, 26);
+      g.lineTo(x + 30, 26);
+      g.closePath();
+      g.fill();
+      g.beginPath();
+      g.moveTo(x, 230);
+      g.lineTo(x + 24, 230);
+      g.lineTo(x + 54, 256);
+      g.lineTo(x + 30, 256);
+      g.closePath();
+      g.fill();
+    }
+    g.textAlign = "center";
+    g.font = "bold 46px sans-serif";
+    g.fillText("CAUTION", 256, 82);
+    g.font = "900 78px sans-serif";
+    g.fillText("DO NOT LICK", 256, 176, 480);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    return new THREE.MeshStandardMaterial({
+      map: t,
+      roughness: 0.5,
+      emissive: "#FFFFFF",
+      emissiveMap: t,
+      emissiveIntensity: 0.25,
+    });
+  }, []);
   const copper = useMemo(
     () => new THREE.MeshStandardMaterial({ color: "#C87533", metalness: 1, roughness: 0.32 }),
     [],
@@ -347,25 +389,41 @@ const Trough: React.FC = () => {
       <mesh position={[0.001, TROUGH_FLOOR / 2, -(DRAIN_EDGE - 0.028) / 2]} material={dark}>
         <boxGeometry args={[0.002, h, DRAIN_EDGE + 0.028]} />
       </mesh>
-      <mesh position={[FLAP.x1 + 0.001, TROUGH_FLOOR / 2, -(FLAP.y1 + 0.004 - 0.028) / 2]} material={floor}>
+      <mesh
+        position={[FLAP.x1 + 0.001, TROUGH_FLOOR / 2, -(FLAP.y1 + 0.004 - 0.028) / 2]}
+        material={[dark, pcbMat, dark, dark, dark, dark]}
+      >
         <boxGeometry args={[0.002, h, FLAP.y1 + 0.032]} />
       </mesh>
-      {/* the ball stop: a steel tab sticking up just past where the ball waits */}
-      <mesh position={[0.4875, TROUGH_FLOOR + 0.006, -0.008]} material={chrome()}>
-        <boxGeometry args={[0.002, 0.012, 0.016]} />
+      {/* a sticker on the end wall, for the only reader who'll ever see it */}
+      <mesh
+        position={[FLAP.x1 - 0.0003, -0.031, -0.012]}
+        rotation={[0, -Math.PI / 2, 0]}
+        material={stickerMat}
+      >
+        <planeGeometry args={[0.028, 0.014]} />
       </mesh>
-      {/* the eject coil hanging under the playfield at the end, copper windings and a black wrap */}
-      <group position={[0.4945, -0.012, 0.012]} rotation={[0, 0, 0]}>
+      {/* the eject coil on the end wall, up under the shooter lane: copper windings, a black wrap, its
+          plunger pointing at you */}
+      <group position={[0.503, -0.0085, -0.004]} rotation={[0, 0, Math.PI / 2]}>
         <mesh material={copper}>
-          <cylinderGeometry args={[0.009, 0.009, 0.02, 24]} />
+          <cylinderGeometry args={[0.007, 0.007, 0.016, 28]} />
         </mesh>
         <mesh material={dark}>
-          <cylinderGeometry args={[0.0093, 0.0093, 0.008, 24]} />
+          <cylinderGeometry args={[0.0073, 0.0073, 0.006, 28]} />
         </mesh>
-        <mesh position={[0, -0.012, 0]} material={chrome()}>
-          <cylinderGeometry args={[0.003, 0.003, 0.008, 12]} />
+        <mesh position={[0, 0.0105, 0]} material={chrome()}>
+          <cylinderGeometry args={[0.002, 0.002, 0.006, 12]} />
         </mesh>
       </group>
+      {/* a dim lamp at the end, so the sticker can be read */}
+      <pointLight
+        position={[0.49, -0.014, -0.004]}
+        color="#CFE0FF"
+        intensity={0.0004}
+        distance={0}
+        decay={2}
+      />
       {/* wires */}
       {[
         ["#E8263A", 0.004],
@@ -397,9 +455,15 @@ const Cabinet: React.FC = () => {
     b.repeat.set(-1, 1.4167);
     b.offset.set(1, -0.4167);
     b.needsUpdate = true;
-    const artL = new THREE.MeshStandardMaterial({ map: a, roughness: 0.8 });
-    const artR = new THREE.MeshStandardMaterial({ map: b, roughness: 0.8 });
-    return { artL, artR };
+    // matte paint: seen edge-on from the ball, a shinier wall mirrors the bright backglass into a haze
+    const artL = new THREE.MeshStandardMaterial({ map: a, roughness: 0.92, envMapIntensity: 0.25 });
+    const artR = new THREE.MeshStandardMaterial({ map: b, roughness: 0.92, envMapIntensity: 0.25 });
+    const c = t.clone();
+    c.repeat.set(0.5, 1.4167);
+    c.offset.set(0.25, -0.4167);
+    c.needsUpdate = true;
+    const artBack = new THREE.MeshStandardMaterial({ map: c, roughness: 0.92, envMapIntensity: 0.25 });
+    return { artL, artR, artBack };
   }, []);
   const w = wood();
   const H = 0.17;
@@ -416,8 +480,8 @@ const Cabinet: React.FC = () => {
       <mesh position={[W / 2, Y, 0.05]} material={w}>
         <boxGeometry args={[W + 0.08, H, 0.04]} />
       </mesh>
-      {/* the back */}
-      <mesh position={[W / 2, Y, -L - 0.02]} material={w}>
+      {/* the back, under the backbox: the same art */}
+      <mesh position={[W / 2, Y, -L - 0.02]} material={[w, w, w, w, mats.artBack, w]}>
         <boxGeometry args={[W + 0.08, H, 0.04]} />
       </mesh>
     </group>
@@ -462,6 +526,9 @@ export const Plunger: React.FC<{ tip: number }> = ({ tip }) => {
     </group>
   );
 };
+
+/** (the debug switch "nosteel" swaps it for black, to see what the guides contribute) */
+const guideSteel = () => (DEBUG.has("nosteel") ? black() : guideSteelReal());
 
 export const Table: React.FC<{ flap: number }> = ({ flap }) => {
   const steel = guideSteel();

@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { INSERTS, Insert } from "./art";
 import { Show } from "./show";
+import { DEBUG } from "./debug";
 
 /**
  * Light: the lamp inserts glowing up through the playfield (flat shapes just above the print, HDR so
@@ -79,13 +80,17 @@ export const Inserts: React.FC<{ show: Show }> = ({ show }) => {
   );
 };
 
+// (kept 18 cm or more from the side walls: without shadows a lamp lights the shooter lane's wall through
+// the lane's own wall)
 const GI_POS: [number, number, number][] = [
   [0.09, 0.11, -0.25],
-  [0.39, 0.11, -0.27],
+  [0.33, 0.11, -0.27],
   [0.1, 0.11, -0.6],
-  [0.38, 0.11, -0.6],
+  [0.33, 0.11, -0.6],
   [0.25, 0.115, -0.9],
   [0.24, 0.11, -0.13],
+  [0.13, 0.1, -0.98],
+  [0.35, 0.1, -0.98],
 ];
 
 /**
@@ -97,13 +102,13 @@ const GI_POS: [number, number, number][] = [
  * lights (Parts.tsx).
  */
 export const Lighting: React.FC<{ show: Show }> = ({ show }) => {
-  const gi = show.gi;
+  const gi = DEBUG.has("nogi") ? 0 : show.gi;
   return (
     <group>
-      <hemisphereLight args={["#8A6BE0", "#1A0E2A", 0.2 + 0.45 * gi]} />
-      <directionalLight position={[0.3, 1.0, 0.4]} color="#FFE8D0" intensity={0.6 * gi + 0.04} />
+      <hemisphereLight args={["#9A7BF0", "#2A1440", 0.3 + 0.55 * gi]} />
+      <directionalLight position={[0.3, 1.0, 0.4]} color="#FFE8D0" intensity={0.75 * gi + 0.05} />
       {GI_POS.map((p, i) => (
-        <pointLight key={i} position={p} color="#FFD3A0" intensity={0.022 * gi} distance={0} decay={2} />
+        <pointLight key={i} position={p} color="#FFD3A0" intensity={0.028 * gi} distance={0} decay={2} />
       ))}
       <pointLight
         position={[0.1, 0.03, -0.235]}

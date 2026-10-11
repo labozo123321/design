@@ -1,7 +1,7 @@
 import React from "react";
 import * as THREE from "three";
 import { poseAt } from "./camera";
-import { EVENTS, LAY, M, T, clampF } from "./timeline";
+import { EVENTS, LAY, M, T } from "./timeline";
 import { KEY } from "./show";
 import SCRIPT from "./script.json";
 
@@ -650,42 +650,49 @@ const Title: React.FC<{ t: number; fonts: Fonts }> = ({ t, fonts }) => {
   const a = life(t, t0, M.launch - 0.1, 0.12, 0.25);
   if (a <= 0) return null;
   const s = pop(t, t0, 0.25, 1.1);
+  // on a plate of its own: the backglass behind it is busy
   return (
     <div
       style={{
         position: "absolute",
         left: 0,
         right: 0,
-        top: 210,
-        textAlign: "center",
+        top: 190,
+        display: "flex",
+        justifyContent: "center",
         opacity: a,
-        transform: `scale(${s})`,
       }}
     >
       <div
         style={{
-          fontFamily: fonts.meme,
-          fontWeight: 800,
-          fontSize: 64,
-          color: "#FFFFFF",
-          WebkitTextStroke: "9px #160A22",
-          paintOrder: "stroke fill",
+          transform: `scale(${s}) rotate(-2deg)`,
+          textAlign: "center",
+          padding: "18px 46px 26px",
+          borderRadius: 44,
+          background: "rgba(20, 8, 38, 0.9)",
+          border: "6px solid #FFE95C",
+          boxShadow: "0 12px 0 rgba(0,0,0,0.45)",
         }}
       >
-        POV:
-      </div>
-      <div
-        style={{
-          fontFamily: fonts.title,
-          fontSize: 104,
-          color: "#FFE95C",
-          WebkitTextStroke: "12px #160A22",
-          paintOrder: "stroke fill",
-          lineHeight: 1.05,
-          textShadow: "0 9px 0 #160A22",
-        }}
-      >
-        you're a pinball
+        <div
+          style={{ fontFamily: fonts.meme, fontWeight: 800, fontSize: 60, color: "#FFFFFF", lineHeight: 1.1 }}
+        >
+          POV:
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.title,
+            fontSize: 100,
+            color: "#FFE95C",
+            WebkitTextStroke: "10px #160A22",
+            paintOrder: "stroke fill",
+            lineHeight: 1.05,
+            textShadow: "0 8px 0 #160A22",
+            whiteSpace: "nowrap",
+          }}
+        >
+          you're a pinball
+        </div>
       </div>
     </div>
   );
@@ -740,25 +747,52 @@ const Stamp: React.FC<{
   );
 };
 
-const SlowMo: React.FC<{ t: number; frame: number; fonts: Fonts }> = ({ t, frame, fonts }) => {
-  if (t < M.launch + 0.3 || t > M.drain + 3) return null;
-  const r = Math.abs(T.rate[clampF(frame)] ?? 1);
-  const a = 1 - smooth(0.42, 0.55, r);
-  if (a <= 0.01) return null;
-  const label = r < 0.12 ? "×0.1" : r < 0.2 ? "×0.15" : r < 0.3 ? "×0.25" : "×0.5";
+/** The deepest slow motion (under 0.15x): when each stretch begins, and how slow it gets. */
+const DEEP_SLOWMO = (() => {
+  const out: { t: number; min: number }[] = [];
+  let start = -1;
+  let min = 1;
+  for (let f = Math.round((M.launch + 0.3) * FPS); f < Math.round((M.drain + 3) * FPS); f++) {
+    const r = Math.abs(T.rate[f] ?? 1);
+    if (r < 0.15) {
+      if (start < 0) {
+        start = f;
+        min = r;
+      }
+      min = Math.min(min, r);
+    } else if (start >= 0) {
+      out.push({ t: start / FPS, min });
+      start = -1;
+    }
+  }
+  return out;
+})();
+
+/** A badge with a snail when the slow motion gets really deep (just as it starts, not all the time). */
+const SlowMo: React.FC<{ t: number; fonts: Fonts }> = ({ t, fonts }) => {
+  const seg = DEEP_SLOWMO.find((d) => t >= d.t && t < d.t + 1.9);
+  if (!seg) return null;
+  const a = life(t, seg.t, seg.t + 1.9, 0.12, 0.3);
+  const label =
+    "×" +
+    Math.max(0.01, Math.round(seg.min * 100) / 100)
+      .toFixed(2)
+      .replace(/0$/, "");
   return (
     <div
       style={{
         position: "absolute",
         right: 60,
         top: 150,
-        opacity: a * 0.92,
+        opacity: a * 0.95,
+        transform: `scale(${pop(t, seg.t, 0.2, 1.12)})`,
+        transformOrigin: "100% 50%",
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "8px 20px 8px 14px",
         borderRadius: 40,
-        background: "rgba(10,4,20,0.6)",
+        background: "rgba(10,4,20,0.7)",
       }}
     >
       <svg width={64} height={44} viewBox="0 0 64 44">
@@ -791,7 +825,7 @@ export const Overlay: React.FC<{ frame: number; fonts: Fonts }> = ({ frame, font
       <ColdOpen t={t} frame={frame} fonts={fonts} />
       <Rewind t={t} fonts={fonts} />
       <Title t={t} fonts={fonts} />
-      <SlowMo t={t} frame={frame} fonts={fonts} />
+      <SlowMo t={t} fonts={fonts} />
       {FACTS.map((f, i) => (
         <FactCard key={i} f={f} t={t} fonts={fonts} />
       ))}
@@ -892,7 +926,7 @@ export const Overlay: React.FC<{ frame: number; fonts: Fonts }> = ({ frame, font
         fill="#FF8A1E"
         stroke="#200800"
         rot={0}
-        top={760}
+        top={470}
         glow="#FF6A00"
       />
       <Stamp
@@ -922,19 +956,36 @@ export const Overlay: React.FC<{ frame: number; fonts: Fonts }> = ({ frame, font
       {THOUGHTS.map((l, i) => (
         <Thought key={i} line={l} t={t} font={fonts.round} />
       ))}
-      {/* the end: the meme */}
+      {/* the end: the meme, on a plate like the title's */}
       {t >= 67.9 ? (
         <div
           style={{
             position: "absolute",
-            left: 60,
-            right: 60,
-            top: 1280,
-            ...memeText(fonts.meme, 84),
-            opacity: smooth(67.9, 68.1, t),
+            left: 0,
+            right: 0,
+            top: 230,
+            display: "flex",
+            justifyContent: "center",
           }}
         >
-          here we go again
+          <div
+            style={{
+              opacity: smooth(67.9, 68.05, t),
+              transform: `scale(${pop(t, 67.9, 0.22, 1.12)}) rotate(-2deg)`,
+              padding: "20px 44px 26px",
+              borderRadius: 44,
+              background: "rgba(20, 8, 38, 0.9)",
+              border: "6px solid #FFFFFF",
+              boxShadow: "0 12px 0 rgba(0,0,0,0.45)",
+              fontFamily: fonts.meme,
+              fontWeight: 800,
+              fontSize: 82,
+              color: "#FFFFFF",
+              whiteSpace: "nowrap",
+            }}
+          >
+            here we go again
+          </div>
         </div>
       ) : null}
       <EarlierCard t={t} fonts={fonts} />

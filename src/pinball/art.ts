@@ -492,43 +492,54 @@ const sparkle = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
   ctx.fill();
 };
 
-/** Soft contact shadows of everything standing on the playfield (blurred, baked into the print). */
+/**
+ * Soft contact shadows of everything standing on the playfield, baked into the print. They're soft, so
+ * they're drawn and blurred on a canvas an eighth the size and scaled up (blurring the full-size print
+ * in software takes ages).
+ */
 const bakeShadows = (ctx: CanvasRenderingContext2D) => {
-  ctx.save();
-  const blur = (m: number) => (ctx.filter = `blur(${Math.round(pr(m))}px)`);
+  const S = 8;
+  const c = document.createElement("canvas");
+  c.width = CW / S;
+  c.height = CH / S;
+  const g = c.getContext("2d")!;
+  const qx = (x: number) => px(x) / S;
+  const qy = (y: number) => py(y) / S;
+  const qr = (r: number) => pr(r) / S;
+  const blur = (m: number) => (g.filter = `blur(${Math.max(1, Math.round(qr(m)))}px)`);
   // pop bumpers: a dark ring round the skirt
   blur(0.006);
-  ctx.fillStyle = "rgba(4, 0, 10, 0.75)";
+  g.fillStyle = "rgba(4, 0, 10, 0.75)";
   for (const [x, y] of LAY.bumpers as [number, number][]) {
-    ctx.beginPath();
-    ctx.arc(px(x), py(y), pr(0.047), 0, Math.PI * 2);
-    ctx.fill();
+    g.beginPath();
+    g.arc(qx(x), qy(y), qr(0.047), 0, Math.PI * 2);
+    g.fill();
   }
   // the monster's head (it sits in the corner)
   blur(0.012);
-  ctx.beginPath();
-  ctx.arc(px(LAY.monster[0]), py(LAY.monster[1] - 0.01), pr(0.075), 0, Math.PI * 2);
-  ctx.fill();
+  g.beginPath();
+  g.arc(qx(LAY.monster[0]), qy(LAY.monster[1] - 0.01), qr(0.075), 0, Math.PI * 2);
+  g.fill();
   // slingshots
   blur(0.005);
-  ctx.fillStyle = "rgba(4, 0, 10, 0.7)";
+  g.fillStyle = "rgba(4, 0, 10, 0.7)";
   for (const s of ["L", "R"] as const) {
     const p = LAY.slings[s] as [number, number][];
-    ctx.beginPath();
-    p.forEach(([x, y], i) => (i ? ctx.lineTo(px(x), py(y)) : ctx.moveTo(px(x), py(y))));
-    ctx.closePath();
-    ctx.fill();
+    g.beginPath();
+    p.forEach(([x, y], i) => (i ? g.lineTo(qx(x), qy(y)) : g.moveTo(qx(x), qy(y))));
+    g.closePath();
+    g.fill();
   }
   // walls and wire guides: dark lines
   blur(0.004);
-  ctx.strokeStyle = "rgba(4, 0, 10, 0.8)";
-  ctx.lineCap = "round";
+  g.strokeStyle = "rgba(4, 0, 10, 0.8)";
+  g.lineCap = "round";
   const line = (a: [number, number], b: [number, number], w: number) => {
-    ctx.lineWidth = pr(w);
-    ctx.beginPath();
-    ctx.moveTo(px(a[0]), py(a[1]));
-    ctx.lineTo(px(b[0]), py(b[1]));
-    ctx.stroke();
+    g.lineWidth = qr(w);
+    g.beginPath();
+    g.moveTo(qx(a[0]), qy(a[1]));
+    g.lineTo(qx(b[0]), qy(b[1]));
+    g.stroke();
   };
   line([0.0, 0.0], [0.0, LAY.archC[1]], 0.02);
   line([W, 0.0], [W, LAY.archC[1]], 0.02);
@@ -541,21 +552,24 @@ const bakeShadows = (ctx: CanvasRenderingContext2D) => {
     line(p[1], p[2], 0.012);
   }
   // the arch
-  ctx.lineWidth = pr(0.02);
-  ctx.beginPath();
-  ctx.arc(px(LAY.archC[0]), py(LAY.archC[1]), pr(LAY.archR), Math.PI, Math.PI * 2);
-  ctx.stroke();
+  g.lineWidth = qr(0.02);
+  g.beginPath();
+  g.arc(qx(LAY.archC[0]), qy(LAY.archC[1]), qr(LAY.archR), Math.PI, Math.PI * 2);
+  g.stroke();
   // the drop targets
   blur(0.003);
-  ctx.fillStyle = "rgba(4, 0, 10, 0.7)";
+  g.fillStyle = "rgba(4, 0, 10, 0.7)";
   for (const [x, y] of LAY.drops as [number, number][])
-    ctx.fillRect(px(x - LAY.dropW / 2), py(y + 0.006), pr(LAY.dropW), pr(0.012));
+    g.fillRect(qx(x - LAY.dropW / 2), qy(y + 0.006), qr(LAY.dropW), qr(0.012));
   // under the apron's front edge
   blur(0.008);
-  ctx.fillStyle = "rgba(4, 0, 10, 0.85)";
-  ctx.fillRect(0, py(LAY.apronY + 0.006), px(LAY.laneX), CH);
+  g.fillStyle = "rgba(4, 0, 10, 0.85)";
+  g.fillRect(0, qy(LAY.apronY + 0.006), qx(LAY.laneX), CH / S);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(c, 0, 0, CW, CH);
   ctx.restore();
-  ctx.filter = "none";
 };
 
 /* ------------------------------------------------------------------ */
@@ -594,13 +608,14 @@ export const playfieldTexture = () => {
   // a printed halftone of fine dots over the whole field (it shows up close)
   ctx.fillStyle = "rgba(255, 255, 255, 0.045)";
   const step = 18 * K;
+  ctx.beginPath();
   for (let y = 0, row = 0; y < CH; y += step, row++) {
     for (let x = row % 2 ? step / 2 : 0; x < CW; x += step) {
-      ctx.beginPath();
+      ctx.moveTo(x + 3.2 * K, y);
       ctx.arc(x, y, 3.2 * K, 0, Math.PI * 2);
-      ctx.fill();
     }
   }
+  ctx.fill();
   // a checkerboard band behind the top lanes
   const g0 = LAY.laneGuides[0];
   const g3 = LAY.laneGuides[3];

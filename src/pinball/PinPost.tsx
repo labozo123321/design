@@ -113,7 +113,7 @@ const GradeShader = {
     uVhs: { value: 0 },
     uTilt: { value: 0 },
     uDark: { value: 0 },
-    uGrain: { value: 0.035 },
+    uGrain: { value: 0.012 },
     uVig: { value: 0.32 },
   },
   vertexShader: VERT,
@@ -171,7 +171,7 @@ const GradeShader = {
       if (uFreeze > 0.0) {
         float l = dot(col, vec3(0.299, 0.587, 0.114));
         col = mix(col, vec3(l) * vec3(1.12, 1.0, 0.82), 0.55 * uFreeze);
-        col = mix(col, col * 0.9 + 0.05, 0.6 * uFreeze);
+        col = mix(col, col * 0.94 + 0.02, 0.6 * uFreeze);
       }
       // the TILT: everything throbs red
       if (uTilt > 0.0) {
@@ -179,7 +179,8 @@ const GradeShader = {
         col = mix(col, vec3(l * 1.6, l * 0.25, l * 0.2) + vec3(0.06, 0.0, 0.0), uTilt);
       }
       col *= 1.0 - uDark;
-      col += uFlash;
+      // a hit's flash brightens what's there (and only a little lifts the blacks), so it doesn't fog
+      col = col * (1.0 + 2.5 * uFlash) + uFlash * 0.12;
       // vignette and grain
       float v = smoothstep(0.85, 0.25, length(c * vec2(1.0, 1.25)));
       col *= mix(1.0 - uVig, 1.0, v);
@@ -262,7 +263,7 @@ export const PinPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom: 
   prevCam.updateMatrixWorld();
   const u = post.mb.uniforms;
   u.uPrevViewProj.value.multiplyMatrices(prevCam.projectionMatrix, prevCam.matrixWorldInverse);
-  u.uShutter.value = 0.5 * blur;
+  u.uShutter.value = 0.38 * blur;
   u.uFar.value = camera.far;
   post.mb.enabled = blur > 0.001;
   post.bloomPass.strength = bloom;

@@ -10,9 +10,15 @@ import { Monster } from "./Monster";
 import { BumperLights, Bumpers, Ctx, EyedBall, Flippers, OtherBalls, Teeth } from "./Parts";
 import { Plunger, Table } from "./Table";
 import { showAt } from "./show";
-import { M } from "./timeline";
+import { EVENTS, M, T, clampF } from "./timeline";
+import { DEBUG } from "./debug";
 
 export { fxTime };
+
+const tauOf = (kind: string) =>
+  EVENTS.find((e) => e.kind === kind && !(e as { cold?: boolean }).cold)?.tau ?? 1e9;
+const TAU_CHOMP = tauOf("chomp");
+const TAU_BURP = tauOf("burp");
 
 /** Layer for things the reflection camera must not see (you, from the inside). */
 const HIDDEN = 1;
@@ -45,6 +51,10 @@ const LiveReflections: React.FC<{ at: THREE.Vector3 }> = ({ at }) => {
   }, []);
   const room = useMemo(() => envMap(gl), [gl]);
   useFrame(() => {
+    if (DEBUG.has("noenv")) {
+      scene.environment = room;
+      return;
+    }
     cube.cam.position.copy(at);
     cube.cam.updateMatrixWorld();
     scene.environment = room;
@@ -72,8 +82,10 @@ export const PinballWorld: React.FC<{ frame: number; pose: Pose; font: string }>
   }, [scene, gl]);
   const ctx: Ctx = { frame, t, te, cam: pose.pos.clone(), cold: t < M.rewind[1] };
   const show = showAt(t, te, frame);
-  // inside the monster's mouth from the chomp until you're spat back out past its lips
-  const inside = t >= M.chomp + 0.02 && t < M.burp + 0.12;
+  // inside the monster's mouth from the chomp until you're spat back out past its lips (by pinball time, so
+  // the rewind gets it right too)
+  const tau = T.tau[clampF(frame)];
+  const inside = tau >= TAU_CHOMP + 0.0026 && tau < TAU_BURP + 0.036;
   const you = useRef<THREE.Group>(null);
   useFrame(() => you.current?.traverse((o) => o.layers.set(HIDDEN)), -2);
   return (
@@ -102,7 +114,14 @@ export const PinballWorld: React.FC<{ frame: number; pose: Pose; font: string }>
           />
         </group>
       ) : null}
-      <Backbox lines={show.dmd} frame={frame} extra={show.dmdExtra} glow={show.glass} font={font} />
+      <Backbox
+        lines={show.dmd}
+        frame={frame}
+        extra={show.dmdExtra}
+        glow={show.glass}
+        font={font}
+        beat={show.beat}
+      />
     </>
   );
 };

@@ -66,6 +66,18 @@ export type Show = {
   flash: { monster: number; bumpers: number; centre: number };
   score: number;
   glass: number;
+  /** The music's beat (1 on each beat, decaying), for the speaker lights; 0 when the song isn't playing. */
+  beat: number;
+};
+
+const BEAT = 60 / 128;
+/** On the song's 128 BPM grid: the cold open's starts a bar and a half before the video, the main one at
+ * the launch (matching scripts/generate-pinball-audio.py). */
+const beatAt = (t: number) => {
+  let phase = -1;
+  if (t < M.freeze) phase = (t + BEAT * 6) % BEAT;
+  else if (t >= M.launch && t < M.tilt) phase = (t - M.launch) % BEAT;
+  return phase < 0 ? 0 : Math.exp(-phase / 0.09);
 };
 
 const blink = (t: number, period: number, duty = 0.5) => ((t / period) % 1 < duty ? 1 : 0);
@@ -226,5 +238,5 @@ export const showAt = (t: number, te: number, frame: number): Show => {
       { text: "AGAIN", y: 17, scale: 2 },
     ];
   }
-  return { gi, lamp, dmd, dmdExtra, flash, score, glass: tilted ? 0.35 : 1 };
+  return { gi, lamp, dmd, dmdExtra, flash, score, glass: tilted ? 0.35 : 1, beat: beatAt(t) };
 };
