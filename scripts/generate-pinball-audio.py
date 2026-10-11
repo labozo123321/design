@@ -4,9 +4,9 @@ Sound for the Pinball composition ("POV: you're a pinball"): every sound synthes
 src/pinball/track.json (the physics events) and src/pinball/script.json (the captions). No voice.
 
   0-0.9 s    the cold open: the song mid-chorus, BONK, then a record scratch into the freeze frame
-  0.9-3      silence under "yep. that's me."
+  0.9-3      silence over the freeze frame (the delivered cut keeps just the scratch)
   3-4        the VHS rewind: tape whine, the cold open squealing backwards
-  4-5.45     "15 SECONDS EARLIER": a xylophone run
+  4-5.45     (cut from the delivered video)
   5.45-8.6   the coin, the plunger creaking back, a drum roll and a climbing bass... BOING
   8.6-28.6   the song: funky chiptune, 128 BPM in F; every hit has its own sound (bumpers bonk, slings
              thwack, flippers clack), pitched down in the slow motion
@@ -570,20 +570,6 @@ def xylophone(nn, sec=0.6):
     return v * adsr(len(t), 0.001, 0.05)
 
 
-def card_jingle():
-    """The time card: a xylophone running up F major, a ding at the top."""
-    notes = [65, 69, 72, 77, 81, 84, 89]
-    out = np.zeros(int(1.6 * SR))
-    for i, nn in enumerate(notes):
-        v = xylophone(nn, 0.7) * 0.5
-        i0 = int(i * 0.055 * SR)
-        out[i0 : i0 + len(v)] += v
-    b = bell(midi(96), 1.0) * 0.25
-    i0 = int(0.42 * SR)
-    out[i0 : i0 + len(b)] += b
-    return out
-
-
 def whoosh(sec=0.5, f0=300, f1=3000, k=1.0):
     x = noise(sec)
     fc = np.geomspace(f0, f1, len(x))
@@ -1085,7 +1071,6 @@ def sfx():
     # the cold open: record scratch into the freeze (the VHS rewind is added in the mix), the time card,
     # the title
     place(b, stereo(record_scratch(), 0, 0.3), KEY["freeze"] - 0.05, 0.9)
-    place(b, stereo(card_jingle(), 0, 0.5), KEY["card"], 0.55)
     place(b, stereo(whoosh(0.5, 200, 2500), 0, 0.6), KEY["title"] - 0.15, 0.4)
     place(b, stereo(ga.kick(0.5, 90, 40, 0.25)), KEY["title"], 0.45)
     # the captions: a soft pop for each thought, a whoosh and a ding for each fact

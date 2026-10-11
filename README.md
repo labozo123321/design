@@ -496,7 +496,7 @@ where a video about something else suddenly turns into that).
    - `camera.ts` holds the pose for every frame: the third-person cold open, the ball-cam, the plunger pulling you back, shakes on hits, and a lens that widens with speed;
    - `PinballWorld.tsx` renders the table into a cube from the ball every frame, so the chrome reflects it;
    - `PinPost.tsx` adds motion blur (reprojected from the logarithmic depth buffer), bloom, and grades for the freeze frame, the VHS rewind and the TILT;
-   - `Overlay.tsx` draws the words: the meme ("yep. that's me."), the time card, the title, comic words where things hit you, score pop-ups, five fun facts, the ball's thoughts, and "here we go again".
+   - `Overlay.tsx` draws the few words there are: the title, eight of the ball's thoughts, one fun fact, and "here we go again" (no comic sound words, no stamps, no meme over the cold open).
 
 5. **The ending:** `src/tsunami/` is its own composition (`Tsunami`, 16.6 s), in the 3D style of the other first-person pieces:
    - `world.ts` holds the maths: a crescent bay with headlands and a sandbar, the sea level (a last wash over your feet, then the drawback, 4 m down and 230 m out), the wave (a white line at 2.4 km that grows into a 31 m wall), the camera (looking down at your feet in the wash, the zoom on the horizon, turning round, the whip back) and everyone's paths;
@@ -511,3 +511,5 @@ Render the pinball in three chunks of 700 frames and the ending in two, all mute
     npx remotion render Tsunami out/ts/part-1.mp4 --frames=249-497 --muted --gl=angle
     ffmpeg -i out/pb/part-0.mp4 -i out/pb/part-1.mp4 -i out/pb/part-2.mp4 -i out/ts/part-0.mp4 -i out/ts/part-1.mp4 -i out/pinball/bed.wav \
       -filter_complex "[0:v][1:v][2:v][3:v][4:v]concat=n=5:v=1:a=0[v]" -map "[v]" -map 5:a -c:v libx264 -crf 18 -c:a aac -b:a 256k pinball.mp4
+
+The delivered cut (83.5 s) is tighter at the start: after the record scratch it holds the freeze frame for only half a second, plays the 1 s VHS rewind, and goes straight to the title. In composition frames it keeps 0-40, 90-119 and 164 onward (the soundtrack at the same times, from 5.45 s for the title's kick, with 6 ms fades at the joins).
