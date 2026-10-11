@@ -1,30 +1,10 @@
 {
   "thoughts": [
     {
-      "t0": 5.6,
-      "t1": 6.9,
-      "text": "ok. stay calm."
-    },
-    {
-      "t0": 7.0,
-      "t1": 8.45,
-      "text": "I'm a professional."
-    },
-    {
       "t0": 8.8,
       "t1": 10.3,
       "text": "AAAAAAAAAAAA",
       "big": true
-    },
-    {
-      "t0": 13.25,
-      "t1": 14.8,
-      "text": "SKILL SHOT?! I'm amazing"
-    },
-    {
-      "t0": 15.0,
-      "t1": 16.0,
-      "text": "who put these here"
     },
     {
       "t0": 16.35,
@@ -33,44 +13,14 @@
       "big": true
     },
     {
-      "t0": 20.45,
-      "t1": 21.3,
-      "text": "ow."
-    },
-    {
-      "t0": 21.6,
-      "t1": 22.5,
-      "text": "OW."
-    },
-    {
       "t0": 23.0,
       "t1": 25.9,
       "text": "not the drain not the drain not the drain"
     },
     {
-      "t0": 26.75,
-      "t1": 27.75,
-      "text": "oh no it has EYES"
-    },
-    {
-      "t0": 27.85,
-      "t1": 28.55,
-      "text": "is this... a tongue?"
-    },
-    {
       "t0": 29.7,
       "t1": 31.0,
       "text": "it's moist in here"
-    },
-    {
-      "t0": 31.2,
-      "t1": 32.7,
-      "text": "smells like old quarters"
-    },
-    {
-      "t0": 33.55,
-      "t1": 35.0,
-      "text": "I've been burped."
     },
     {
       "t0": 35.25,
@@ -79,30 +29,10 @@
       "big": true
     },
     {
-      "t0": 38.9,
-      "t1": 40.3,
-      "text": "sorry about your tooth"
-    },
-    {
-      "t0": 43.15,
-      "t1": 44.3,
-      "text": "excuse me"
-    },
-    {
-      "t0": 47.6,
-      "t1": 49.45,
-      "text": "come on come on come on"
-    },
-    {
       "t0": 50.0,
       "t1": 51.4,
       "text": "WE'RE RICH",
       "big": true
-    },
-    {
-      "t0": 51.6,
-      "t1": 52.9,
-      "text": "why is the floor moving"
     },
     {
       "t0": 54.5,
@@ -110,61 +40,18 @@
       "text": "bro."
     },
     {
-      "t0": 58.0,
-      "t1": 59.95,
-      "text": "tell my family I love them"
-    },
-    {
       "t0": 61.0,
       "t1": 62.85,
       "text": "so... this is the afterlife"
-    },
-    {
-      "t0": 64.9,
-      "t1": 65.9,
-      "text": "wait."
-    },
-    {
-      "t0": 66.0,
-      "t1": 67.4,
-      "text": "no no no no"
     }
   ],
   "facts": [
     {
-      "t0": 10.5,
-      "t1": 12.95,
-      "head": "PLAYER 1: YOU",
-      "body": "27 mm of solid steel · 80 g · brakes: none",
-      "color": "#7FF0FF"
-    },
-    {
-      "t0": 22.7,
-      "t1": 26.0,
-      "head": "FUN FACT",
-      "body": "Pinball had no flippers at all until 1947",
-      "color": "#FFE95C"
-    },
-    {
-      "t0": 37.4,
-      "t1": 40.8,
+      "t0": 42.0,
+      "t1": 45.4,
       "head": "FUN FACT",
       "body": "NYC banned pinball from 1942 to 1976. Police smashed machines with sledgehammers.",
       "color": "#FF8FC5"
-    },
-    {
-      "t0": 44.2,
-      "t1": 47.4,
-      "head": "FUN FACT",
-      "body": "1976: Roger Sharpe called his shot in a courtroom, and pinball was legal again",
-      "color": "#B6FF4D"
-    },
-    {
-      "t0": 55.6,
-      "t1": 58.6,
-      "head": "FUN FACT",
-      "body": "TILT was invented in the 1930s because players kept shaking the machines",
-      "color": "#FF6A5C"
     }
   ]
 }
