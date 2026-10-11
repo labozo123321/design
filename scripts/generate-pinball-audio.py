@@ -18,6 +18,12 @@ src/pinball/track.json (the physics events) and src/pinball/script.json (the cap
   53-60      rolling to the drain in silence; a sad trombone
   60-66      plop, a falling whistle, the trough's hum; GAME OVER jingle; a coin
   66-70      the eject: THUNK, a rising whistle; the drum roll starts again (the loop)
+  70-86.6    hard cut to a beach (src/tsunami/cues.json): surf and gulls, a wash over your feet, the sea
+             sucked out, silence, a white line, the rumble, people running past, BRAAAM, the roar...
+             hard cut to black and silence at 86.2
+
+The music runs under everything now (an island-funk band: drums, bass guitar, ukulele, clav, horns and a
+whistled tune), except the freeze frame; a sad violin takes over when the flippers die.
 
     python3 scripts/generate-pinball-audio.py   # writes public/pinball/bed.mp3 (and out/pinball/bed.wav)
 """
@@ -44,9 +50,14 @@ with open(os.path.join(ROOT, "src", "pinball", "track.json")) as f:
     TR = json.load(f)
 with open(os.path.join(ROOT, "src", "pinball", "script.json")) as f:
     SCRIPT = json.load(f)
+with open(os.path.join(ROOT, "src", "tsunami", "cues.json")) as f:
+    CUES = json.load(f)
 FPS = TR["fps"]
 FR = TR["frames"]
-DUR = FR / FPS
+# the pinball runs 70 s, then a hard cut to the beach (src/tsunami: the sea pulls back, the tsunami)
+END0 = FR / FPS
+assert abs(CUES["start"] - END0) < 1e-6
+DUR = END0 + CUES["dur"]
 N = int(DUR * SR)
 PAD = SR * 4
 M = TR["marks"]
@@ -611,9 +622,11 @@ def creak(f, sec):
 
 CHORDS = {"F": [53, 57, 60, 65], "Dm": [50, 53, 57, 62], "Bb": [46, 50, 53, 58], "C": [48, 52, 55, 60], "Am": [45, 48, 52, 57]}
 ROOTS = {"F": 41, "Dm": 38, "Bb": 34, "C": 36, "Am": 33}
+# ukulele voicings (re-entrant feel: everything round middle C)
+UKE = {"F": [60, 65, 69, 72], "Dm": [62, 65, 69, 74], "Bb": [62, 65, 70, 74], "C": [60, 64, 67, 72], "Am": [60, 64, 69, 72]}
 PROG_A = ["F", "Dm", "Bb", "C"]
 PROG_B = ["F", "Am", "Bb", "C"]
-# the lead, 8 bars of eighths: midi note, 0 rest, -1 tie
+# the tune, 8 bars of eighths: midi note, 0 rest, -1 tie (whistled, an octave up)
 MELODY = [
     [72, -1, 69, 72, 77, -1, 76, 74],
     [74, -1, 69, 74, 77, -1, 74, 72],
@@ -629,8 +642,40 @@ BASS = [(0, 0, 2, 1.0), (3, 12, 1, 0.6), (4, 0, 1, 0.8), (6, 12, 1, 0.7), (8, 0,
         (11, 12, 1, 0.7), (12, 0, 1, 0.8), (14, 10, 1, 0.6), (15, 12, 1, 0.5)]
 
 
+_KS = {}
+
+
+def ks(f, sec, bright=0.6, damp=0.996):
+    """Karplus-Strong plucked string at f Hz: a burst of filtered noise round a damped loop, retuned to f.
+    Cached (the same notes come round every bar)."""
+    key = (round(f, 3), round(sec, 3), bright, damp)
+    hit = _KS.get(key)
+    if hit is not None:
+        return hit
+    n = int(sec * SR)
+    L = max(2, int(SR / f - 0.5))
+    m = min(n, L)
+    r = np.random.default_rng(int(f * 7) % 10007)
+    burst = r.uniform(-1, 1, m)
+    if bright < 0.99:
+        burst = lp(burst, 300 + 9000 * bright)
+    exc = np.zeros(n)
+    exc[:m] = burst
+    a = np.zeros(L + 2)
+    a[0] = 1.0
+    a[L] = a[L + 1] = -0.5 * damp
+    y = signal.lfilter([1.0], a, exc)
+    # the loop rings at SR / (L + 0.5): read it back slower or faster to land on f exactly
+    ratio = f / (SR / (L + 0.5))
+    y = np.interp(np.arange(n) * ratio, np.arange(n), y)
+    y = y * adsr(n, 0.001, min(0.06, sec * 0.3))
+    y /= max(1e-9, float(np.max(np.abs(y))))
+    _KS[key] = y
+    return y
+
+
 def kick_drum():
-    return ga.kick(0.35, 170, 50, 0.11)
+    return ga.kick(0.35, 175, 48, 0.12)
 
 
 def snare():
@@ -641,6 +686,15 @@ def snare():
     return sat(body + sn * 0.9, 1.3)
 
 
+def snare_clap():
+    s1 = snare()
+    c = ga.clap(0.25)
+    out = np.zeros(max(len(s1), len(c)))
+    out[: len(s1)] += s1
+    out[: len(c)] += c * 0.8
+    return out
+
+
 def hat_c():
     return ga.hat(0.06, 0.016)
 
@@ -649,22 +703,70 @@ def hat_o():
     return ga.hat(0.3, 0.09) * 0.8
 
 
+def tamb():
+    sec = 0.2
+    n = int(sec * SR)
+    e = np.zeros(n)
+    for off in (0.0, 0.011, 0.026):
+        i = int(off * SR)
+        e[i:] += decay(n - i, 0.035)
+    return hp(noise(sec), 5500, 2) * e * 0.5
+
+
+def shaker():
+    sec = 0.07
+    return hp(noise(sec), 6500) * adsr(int(sec * SR), 0.015, 0.045)
+
+
+def snap():
+    sec = 0.12
+    n = int(sec * SR)
+    return bp(noise(sec), 1800, 5000) * decay(n, 0.012) + np.sin(2 * np.pi * 1350 * t_axis(sec)) * decay(n, 0.006) * 0.4
+
+
 def bass_note(nn, sec, vel):
-    t = t_axis(sec)
+    """Bass guitar: a plucked string with a round sine under it, a touch of grit."""
     f = midi(nn)
-    ph = 2 * np.pi * f * t
-    v = 0.6 * square(ph, 0.5) + 0.6 * signal.sawtooth(ph)
-    fc = 300 + 2400 * vel * np.exp(-t / 0.07)
-    v = vfilter(v, fc, "low", 64) + 0.35 * np.sin(ph)
-    return v * adsr(len(t), 0.003, 0.03) * vel
+    s1 = ks(f, sec, 0.45 + 0.25 * vel, 0.9985)
+    sub = np.sin(2 * np.pi * f * t_axis(sec)) * adsr(int(sec * SR), 0.004, min(0.05, sec * 0.3))
+    return sat(s1 * 0.8 + sub * 0.7, 1.4) * vel
 
 
-def lead_note(nn, sec):
+def strum(ch, sec, down=True, k=1.0, bright=0.72):
+    """A ukulele strum: four plucked strings a few ms apart (low to high going down)."""
+    notes = UKE[ch] if down else UKE[ch][::-1]
+    n = int((sec + 0.05) * SR)
+    out = np.zeros(n)
+    for i, nn in enumerate(notes):
+        v = ks(midi(nn), sec, bright, 0.993)
+        i0 = int(i * 0.0105 * SR)
+        j = min(n, i0 + len(v))
+        out[i0:j] += v[: j - i0] * (1.0 if i == 0 else 0.85)
+    return out * k * 0.32
+
+
+def clav(notes, sec=0.2):
+    """Funky clavinet stab: bright plucks, muted fast, no bottom."""
+    n = int(sec * SR)
+    out = np.zeros(n)
+    for nn in notes:
+        out += ks(midi(nn), sec, 1.0, 0.985)
+    return hp(out / len(notes), 280) * adsr(n, 0.001, 0.05)
+
+
+def whistle(nn, sec, prev=None):
+    """Someone whistling the tune: a pure tone with a little breath, sliding in from the last note."""
     t = t_axis(sec)
-    f = midi(nn) * (1 + 0.006 * np.sin(2 * np.pi * 6 * t) * smooth(0.12, 0.3, t))
+    f0 = midi(nn)
+    if prev:
+        f = f0 * (midi(prev) / f0) ** np.exp(-t / 0.03)
+    else:
+        f = np.full(len(t), f0) * (1 - 0.03 * np.exp(-t / 0.04))
+    f = f * (1 + 0.011 * np.sin(2 * np.pi * 5.6 * t) * smooth(0.1, 0.3, t))
     ph = 2 * np.pi * np.cumsum(f) / SR
-    v = square(ph, 0.25) * 0.7 + square(ph * 1.003, 0.5) * 0.3
-    return lp(v, 5200) * adsr(len(t), 0.004, 0.04)
+    tone = np.sin(ph) + 0.06 * np.sin(2 * ph)
+    breath = bp(noise(sec), f0 * 0.85, f0 * 1.2) * 0.14
+    return (tone + breath) * adsr(len(t), 0.02, min(0.07, sec * 0.3))
 
 
 def arp_note(nn, sec):
@@ -672,67 +774,94 @@ def arp_note(nn, sec):
     return tri(ph) * adsr(int(sec * SR), 0.002, sec * 0.6)
 
 
+GROOVE = {"drums": 1, "bass": 1, "uke": 1, "clav": 0, "brass": 0, "lead": 1, "arp": 0, "tamb": 0, "shaker": 1, "snap": 0}
+
+
 def song(t0, t1, start_bar=0, energy=None):
     """The groove from video time t0 to t1 on a 128 BPM grid that starts at t0 (bar `start_bar`).
-    `energy(bar)` -> dict of which parts play."""
+    `energy(bar)` -> which parts play (see GROOVE). An island-funk band: drums with a swing in the 16ths,
+    bass guitar, ukulele, clav stabs, horns, someone whistling the tune."""
     drums = bus()
     bass = bus()
     keys = bus()
     lead = bus()
     nbars = int(math.ceil((t1 - t0) / BAR))
+    prev = None
     for b in range(nbars):
         gb = start_bar + b
         bt = t0 + b * BAR
         if bt >= t1:
             break
-        e = energy(gb) if energy else {"drums": 1, "bass": 1, "keys": 1, "lead": 1, "arp": 0}
+        e = {**GROOVE, **(energy(gb) if energy else {})}
         prog = PROG_A if (gb // 4) % 2 == 0 else PROG_B
         ch = prog[gb % 4]
         root = ROOTS[ch]
         for s in range(16):
-            st = bt + s * STEP
+            st = bt + s * STEP + (0.016 if s % 2 else 0.0)
             if st >= t1:
                 break
             if e["drums"]:
                 if s % 4 == 0:
-                    place(drums, stereo(kick_drum()), st, 0.75)
+                    place(drums, stereo(kick_drum()), st, 0.8)
                 if s in (4, 12):
-                    place(drums, stereo(snare(), 0.05, 0.2), st, 0.55)
+                    place(drums, stereo(snare_clap(), 0.05, 0.25), st, 0.5)
                 if s % 2 == 0:
-                    place(drums, stereo(hat_c(), 0.35), st, 0.3 if s % 4 else 0.2)
+                    place(drums, stereo(hat_c(), 0.35), st, 0.26 if s % 4 else 0.18)
+                elif e["drums"] > 1:
+                    place(drums, stereo(hat_c(), 0.3), st, 0.1)
                 if s % 4 == 2 and e["drums"] > 1:
-                    place(drums, stereo(hat_o(), 0.35), st, 0.16)
+                    place(drums, stereo(hat_o(), 0.35), st, 0.13)
                 if gb % 4 == 3 and s >= 12 and e["drums"] > 1:
-                    place(drums, stereo(snare(), -0.1, 0.2), st, 0.25 + 0.06 * (s - 12))
+                    place(drums, stereo(snare(), -0.1, 0.2), st, 0.22 + 0.06 * (s - 12))
+            if e["tamb"] and s % 4 == 2:
+                place(drums, stereo(tamb(), -0.45, 0.3), st, 0.22)
+            if e["shaker"]:
+                place(drums, stereo(shaker(), 0.5, 0.2), st, 0.09 if s % 2 else 0.05)
+            if e["snap"] and s in (4, 12):
+                place(drums, stereo(snap(), -0.3, 0.3), st, 0.4)
         if e["bass"]:
             for s, iv, ln, vel in BASS:
-                st = bt + s * STEP
+                st = bt + s * STEP + (0.016 if s % 2 else 0.0)
                 if st < t1:
-                    place(bass, stereo(bass_note(root + iv, ln * STEP * 0.9, vel)), st, 0.34)
-        if e["keys"]:
-            # brass-ish stabs on the "and" of 2 and 4
+                    place(bass, stereo(bass_note(root + iv, ln * STEP * 0.92, vel)), st, 0.42)
+        if e["uke"]:
+            # island strum: down on the off-beats, a light up-strum after the 2 and the 4
+            for s, dn, k in ((2, True, 0.75), (6, True, 1.0), (7, False, 0.4), (10, True, 0.75), (14, True, 1.0), (15, False, 0.4)):
+                st = bt + s * STEP + (0.016 if s % 2 else 0.0)
+                if st < t1:
+                    place(keys, stereo(strum(ch, 0.3, dn, k), 0.25 if dn else -0.2, 0.3), st, 0.5)
+        if e["clav"]:
+            for s in (3, 11):
+                st = bt + s * STEP + 0.016
+                if st < t1:
+                    place(keys, stereo(clav([n + 12 for n in CHORDS[ch][1:]]), -0.35, 0.2), st, 0.3)
+        if e["brass"]:
+            # horn stabs on the "and" of 2 and 4
             for s in (6, 14):
                 st = bt + s * STEP
                 if st < t1:
-                    place(keys, stereo(brass([n + 12 for n in CHORDS[ch][1:]], STEP * 1.6, 0.6), 0.3 if s == 6 else -0.3, 0.3), st, 0.42)
+                    place(keys, stereo(brass([n + 12 for n in CHORDS[ch][1:]], STEP * 1.6, 0.6), 0.3 if s == 6 else -0.3, 0.3), st, 0.36)
         if e["lead"]:
             mel = MELODY[gb % 8]
             for i, nn in enumerate(mel):
                 if nn <= 0:
+                    if nn == 0:
+                        prev = None
                     continue
                 ln = 1
                 while i + ln < 8 and mel[i + ln] == -1:
                     ln += 1
-                st = bt + i * 2 * STEP
+                st = bt + i * 2 * STEP + (0.0 if i % 2 == 0 else 0.016)
                 if st < t1:
-                    place(lead, stereo(lead_note(nn, ln * 2 * STEP * 0.92), 0.1, 0.4), st, 0.38)
-        if e.get("arp"):
+                    place(lead, stereo(whistle(nn + 12, ln * 2 * STEP * 0.95, (prev + 12) if prev else None), 0.1, 0.4), st, 0.3)
+                prev = nn
+        if e["arp"]:
             tones = CHORDS[ch]
             for s in range(16):
                 st = bt + s * STEP
                 if st < t1:
-                    place(lead, stereo(arp_note(tones[s % 4] + 24, STEP * 0.9), -0.4 if s % 2 else 0.4), st, 0.12)
-    # sidechain: everything but the drums ducks under the kick
+                    place(lead, stereo(arp_note(tones[s % 4] + 24, STEP * 0.9), -0.4 if s % 2 else 0.4), st, 0.09)
+    # sidechain: everything but the drums ducks a little under the kick
     pump = np.ones(N + PAD)
     for b in range(nbars * 4):
         i = int((t0 + b * BEAT) * SR)
@@ -740,9 +869,9 @@ def song(t0, t1, start_bar=0, energy=None):
             continue
         if i >= len(pump):
             break
-        m = int(0.18 * SR)
+        m = int(0.16 * SR)
         seg = pump[i : i + m]
-        pump[i : i + m] = np.minimum(seg, 0.55 + 0.45 * np.linspace(0, 1, len(seg)) ** 0.7)
+        pump[i : i + m] = np.minimum(seg, 0.7 + 0.3 * np.linspace(0, 1, len(seg)) ** 0.7)
     mix = (bass + keys + lead) * pump[:, None] + drums
     # hard edges at t0/t1 (the cuts are part of the comedy)
     i1 = int(t1 * SR)
@@ -762,11 +891,13 @@ def roll_build(t0, t1):
     nn = 29
     t = t0
     while t < t1 - 0.1:
-        place(b, stereo(bass_note(nn, 0.3, 0.8)), t, 0.45)
+        place(b, stereo(bass_note(nn, 0.3, 0.8)), t, 0.5)
         nn += 1
         t += 0.39
     sw = hp(noise(sec), 4000) * smooth(0, sec, t_axis(sec)) ** 3
     place(b, stereo(sw, 0, 0.6), t0, 0.25)
+    i1 = int(t1 * SR)
+    b[i1:] = 0
     return b
 
 
@@ -784,22 +915,69 @@ def tape_stop(x, t0, sec=0.7):
     return out
 
 
+def violin(nn, sec):
+    """A sad solo violin: a bowed saw through the body's resonances, slow vibrato, a soft attack."""
+    t = t_axis(sec)
+    f0 = midi(nn)
+    f = f0 * (1 + 0.008 * np.sin(2 * np.pi * 5.3 * t) * smooth(0.15, 0.45, t))
+    v = signal.sawtooth(2 * np.pi * np.cumsum(f) / SR)
+    v = bp(v, 380, 4200) + bp(v, 2400, 3400) * 0.6 + bp(v, 600, 900) * 0.4
+    bow = bp(noise(sec), f0, f0 * 3) * 0.06
+    return (v + bow) * adsr(len(t), 0.16, min(0.3, sec * 0.4), 1.4)
+
+
+def piano(nn, sec=1.6):
+    t = t_axis(sec)
+    f = midi(nn)
+    v = sum((0.6 ** (k - 1)) * np.sin(2 * np.pi * k * f * 1.0006 ** k * t) * np.exp(-t * (1.6 + 1.2 * k)) for k in range(1, 6))
+    return v * adsr(len(t), 0.003, 0.2)
+
+
+def sad_interlude(t0, t1, soft_from):
+    """Rolling to the drain with the flippers dead: a slow sad violin over soft piano, D minor, 80 BPM.
+    The violin bows out just before the sad trombone takes over; the piano carries on, softer, through
+    GAME OVER until the next coin."""
+    b = bus()
+    beat = 0.75
+    prog = [[50, 57, 62, 65], [46, 53, 58, 62], [43, 50, 55, 58], [45, 52, 57, 61]]
+    i = 0
+    while True:
+        ct = t0 + i * 2 * beat
+        if ct >= t1 - 0.5:
+            break
+        notes = prog[i % 4]
+        g = 0.26 if ct < soft_from else 0.15
+        for j, nn in enumerate(notes):
+            place(b, stereo(piano(nn, 2.2), -0.2 + 0.13 * j, 0.3), ct + j * 0.12, g)
+        place(b, stereo(piano(notes[0] - 12, 2.4), 0, 0.2), ct, g * 0.9)
+        i += 1
+    mel = [(0.0, 74, 1.5), (1.5, 72, 0.5), (2.0, 70, 1.0), (3.0, 69, 1.1)]
+    for st, nn, ln in mel:
+        place(b, stereo(violin(nn, ln * beat * 1.05), 0.1, 0.4), t0 + st * beat, 0.45)
+    i1 = int(t1 * SR)
+    b[i1:] = 0
+    return b
+
+
 def music():
     b = bus()
     launch = KEY["launch"]
     # the cold open: the chorus, already going (a bar and a bit before the video starts)
-    cold = song(-BAR * 1.5, KEY["freeze"], 4, lambda gb: {"drums": 2, "bass": 1, "keys": 1, "lead": 1, "arp": 1})
+    cold = song(-BAR * 1.5, KEY["freeze"], 4, lambda gb: {"drums": 2, "brass": 1, "tamb": 1, "clav": 1})
     b += cold
+    # under the time card and the title, while the coin goes in: just the bass, snaps, a shaker, the uke
+    intro = song(KEY["title"] - BAR * 0.5, launch, 0, lambda gb: {"drums": 0, "lead": 0, "snap": 1})
+    b += intro * 0.8
     # the drop at the launch, verse then chorus; multiball adds the arpeggio
     def energy(gb):
         t = launch + gb * BAR
         if t < 12.4:
-            return {"drums": 1, "bass": 1, "keys": 0, "lead": 0, "arp": 0}
+            return {"lead": 0, "clav": 1}
         if t < 20.0:
-            return {"drums": 1, "bass": 1, "keys": 1, "lead": 1, "arp": 0}
+            return {"clav": 1}
         if t < KEY["burp"] - 0.5:
-            return {"drums": 2, "bass": 1, "keys": 1, "lead": 1, "arp": 0}
-        return {"drums": 2, "bass": 1, "keys": 1, "lead": 1, "arp": 1}
+            return {"drums": 2, "brass": 1, "tamb": 1}
+        return {"drums": 2, "brass": 1, "tamb": 1, "arp": 1}
 
     main = song(launch, KEY["tilt"] + 1.0, 0, energy)
     # inside the monster: muffled (as if from outside a mouth), quieter
@@ -810,8 +988,18 @@ def music():
     main = tape_stop(main, KEY["tilt"] + 0.05, 0.8)
     b += main
     b += roll_build(KEY["pull"], launch)
-    # the loop: the roll again from the eject into the cold open's chorus
-    b += roll_build(KEY["eject"] + 1.4, DUR)
+    # the flippers are dead: sad violin down to the drain
+    b += sad_interlude(KEY["tilt"] + 1.15, KEY["coin2"] + 0.3, KEY["drain"])
+    # the next coin: the groove creeps back (bass, shaker, snaps), the band comes in on the eject...
+    def again(gb):
+        t = KEY["coin2"] + 0.35 + gb * BAR
+        if t < KEY["eject"]:
+            return {"drums": 0, "lead": 0, "uke": 0, "snap": 1}
+        return {"drums": 1, "lead": 0}
+
+    b += song(KEY["coin2"] + 0.35, END0, 0, again) * 0.85
+    # ... and the roll builds for the drop that never comes: hard cut to the beach at 70 s
+    b += roll_build(KEY["eject"] + 1.4, END0)
     return b
 
 
@@ -946,6 +1134,221 @@ def ambience():
     return out
 
 
+# ================================================================== the ending: the beach
+
+
+def gull_call(sec=0.42, f0=1950, f1=1250, k=1.0):
+    """A herring gull's 'kee-ow': a raspy tone that drops, through a nasal filter."""
+    t = t_axis(sec)
+    f = f1 + (f0 - f1) * np.exp(-t / (sec * 0.32))
+    f = f * (1 + 0.025 * np.sin(2 * np.pi * 31 * t))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    v = sum((0.7 ** h) * np.sin((h + 1) * ph) for h in range(5))
+    v = bp(v, 800, 5200) + bp(v, 2400, 3600) * 0.6
+    return v * adsr(len(t), 0.015, sec * 0.45, 1.3) * k
+
+
+def gull_laugh(n=5, k=1.0):
+    out = np.zeros(int((n * 0.17 + 0.3) * SR))
+    for i in range(n):
+        v = gull_call(0.14, 1650 - i * 25, 1350, 1.0)
+        i0 = int(i * 0.17 * SR)
+        out[i0 : i0 + len(v)] += v
+    return out * k
+
+
+def flap(sec=0.09):
+    return lp(noise(sec), 900) * np.sin(np.pi * np.linspace(0, 1, int(sec * SR))) ** 2
+
+
+def fish_flop():
+    sec = 0.16
+    n = int(sec * SR)
+    slap = bp(noise(sec), 300, 2600) * decay(n, 0.018)
+    thud = np.sin(2 * np.pi * 120 * t_axis(sec)) * decay(n, 0.03) * 0.5
+    return slap + thud
+
+
+def step_sand(k=1.0):
+    """A running footfall on wet sand: a soft thud and a squelch."""
+    sec = 0.14
+    n = int(sec * SR)
+    thud = lp(noise(sec), 260) * decay(n, 0.03) * 2.2
+    squelch = bp(noise(sec), 700, 2600) * decay(n, 0.02) * 0.5
+    return (thud + squelch) * k
+
+
+def braam(sec=3.2, root=26, k=1.0):
+    """The trailer horn: a wall of low brass (root, fifth, octave), the filter tearing open, distorted."""
+    t = t_axis(sec)
+    out = np.zeros(len(t))
+    for nn, g in ((root, 1.0), (root + 7, 0.7), (root + 12, 0.8), (root + 15, 0.35)):
+        out += ga.saw_voice(midi(nn), sec, 14) * g
+    fc = 140 + 2400 * (1 - np.exp(-t / 0.35)) * np.exp(-t / 1.6)
+    v = sat(vfilter(out / 2.5, fc, "low") * 2.2, 2.4)
+    sub = np.sin(2 * np.pi * midi(root - 12) * t) * 0.8
+    return (v + sub) * adsr(len(t), 0.02, 1.2, 1.5) * k
+
+
+def choir(notes, sec, k=1.0):
+    """Voices on 'aah': detuned saws through the vowel's formants, slow swell."""
+    t = t_axis(sec)
+    out = np.zeros(len(t))
+    for nn in notes:
+        for d in (-6, 0, 6):
+            f = midi(nn) * 2 ** (d / 1200) * (1 + 0.005 * np.sin(2 * np.pi * (4.8 + d * 0.03) * t + nn))
+            out += signal.sawtooth(2 * np.pi * np.cumsum(f) / SR)
+    out /= 3 * len(notes)
+    v = bp(out, 650, 950) + bp(out, 1000, 1300) * 0.6 + bp(out, 2600, 3200) * 0.3
+    return v * adsr(len(t), sec * 0.5, 0.05, 1.8) * k
+
+
+def taiko(k=1.0):
+    sec = 0.9
+    n = int(sec * SR)
+    body = np.sin(glide(95, 42, sec, 0.5)) * decay(n, 0.28)
+    skin = lp(noise(sec), 500) * decay(n, 0.05) * 0.6
+    return sat(body + skin, 1.6) * k
+
+
+def ending():
+    """The beach, from the cut (u = 0 at 70 s) to the cut to black. Times from src/tsunami/cues.json."""
+    E = CUES["dur"]
+    n = int(E * SR)
+    b = np.zeros((n + PAD, 2))
+    u = np.arange(n) / SR
+    sw0, sw1 = CUES["swash"]
+    bw0, bw1 = CUES["backwash"]
+    p0, p1 = CUES["pull"]
+    z0, z1 = CUES["zoom"]
+    cut = CUES["cut"]
+    rng = np.random.default_rng(86)
+
+    def put(st, t, g=1.0):
+        place(b, st, t, g)
+
+    # ---- the sea: breakers rolling in, gone quiet as the water goes out
+    sea = lp(hp(noise(E), 70), 900) * 0.6 + bp(noise(E), 900, 3000) * 0.18
+    swell = 0.55 + 0.45 * np.sin(2 * np.pi * u / 5.6 + 1.2) ** 4
+    put(stereo(sea * swell * (1 - smooth(3.4, 7.0, u)), 0, 0.8), 0, 0.5)
+    # a wave breaks just off the beach...
+    crash_n = int(1.8 * SR)
+    br = bp(noise(1.8), 200, 4000) * adsr(crash_n, 0.12, 1.2, 1.5) + lp(noise(1.8), 180) * decay(crash_n, 0.3)
+    put(stereo(br, 0.1, 0.7), 0.45, 0.55)
+    # ... its wash fizzes up the sand to your feet
+    wn = int((sw1 - sw0 + 1.4) * SR)
+    wash = bp(noise(wn / SR), 1200, 7500) * np.concatenate([np.linspace(0, 1, int((sw1 - sw0) * SR)) ** 1.5, np.exp(-np.arange(wn - int((sw1 - sw0) * SR)) / SR / 0.6)])
+    put(stereo(wash, 0, 0.6), sw0, 0.42)
+    t = sw0 + 0.3
+    while t < bw0 + 0.3:
+        put(stereo(hp(noise(0.012), 2500) * decay(int(0.012 * SR), 0.002), float(rng.uniform(-0.6, 0.6))), t, 0.25 * float(rng.uniform(0.3, 1)))
+        t += float(rng.uniform(0.004, 0.02))
+    # the backwash: the water running out, shells and pebbles rattling after it
+    bn = int((bw1 - bw0 + 0.8) * SR)
+    env = np.interp(np.arange(bn) / SR, [0, 0.35, bw1 - bw0, bw1 - bw0 + 0.8], [0, 1, 0.5, 0])
+    put(stereo(bp(noise(bn / SR), 500, 4000) * env, 0, 0.7), bw0, 0.45)
+    t = bw0
+    while t < bw1 + 0.6:
+        dens = float(np.interp(t, [bw0, bw0 + 0.4, bw1, bw1 + 0.6], [0.2, 1, 0.5, 0]))
+        put(stereo(bp(noise(0.006), 2500, 7000) * decay(int(0.006 * SR), 0.0012), float(rng.uniform(-0.8, 0.8))), t, 0.4 * float(rng.uniform(0.2, 1)) * dens)
+        t += 0.004 + 0.02 * (1 - dens) + float(rng.uniform(0, 0.006))
+    # the whole sea being sucked out: a long draining whoosh, falling, with gurgles
+    pn = int((p1 - p0 + 1) * SR)
+    pt = np.arange(pn) / SR
+    suck = vfilter(noise(pn / SR), 1400 * (120 / 1400) ** np.clip(pt / (p1 - p0), 0, 1), "low")
+    put(stereo(suck * np.interp(pt, [0, 0.6, 3.0, p1 - p0, p1 - p0 + 1], [0, 1, 0.7, 0.15, 0]), 0, 0.9), p0, 0.7)
+    for _ in range(26):
+        tg = float(rng.uniform(p0, p0 + 3.2))
+        sec = float(rng.uniform(0.08, 0.2))
+        put(stereo(np.sin(glide(float(rng.uniform(90, 160)), float(rng.uniform(200, 380)), sec)) * adsr(int(sec * SR), 0.01, 0.05), float(rng.uniform(-0.5, 0.5))), tg, 0.12)
+    # ---- wind: a breeze, then the air the wave pushes ahead of it
+    wind = lp(noise(E), 420) * (0.6 + 0.4 * np.sin(2 * np.pi * u / 4.3) ** 2) + hp(lp(noise(E), 2500), 600) * 0.3 * smooth(11, 16, u)
+    put(stereo(wind * (0.18 + 0.9 * smooth(10, 16, u)), 0, 0.9), 0, 0.3)
+    # ---- gulls: calling over the shallows, laughing, then all of them screaming off inland
+    for tg, pan, g in ((0.3, -0.4, 0.5), (1.6, 0.5, 0.35), (2.9, -0.2, 0.3), (5.1, 0.3, 0.45), (6.7, -0.5, 0.35), (7.9, 0.2, 0.3)):
+        put(stereo(gull_call(), pan, 0.5), tg, g * 0.5)
+    put(stereo(gull_laugh(5), 0.35, 0.5), 4.2, 0.22)
+    for i in range(14):
+        tg = 9.3 + i * 0.09 + float(rng.uniform(0, 0.25))
+        put(stereo(gull_call(0.3 + float(rng.uniform(0, 0.15)), 2300, 1500), float(rng.uniform(-0.8, 0.8)), 0.4), tg, 0.2)
+    t = 9.4
+    while t < 11.6:
+        put(stereo(flap(), float(rng.uniform(-0.7, 0.7))), t, 0.25 * float(np.interp(t, [9.4, 10.4, 11.6], [0.3, 1, 0])))
+        t += float(rng.uniform(0.04, 0.11))
+    # ---- fish flapping about on the sand
+    t = 4.6
+    while t < cut:
+        put(stereo(fish_flop(), float(rng.uniform(-0.8, 0.8))), t, 0.12 * float(rng.uniform(0.4, 1)))
+        t += float(rng.uniform(0.25, 0.9))
+    # ---- the dread: a low drone, ringing ears and a heartbeat through the zoom
+    dn = int((cut - 5.8) * SR)
+    dt = np.arange(dn) / SR
+    drone = sum(signal.sawtooth(2 * np.pi * midi(nn) * (1 + 0.003 * np.sin(2 * np.pi * 0.3 * dt + nn)) * dt) for nn in (38, 45, 50))
+    drone = lp(drone / 3, 520) * np.interp(dt, [0, 2.5, 7.0, cut - 5.8], [0, 0.6, 0.9, 1.0])
+    put(stereo(drone, 0, 0.8), 5.8, 0.22)
+    ring = np.sin(2 * np.pi * 3900 * t_axis(z1 - z0)) * np.interp(t_axis(z1 - z0), [0, z1 - z0 - 0.4, z1 - z0], [0, 1, 0])
+    put(stereo(ring, 0, 0.2), z0, 0.035)
+    t = z0
+    while t < z1:
+        put(stereo(ga.kick(0.3, 70, 38, 0.09)), t, 0.55)
+        put(stereo(ga.kick(0.3, 65, 36, 0.08)), t + 0.24, 0.35)
+        t += 0.78
+    # ---- the white line on the horizon: a far-off boom and a distant horn
+    put(stereo(ga.sub_boom(3.0, 60, 30), 0, 0.3), CUES["line"], 0.7)
+    put(stereo(braam(2.6, 26, 1.0), 0, 0.6), CUES["line"] + 0.05, 0.18)
+    # ---- the rumble and roar, growing till the cut
+    rn = int((cut - 9.2) * SR)
+    rt = np.arange(rn) / SR
+    gk = np.clip(rt / (cut - 9.2), 0, 1)
+    rumble = lp(noise(rn / SR), 75) * 2.4 + lp(noise(rn / SR), 170)
+    roar = bp(noise(rn / SR), 140, 900) * (0.7 + 0.3 * np.sin(2 * np.pi * 2.3 * rt) * np.sin(2 * np.pi * 0.7 * rt))
+    hiss = bp(noise(rn / SR), 1500, 6500) * (0.6 + 0.4 * lp(np.abs(noise(rn / SR)), 6) * 3)
+    put(stereo(rumble * gk ** 1.3, 0, 0.6), 9.2, 0.5)
+    put(stereo(roar * gk ** 2.2, 0, 0.9), 9.2, 0.75)
+    put(stereo(hiss * gk ** 3.0, 0, 0.9), 9.2, 0.42)
+    t = 12.0
+    while t < cut:
+        put(stereo(ga.kick(0.25, 55, 30, 0.07), float(rng.uniform(-0.3, 0.3))), t, 0.25 * float(smooth(12, cut, t)))
+        t += float(rng.uniform(0.15, 0.4))
+    # ---- people running past you, and you turning round and back
+    for tp, pan in CUES["passes"]:
+        for kk in range(-5, 6):
+            put(stereo(step_sand(), pan * (0.4 + 0.6 * min(1, abs(kk) / 4)), 0.1), tp + kk * 0.31 + float(rng.uniform(-0.02, 0.02)), 0.5 * math.exp(-abs(kk) * 0.4))
+        put(stereo(whoosh(0.45, 200, 1400), pan, 0.3), tp - 0.22, 0.35)
+    put(stereo(whoosh(0.6, 150, 2500), -0.3, 0.6), CUES["turn"][0], 0.5)
+    put(stereo(whoosh(0.5, 150, 3200), 0.3, 0.6), CUES["back"][0], 0.6)
+    # ---- the reveal: BRAAAM, then the strings, the choir and the drums climbing to the cut
+    rv = CUES["back"][1]
+    put(stereo(braam(3.4, 26, 1.0), 0, 0.5), rv - 0.05, 0.55)
+    put(stereo(ga.sub_boom(3.0, 70, 28), 0, 0.3), rv - 0.05, 0.6)
+    t = rv + 0.4
+    step = 60 / 120 / 4
+    i = 0
+    pattern = [38, 38, 41, 38, 45, 38, 41, 38]
+    while t < cut:
+        k = smooth(rv, cut, t)
+        v = ga.saw_voice(midi(pattern[i % 8] + 12 * (i // 64)), step * 0.9, 9)
+        v = lp(v, 900 + 2600 * k) * adsr(len(v), 0.004, 0.03)
+        put(stereo(v, -0.3 if i % 2 else 0.3, 0.3), t, 0.1 + 0.22 * k)
+        t += step
+        i += 1
+    put(stereo(choir([62, 65, 69], cut - rv - 0.8, 1.0), 0, 0.7), rv + 0.6, 0.55)
+    put(stereo(choir([58, 62, 70], 1.2, 1.0), 0, 0.7), cut - 1.2, 0.35)
+    t = 14.0
+    while t < cut - 0.05:
+        put(stereo(taiko(), 0, 0.3), t, 0.45 + 0.4 * float(smooth(14, cut, t)))
+        t += 0.5 if t < 15.4 else 0.25
+    riser = vfilter(noise(cut - 14.6), np.geomspace(400, 9000, int((cut - 14.6) * SR)), "low")
+    put(stereo(riser * np.linspace(0, 1, len(riser)) ** 2, 0, 0.8), 14.6, 0.35)
+    # a little room round it all, then the hard cut to silence
+    out = reverb(b[:n], 1.6, 0.12, 7000)[:n]
+    out[int(cut * SR) :] = 0
+    k = int(0.004 * SR)
+    i = int(cut * SR)
+    out[i - k : i] *= np.linspace(1, 0, k)[:, None]
+    return out
+
+
 def mix():
     mus = music()
     fx = sfx()
@@ -954,17 +1357,27 @@ def mix():
     # the music ducks under the big moments
     ts = np.arange(N + PAD) / SR
     duck = np.ones(N + PAD)
-    for t0, depth, length in ((KEY["chomp"], 0.5, 0.8), (KEY["burp"], 0.45, 1.3), (KEY["jackpot"], 0.5, 1.2), (KEY["launch"], 0.7, 0.6)):
+    for t0, depth, length in ((KEY["chomp"], 0.35, 0.8), (KEY["burp"], 0.3, 1.3), (KEY["jackpot"], 0.35, 1.2), (KEY["launch"], 0.5, 0.6)):
         duck *= 1 - depth * np.exp(-np.clip(ts - t0, 0, None) / length) * (ts >= t0)
     mus = mus * duck[:, None]
     mus = reverb(mus, 1.8, 0.16, 7000)[: N + PAD]
     fx = reverb(fx, 1.2, 0.14, 8000)[: N + PAD]
-    out = mus * 0.62 + fx * 0.95 + roll * 0.45 + amb
+    out = mus * 0.85 + fx * 0.95 + roll * 0.45 + amb
+    if os.environ.get("STEMS"):
+        # for checking the balance: the music on its own, and everything else
+        w = os.path.join(ROOT, "out", "pinball")
+        os.makedirs(w, exist_ok=True)
+        wavfile.write(os.path.join(w, "stem-music.wav"), SR, (mus[:N] * 0.85 * 0.5).astype(np.float32))
+        wavfile.write(os.path.join(w, "stem-rest.wav"), SR, ((fx * 0.95 + roll * 0.45 + amb)[:N] * 0.5).astype(np.float32))
     # the rewind: the six seconds before the jackpot, backwards at six times the speed, on tape
     r0, r1 = M["rewind"]
     src = out[int((KEY["jackpot"] - 6.0) * SR) : int(KEY["jackpot"] * SR)].copy()
     place(out, tape_rewind(r1 - r0, src), r0, 0.6)
     out = out[:N]
+    # the hard cut at 70 s: the pinball stops dead and the beach starts
+    i0 = int(END0 * SR)
+    out[i0:] = 0
+    out[i0:] += ending()[: N - i0]
     # for phone speakers: less sub, more presence; nothing below 30 Hz
     out = np.stack([hp(out[:, c], 30) for c in range(2)], axis=1)
     low = np.stack([lp(out[:, c], 120) for c in range(2)], axis=1)

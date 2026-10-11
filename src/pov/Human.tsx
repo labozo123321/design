@@ -736,6 +736,48 @@ export type Direction = {
   react?: number;
   lean?: number;
   wave?: number;
+  /** blend (0..1) into a flat-out run, strides from st.phase, length from st.speed (the Tsunami piece) */
+  run?: number;
+  /** blend (0..1) into pointing straight ahead with the right arm */
+  point?: number;
+  /** blend (0..1) into waving both arms over the head */
+  wave2?: number;
+  /** eyes shut */
+  sleep?: boolean;
+  /** blend (0..1) into the rooted, hands-half-raised stare, over whatever the role is doing */
+  stareW?: number;
+};
+
+/** Running flat out: long strides, knees high, forearms pumping, leaning in. phase: radians, 2pi per stride. */
+const running = (phase: number, amp: number): Pose => {
+  const p: Pose = {
+    ...P0,
+    hipX: [0, 0],
+    hipZ: [-0.04, 0.04],
+    knee: [0, 0],
+    ankle: [0, 0],
+    shX: [0, 0],
+    shZ: [-0.12, 0.12],
+    elbow: [0, 0],
+  };
+  ([0, 1] as const).forEach((i) => {
+    const psi = phase + (i ? Math.PI : 0);
+    const s = Math.sin(psi);
+    const c = Math.cos(psi);
+    // thigh well forward on the swing (negative), back on the push-off; the knee folds right up on the swing
+    p.hipX[i] = (0.62 * s - 0.18) * amp;
+    p.knee[i] = (0.25 + 1.55 * Math.pow(Math.max(0, -c), 1.1) + 0.25 * Math.max(0, s)) * amp;
+    p.ankle[i] = -(p.hipX[i] + p.knee[i]) * 0.7 + 0.35 * amp * Math.max(0, Math.sin(psi - 0.5));
+    // arms swing against the legs, elbows bent near a right angle
+    p.shX[i] = -0.75 * amp * s;
+    p.elbow[i] = -(1.35 + 0.3 * amp * Math.max(0, -s));
+  });
+  p.pelvisY = 0.975 - 0.04 * amp + 0.045 * amp * Math.abs(Math.cos(phase));
+  p.pelvisYaw = 0.1 * amp * Math.sin(phase);
+  p.spineYaw = -0.14 * amp * Math.sin(phase);
+  p.spinePitch = 0.22 * amp;
+  p.headPitch = -0.12 * amp;
+  return p;
 };
 
 export const Human: React.FC<{
@@ -804,6 +846,27 @@ export const Human: React.FC<{
       pose = crouch(pose, (1 - toJump / 0.2) * (sp.kid ? 0.6 : 0.45));
   }
   if (st.free) pose = mixP(pose, floating(t, sp.seed), smooth(st.freeAt, st.freeAt + 0.9, t));
+  if (dir?.stareW) pose = mixP(pose, staring(t, sp.seed, 0, Math.max(shock, 0.5)), dir.stareW);
+  if (dir?.run) pose = mixP(pose, running(st.phase, Math.max(0.45, Math.min(1.2, st.speed / 5))), dir.run);
+  if (dir?.point) {
+    const k = dir.point;
+    pose = {
+      ...pose,
+      shX: [pose.shX[0] * (1 - k) - 1.58 * k, pose.shX[1]],
+      shZ: [pose.shZ[0] * (1 - k) - 0.1 * k, pose.shZ[1]],
+      elbow: [pose.elbow[0] * (1 - k) - 0.06 * k, pose.elbow[1]],
+    };
+  }
+  if (dir?.wave2) {
+    const k = dir.wave2;
+    const sw = Math.sin(t * Math.PI * 2 * 1.7 + sp.seed);
+    pose = {
+      ...pose,
+      shX: [pose.shX[0] * (1 - k) - 0.15 * k, pose.shX[1] * (1 - k) - 0.15 * k],
+      shZ: [pose.shZ[0] * (1 - k) - (2.55 + 0.35 * sw) * k, pose.shZ[1] * (1 - k) + (2.55 - 0.35 * sw) * k],
+      elbow: [pose.elbow[0] * (1 - k) - 0.35 * k, pose.elbow[1] * (1 - k) - 0.35 * k],
+    };
+  }
 
   // ---- glance at the viewer when they are near and in front (the two watchers keep their eyes on you;
   // their head stops turning sideways when you are nearly straight overhead, so it never swings)
@@ -821,7 +884,7 @@ export const Human: React.FC<{
   // ---- face: blinking, surprise as gravity fails, kids grin
   const per = 3 + (sp.seed % 3);
   const blinkPh = (t + sp.seed * 0.37) % per;
-  const blink = blinkPh < 0.13 ? Math.sin((blinkPh / 0.13) * Math.PI) : 0;
+  const blink = dir?.sleep ? 1 : blinkPh < 0.13 ? Math.sin((blinkPh / 0.13) * Math.PI) : 0;
   const gNow = Math.max(0, Math.min(1, 1 - (t - 4) / 28));
   const surprise = Math.max(
     st.free ? smooth(st.freeAt, st.freeAt + 0.6, t) : 0,

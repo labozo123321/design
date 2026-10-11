@@ -19,6 +19,8 @@ import { HOLE_DURATION } from "./hole/timeline";
 import { BlackHole } from "./blackhole/BlackHole";
 import { Pinball } from "./pinball/Pinball";
 import { PB_DURATION } from "./pinball/timeline";
+import { Tsunami } from "./tsunami/Tsunami";
+import { FRAMES as TSUNAMI_FRAMES } from "./tsunami/world";
 import { BH_DURATION } from "./blackhole/timeline";
 import { WI_DURATION } from "./whatif/timeline";
 import { FIGHT_DURATION } from "./fight/choreo";
@@ -105,6 +107,14 @@ export const RemotionRoot: React.FC = () => (
       id="Pinball"
       component={Pinball}
       durationInFrames={PB_DURATION}
+      fps={FPS}
+      width={WIDTH}
+      height={HEIGHT}
+    />
+    <Composition
+      id="Tsunami"
+      component={Tsunami}
+      durationInFrames={TSUNAMI_FRAMES}
       fps={FPS}
       width={WIDTH}
       height={HEIGHT}

@@ -469,9 +469,11 @@ Render it in six chunks of 350 frames, muted (software GL needs `--timeout=24000
 
 ## Pinball (first person, the life of a pinball)
 
-"POV: you're a pinball". A 70 s first-person comedy with no voice: a ball's
+"POV: you're a pinball". An 86.6 s first-person comedy with no voice: a ball's
 whole life on a cartoon monster-themed table, from the plunger to the drain,
-told in on-screen words and synthesised sound.
+told in on-screen words and synthesised sound. Then, at 70 s, it cuts with no
+warning to a beach where the sea pulls back and a tsunami comes in (the meme
+where a video about something else suddenly turns into that).
 
 1. **Physics:** `scripts/pinball_sim.py` simulates a standard playfield tilted 6.5°:
    - a 27 mm steel ball rolling (5/7 g sin θ);
@@ -483,10 +485,11 @@ told in on-screen words and synthesised sound.
    - It maps video time to pinball time: slow motion where it's fast, and a cold-open freeze frame plus a rewind at the start.
    - It also writes the ball-cam's look direction, every ball, the flippers and every event (for picture and sound).
 3. **Sound:** `python3 scripts/generate-pinball-audio.py` builds `public/pinball/bed.mp3` (and `out/pinball/bed.wav` for mastering). Everything is synthesised:
-   - a funky chiptune song in F at 128 BPM. It stops for the record scratch, goes muffled inside the monster, and tape-stops at the TILT;
+   - background music under nearly everything: an island-funk band in F at 128 BPM, all synthesised (drums with swung 16ths, a plucked bass guitar and ukulele from Karplus-Strong strings, clav, horns, and a whistled tune). It stops for the record scratch, goes muffled inside the monster, and tape-stops at the TILT. A sad violin and piano carry it to the next coin, then the groove creeps back in and builds to a drop that never comes;
    - a sound for every physics event, pitched down in the slow motion;
    - the set pieces: the chomp, the chewing, the burp, the multiball siren, the jackpot fanfare, the buzzers, the power-down, a sad trombone, a falling whistle into the trough, the game-over jingle, coins and the eject;
-   - the VHS rewind, a time-card jingle, and pops and whooshes for the captions (from `src/pinball/script.json`).
+   - the VHS rewind, a time-card jingle, and pops and whooshes for the captions (from `src/pinball/script.json`);
+   - the ending, timed from `src/tsunami/cues.json`: surf and gulls, the wash fizzing round your feet, the backwash rattling shells, the whole sea draining away, a low drone, ringing ears and a heartbeat in the zoom, footsteps running past, the rumble and the roar, a braam, strings, choir and taiko, and a hard cut to silence.
 4. **Picture:** `src/pinball/`:
    - `art.ts` draws the 4096×8192 playfield print. It has road markings for a reader who is a ball ("YOU GOT THIS", "NO BRAKES", "THE VOID"), printed eyeballs, tentacles and slime, and the baked shadows of everything that stands on it. It also draws the walls' art, a clear-coat scratch tile and the trough's circuit board;
    - `Table.tsx`, `Parts.tsx`, `Monster.tsx`, `Backbox.tsx`, `Dmd.ts`, `Lights.tsx` build the machine. Bumpers, flippers and balls have googly eyes that turn to look at you. The monster's tongue is the ramp and its mouth has an inside. A dot-matrix display tells the story, the lamps run light shows, and the TILT kills the lights;
@@ -495,8 +498,16 @@ told in on-screen words and synthesised sound.
    - `PinPost.tsx` adds motion blur (reprojected from the logarithmic depth buffer), bloom, and grades for the freeze frame, the VHS rewind and the TILT;
    - `Overlay.tsx` draws the words: the meme ("yep. that's me."), the time card, the title, comic words where things hit you, score pop-ups, five fun facts, the ball's thoughts, and "here we go again".
 
-Render it in three chunks of 700 frames, muted (with software GL use `--gl=swangle --timeout=400000`: each tab takes several minutes to build its textures and compile its shaders), then add the bed:
+5. **The ending:** `src/tsunami/` is its own composition (`Tsunami`, 16.6 s), in the 3D style of the other first-person pieces:
+   - `world.ts` holds the maths: a crescent bay with headlands and a sandbar, the sea level (a last wash over your feet, then the drawback, 4 m down and 230 m out), the wave (a white line at 2.4 km that grows into a 31 m wall), the camera (looking down at your feet in the wash, the zoom on the horizon, turning round, the whip back) and everyone's paths;
+   - `Sea.tsx` rebuilds the sea every frame as one height field from your feet to 16 km out, with rows bunched round you and round the wave's face. Its shader does the see-through shallows and the lace of foam, the glitter, the dark face with the light glowing green through its top, the crest's foam and the spray;
+   - `Terrain.tsx` (the sand, the sea floor with ripples, caustics and tide pools, the jungle), `Props.tsx` (palms, the lifeguard tower with its TSUNAMI HAZARD ZONE sign, a sandcastle, a beach ball the sea takes with it, boats that fall over and then ride up the wave, rocks, coral, weed and flopping fish), `People.tsx` (the faced people from `src/pov/Human.tsx`, which can now run, point, wave both arms and sleep), `Gulls.tsx` and `You.tsx` (your feet).
+
+Render the pinball in three chunks of 700 frames and the ending in two, all muted (with software GL use `--gl=swangle --timeout=900000`: each tab takes several minutes to build its textures and compile its shaders), then join them with the concat filter and lay the bed under them:
 
     npx remotion render Pinball out/pb/part-0.mp4 --frames=0-699 --muted --gl=angle
     ...
-    ffmpeg -f concat -safe 0 -i list.txt -i out/pinball/bed.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k pinball.mp4
+    npx remotion render Tsunami out/ts/part-0.mp4 --frames=0-248 --muted --gl=angle
+    npx remotion render Tsunami out/ts/part-1.mp4 --frames=249-497 --muted --gl=angle
+    ffmpeg -i out/pb/part-0.mp4 -i out/pb/part-1.mp4 -i out/pb/part-2.mp4 -i out/ts/part-0.mp4 -i out/ts/part-1.mp4 -i out/pinball/bed.wav \
+      -filter_complex "[0:v][1:v][2:v][3:v][4:v]concat=n=5:v=1:a=0[v]" -map "[v]" -map 5:a -c:v libx264 -crf 18 -c:a aac -b:a 256k pinball.mp4

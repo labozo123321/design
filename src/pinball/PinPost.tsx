@@ -115,6 +115,8 @@ const GradeShader = {
     uDark: { value: 0 },
     uGrain: { value: 0.012 },
     uVig: { value: 0.32 },
+    uSat: { value: 1 },
+    uCon: { value: 1 },
   },
   vertexShader: VERT,
   fragmentShader: /* glsl */ `
@@ -129,6 +131,8 @@ const GradeShader = {
     uniform float uDark;
     uniform float uGrain;
     uniform float uVig;
+    uniform float uSat;
+    uniform float uCon;
     varying vec2 vUv;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float noise1(float x) { float i = floor(x); float f = fract(x); return mix(hash(vec2(i, 0.0)), hash(vec2(i + 1.0, 0.0)), f * f * (3.0 - 2.0 * f)); }
@@ -178,6 +182,12 @@ const GradeShader = {
         float l = dot(col, vec3(0.299, 0.587, 0.114));
         col = mix(col, vec3(l * 1.6, l * 0.25, l * 0.2) + vec3(0.06, 0.0, 0.0), uTilt);
       }
+      // optional richer colour (1, 1 = off): saturation, and contrast round mid-grey (linear light)
+      if (uSat != 1.0 || uCon != 1.0) {
+        float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+        col = max(mix(vec3(l), col, uSat), 0.0);
+        col = pow(col / 0.18, vec3(uCon)) * 0.18;
+      }
       col *= 1.0 - uDark;
       // a hit's flash brightens what's there (and only a little lifts the blacks), so it doesn't fog
       col = col * (1.0 + 2.5 * uFlash) + uFlash * 0.12;
@@ -197,6 +207,9 @@ export type Grade = {
   tilt: number;
   dark: number;
   time: number;
+  /** optional: saturation and contrast (1 = unchanged) */
+  sat?: number;
+  con?: number;
 };
 
 export const PinPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom: number }> = ({
@@ -275,6 +288,8 @@ export const PinPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom: 
   g.uTilt.value = grade.tilt;
   g.uDark.value = grade.dark;
   g.uTime.value = grade.time;
+  g.uSat.value = grade.sat ?? 1;
+  g.uCon.value = grade.con ?? 1;
   useFrame(() => {
     // the current camera is set by the rig just before; read it at render time
     camera.updateMatrixWorld();
