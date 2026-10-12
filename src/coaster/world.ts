@@ -83,8 +83,8 @@ export const BEAT = {
   zr: [CUE.zrRoll, CUE.zr1] as [number, number],
   hop: CUE.hopTop,
   brakes: CUE.brakes,
-  /** the on-ride camera fires as you come out of the drop */
-  photo: CUE.vertical + 1.2,
+  /** the on-ride camera fires as you come out of the drop (8 m up, pulling out at 4 g) */
+  photo: 35.1,
 };
 
 /* ------------------------------------------------------------------ */
@@ -94,9 +94,8 @@ export const BEAT = {
 const H = CUE.holdStart;
 const R0 = CUE.release;
 const LOOK: [number, number, number][] = [
-  // the station: down at the restraint coming down, then at her
-  [0.0, 0.12, -0.72],
-  [0.55, 0.08, -0.66],
+  // the station: at her straight away (she grins, waves, the restraints come down), then ahead
+  [0.0, 1.38, -0.3],
   [1.0, 1.42, -0.32],
   [1.9, 1.46, -0.3],
   [2.6, 0.02, -0.04],
@@ -212,11 +211,13 @@ export const camAt = (frame: number): Cam => {
     tnoise(u, 13, 3) * rat * 2 +
     tnoise(u, 0.6, 4) * 0.008;
   const roll = clamp(0.05 * g.l, -0.06, 0.06) + tnoise(u, 9, 5) * rat;
-  // neck pivot above the chest; the eyes sit up and forward of it and swing with the head
+  // neck pivot above the chest; the eyes sit up and forward of it and swing with the head. In the
+  // station you lean over to her and sit up a little (clear of your own restraint) until the train moves
+  const lean = 1 - smooth(CUE.dispatch - 0.1, CUE.dispatch + 0.7, u);
   const neck = f.P.clone()
-    .addScaledVector(f.R, SEATS[YOUR_SEAT] + side)
-    .addScaledVector(f.U, 0.27 + sink)
-    .addScaledVector(f.T, -0.02 + fwd);
+    .addScaledVector(f.R, SEATS[YOUR_SEAT] + side + 0.07 * lean)
+    .addScaledVector(f.U, 0.27 + sink + 0.05 * lean)
+    .addScaledVector(f.T, -0.02 + fwd + 0.03 * lean);
   const seatQ = new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().makeBasis(f.R, f.U, f.T.clone().negate()),
   );
@@ -228,6 +229,41 @@ export const camAt = (frame: number): Cam => {
   const hang = smooth(CUE.holdStart - 0.8, CUE.holdStart + 0.6, u) * (1 - smooth(CUE.release, CUE.release + 0.4, u));
   const fov = FOV_BASE + 9 * smooth(8, 32, v) - 9 * hang;
   return { pos, quat, fov, f };
+};
+
+/* ------------------------------------------------------------------ */
+/* The ride photo                                                       */
+/* ------------------------------------------------------------------ */
+
+/** The on-ride camera fires as the train comes down the drop. */
+export const PHOTO_FRAME = Math.round(BEAT.photo * FPS);
+
+/** The on-ride camera's mast: beside the drop's pull-out, ahead of the train and off to its left. */
+export const PHOTO_MAST = (() => {
+  const f = frameAt(sAt(Math.round(BEAT.photo * FPS)));
+  return f.P.clone().addScaledVector(f.T, 5.6).addScaledVector(f.U, 0.9).addScaledVector(f.R, -3.5);
+})();
+
+/** The on-ride camera: on its mast, looking into the front row's faces. */
+export const photoCam = (zoomOnYou = false): Cam => {
+  const f = frameAt(sAt(PHOTO_FRAME));
+  const target = zoomOnYou
+    ? f.P.clone().addScaledVector(f.U, 0.39).addScaledVector(f.R, SEATS[YOUR_SEAT])
+    : f.P.clone().addScaledVector(f.U, 0.1).addScaledVector(f.T, -1.1).addScaledVector(f.R, -0.2);
+  const pos = PHOTO_MAST.clone();
+  const m = new THREE.Matrix4().lookAt(pos, target, new THREE.Vector3(0, 1, 0).lerp(f.U, 0.5).normalize());
+  return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m), fov: zoomOnYou ? 5 : 33, f };
+};
+
+/** Where a world point lands in the photo (0..1 across, 0..1 down), for a 16:9 frame. */
+export const photoUV = (p: THREE.Vector3) => {
+  const c = photoCam();
+  const cam = new THREE.PerspectiveCamera(c.fov, 16 / 9, 0.05, 1000);
+  cam.position.copy(c.pos);
+  cam.quaternion.copy(c.quat);
+  cam.updateMatrixWorld();
+  const v = p.clone().project(cam);
+  return { u: (v.x + 1) / 2, v: (1 - v.y) / 2 };
 };
 
 /** Your sister's head (for the look-at tests): where her eyes are. */

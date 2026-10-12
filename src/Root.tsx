@@ -22,6 +22,7 @@ import { PB_DURATION } from "./pinball/timeline";
 import { Tsunami } from "./tsunami/Tsunami";
 import { Coaster, COASTER_DURATION } from "./coaster/Coaster";
 import { FaceTest } from "./coaster/FaceTest";
+import { CoasterPhoto } from "./coaster/CoasterPhoto";
 import { FRAMES as TSUNAMI_FRAMES } from "./tsunami/world";
 import { BH_DURATION } from "./blackhole/timeline";
 import { WI_DURATION } from "./whatif/timeline";
@@ -130,6 +131,7 @@ export const RemotionRoot: React.FC = () => (
         height={1920}
       />
       <Composition id="CoasterFaceTest" component={FaceTest} durationInFrames={6} fps={30} width={1080} height={1920} />
+      <Composition id="CoasterPhoto" component={CoasterPhoto} durationInFrames={1} fps={30} width={1920} height={1080} />
     <Composition
       id="BlackHole"
       component={BlackHole}

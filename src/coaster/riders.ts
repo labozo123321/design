@@ -84,24 +84,28 @@ export const SIS = {
 const sisterLook = (u: number) => {
   // she faces the front, glances about; turns to you (her left, yaw +) at the beats you look at her
   const atYou =
-    span(u, 0.7, 2.4, 0.2) +
+    span(u, -1, 2.4, 0.2) +
     span(u, SIS.yawn[0] - 0.3, SIS.yawn[1], 0.25) +
     span(u, BEAT.bubble[0] + 0.3, BEAT.bubble[1] - 0.2, 0.3) +
     span(u, SIS.thumb[0], SIS.thumb[1], 0.2) +
     span(u, SIS.soaked[0], SIS.soaked[1], 0.2) +
     smooth(SIS.again - 0.2, SIS.again + 0.5, u);
   const k = Math.min(1, atYou);
+  // the on-ride camera, dead ahead and a little up: she gives it a look
+  const lens = span(u, BEAT.photo - 0.9, BEAT.photo + 0.4, 0.2);
   const idleYaw = 0.25 * wob(u, 3, 0.11) - 0.15 * smooth(BEAT.chain, BEAT.chain + 2, u) * (1 - smooth(P.lift[1], P.lift[1] + 2, u));
   const idlePitch = 0.08 * wob(u, 5, 0.09) - 0.25 * span(u, BEAT.chain + 7, BEAT.chain + 9.5, 0.6);
   // turned to you: her neck takes most of it (you sit at her left, a head taller), her eyes the rest
-  return { yaw: idleYaw * (1 - k) + 1.28 * k, pitch: idlePitch * (1 - k) + 0.24 * k };
+  const yaw = idleYaw * (1 - k) + 1.28 * k;
+  const pitch = idlePitch * (1 - k) + 0.24 * k;
+  return { yaw: yaw * (1 - lens) + 0.42 * lens, pitch: pitch * (1 - lens) + 0.1 * lens };
 };
 
 /** How much she is looking at you (0..1). */
 const sisterAtYou = (u: number) =>
   Math.min(
     1,
-    span(u, 0.7, 2.4, 0.2) +
+    span(u, -1, 2.4, 0.2) +
       span(u, SIS.yawn[0] - 0.3, SIS.yawn[1], 0.25) +
       span(u, BEAT.bubble[0] + 0.3, BEAT.bubble[1] - 0.2, 0.3) +
       span(u, SIS.thumb[0], SIS.thumb[1], 0.2) +
@@ -141,9 +145,9 @@ const sisterFace = (u: number): Expr => {
   const pop = span(u, SIS.pop, SIS.pop + 0.35, 0.08);
   e.lidL = e.lidR = Math.max(e.lidL, 0.95 * pop);
   e.brow += 0.6 * pop;
-  // the ride: deadpan, eyes narrowed against the wind
+  // the ride: deadpan, eyes narrowed against the wind (but not for the camera: for that, just bored)
   const ride = smooth(BEAT.over, BEAT.over + 0.8, u) * (1 - smooth(P.end, P.end + 0.6, u));
-  e.squint += 0.35 * ride;
+  e.squint += 0.35 * ride * (1 - 0.85 * span(u, BEAT.photo - 0.9, BEAT.photo + 0.4, 0.2));
   // soaked: a slow blink
   const sk = span(u, SIS.soaked[0] + 0.3, SIS.soaked[0] + 0.9, 0.15);
   e.lidL = e.lidR = Math.max(e.lidL, sk);
@@ -157,8 +161,11 @@ const sisterFace = (u: number): Expr => {
   e.lidR = Math.max(e.lidR, blink);
   // eyes: on you when she looks at you, else roaming a little
   const at = sisterAtYou(u);
-  e.eyeYaw = 0.12 * wob(u, 7, 0.3) * (1 - at) + 0.2 * at;
-  e.eyePitch = (-0.05 + 0.06 * wob(u, 9, 0.21)) * (1 - at) + 0.06 * at;
+  const lens = span(u, BEAT.photo - 0.9, BEAT.photo + 0.4, 0.2);
+  e.eyeYaw = (0.12 * wob(u, 7, 0.3) * (1 - at) + 0.2 * at) * (1 - lens) + 0.14 * lens;
+  e.eyePitch = ((-0.05 + 0.06 * wob(u, 9, 0.21)) * (1 - at) + 0.06 * at) * (1 - lens) + 0.04 * lens;
+  e.lidL = Math.max(e.lidL, 0.38 * lens);
+  e.lidR = Math.max(e.lidR, 0.38 * lens);
   return e;
 };
 
@@ -200,8 +207,9 @@ const generic = (seed: number, temper: Temper, faceTowardYou: number) => {
     e.brow = 0.2 * nervous + 0.7 * fear;
     e.wide = 0.3 * fear;
     e.jaw = Math.max(e.jaw, 0.12 * fear);
-    // the ride, by temperament
-    const burst = 0.65 + 0.35 * Math.sin(u * (1.3 + (seed % 5) * 0.11) + seed);
+    // the ride, by temperament; through the drop everyone lets it out
+    const drop = span(u, P.ride[0] - 0.1, P.ride[0] + 4.6, 0.25);
+    const burst = Math.max(drop, 0.65 + 0.35 * Math.sin(u * (1.3 + (seed % 5) * 0.11) + seed));
     if (temper === "screamer") {
       e.jaw = Math.max(e.jaw, 0.95 * th * burst);
       e.wide = Math.max(e.wide, 0.7 * th);
@@ -212,14 +220,17 @@ const generic = (seed: number, temper: Temper, faceTowardYou: number) => {
       e.smile = Math.max(e.smile, 0.95 * th);
       e.squint = 0.6 * th;
     } else if (temper === "prayer") {
+      e.jaw = Math.max(e.jaw, 0.75 * drop);
       e.lidL = e.lidR = 0.95 * Math.max(th, fear * 0.7);
       e.wide = Math.max(e.wide, 0.5 * th);
       e.smile = -0.4 * th;
       e.jaw = Math.max(e.jaw, 0.2 * th);
     } else {
       e.smile = Math.max(e.smile, 0.2 * th);
-      e.squint = 0.4 * th;
-      e.jaw = Math.max(e.jaw, 0.08 * th);
+      e.squint = 0.4 * th + 0.4 * drop;
+      e.jaw = Math.max(e.jaw, 0.08 * th, 0.7 * drop);
+      e.wide = Math.max(e.wide, 0.6 * drop);
+      e.brow += 0.5 * drop;
     }
     e.lidL = Math.max(e.lidL, blink);
     e.lidR = Math.max(e.lidR, blink);
@@ -346,9 +357,18 @@ export const YOU_RIDER: RiderScript = {
   k: 0.98,
   eye: 0.75,
   clothes: { top: "#2B2D33", sleeves: "short", bottom: "#4A5568", legs: "shorts", shoe: "#F4F4F2", sole: "#DADAD5" },
-  look: () => ({ yaw: 0, pitch: 0 }),
+  // (only ever seen in the ride photo) head thrown back, screaming at the sky
+  look: (u: number) => ({ yaw: 0.06 * span(u, BEAT.release + 0.3, BEAT.over + 5.5, 0.3), pitch: 0.22 * span(u, BEAT.release + 0.3, BEAT.over + 5.5, 0.3) }),
   face: (u: number) => {
     const e = generic(3, "screamer", 0).face(u);
+    const d = span(u, BEAT.release + 0.3, BEAT.over + 5.5, 0.3);
+    e.jaw = Math.max(e.jaw, 1.45 * d);
+    e.wide = Math.max(e.wide, d);
+    e.squint = Math.max(e.squint, d);
+    e.lidL = Math.max(e.lidL, d);
+    e.lidR = Math.max(e.lidR, d);
+    e.brow = Math.max(e.brow, 0.9 * d);
+    e.smile = e.smile * (1 - d) - 0.3 * d;
     return e;
   },
   arms: () => ({ L: { mode: "grip", k: 0 }, R: { mode: "grip", k: 0 } }),

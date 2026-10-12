@@ -297,3 +297,81 @@ export const lashMap = () => {
   lashTex.colorSpace = THREE.SRGBColorSpace;
   return lashTex;
 };
+
+const gumCache: Record<string, THREE.Texture> = {};
+
+/**
+ * Where a popped bubble's skin sticks to a face: a film over the mouth and chin, torn and ragged at the
+ * edges, with bits on a cheek, the tip of the nose and under one eye. r: cover (0..1), g: the film's rim.
+ */
+export const gumMap = (sh: Shape, seed: number) => {
+  const key = `${JSON.stringify(sh)}|${seed}`;
+  if (gumCache[key]) return gumCache[key];
+  const W = 2048;
+  const H = 1024;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+  const img = g.createImageData(W, H);
+  const s = sh.w / 0.073;
+  const my = sh.mouthY;
+  // [x, y, rx, ry, angle]: the sheet over the mouth, a cap on the nose, a patch on one cheek, and strands
+  // stretched out from the sheet's edge
+  const blobs: [number, number, number, number, number][] = [
+    [0.002 * s, my + 0.003 * s, 0.03 * s, 0.022 * s, 0],
+    [0.0, sh.noseY + 0.002 * s, 0.0095 * s, 0.009 * s, 0],
+    [0.029 * s, my + 0.014 * s, 0.011 * s, 0.008 * s, 0.3],
+    [0.04 * s, my + 0.006 * s, 0.017 * s, 0.0019 * s, 0.18],
+    [-0.035 * s, my - 0.001 * s, 0.013 * s, 0.0017 * s, -0.12],
+    [0.012 * s, my - 0.026 * s, 0.0021 * s, 0.012 * s, 0.25],
+    [-0.022 * s, my + 0.024 * s, 0.014 * s, 0.0015 * s, -0.75],
+    [-0.008 * s, my - 0.024 * s, 0.0016 * s, 0.009 * s, -0.2],
+  ];
+  // torn holes in the sheet
+  const holes: [number, number, number][] = [
+    [-0.017 * s, my - 0.009 * s, 0.0042 * s],
+    [0.017 * s, my + 0.013 * s, 0.003 * s],
+    [0.021 * s, my - 0.012 * s, 0.0025 * s],
+  ];
+  const dir = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  for (let j = 0; j < H; j++) {
+    const v = 1 - (j + 0.5) / H;
+    if (v < 0.2 || v > 0.62) continue;
+    for (let i = 0; i < W; i++) {
+      const u = (i + 0.5) / W;
+      if (u < 0.1 || u > 0.4) continue;
+      dirOfUV(u, v, dir);
+      neutralPoint(sh, dir, p);
+      if (p.z < 0) continue;
+      const x = p.x;
+      const y = p.y;
+      // a smooth union of the blobs (1 at a centre, 0 on its edge)
+      let f = -1;
+      blobs.forEach(([cx, cy, rx, ry, a], bi) => {
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        const dx = x - cx;
+        const dy = y - cy;
+        const b = 1 - ((dx * ca + dy * sa) / rx) ** 2 - ((-dx * sa + dy * ca) / ry) ** 2;
+        f = bi === 0 ? b : Math.max(f, b) + 0.12 * Math.exp(-Math.abs(f - b) * 6);
+      });
+      // ragged edges
+      f += (vnoise(x * 330 + seed, y * 330) - 0.5) * 0.4 + (vnoise(x * 1300 + seed * 2, y * 1300) - 0.5) * 0.18;
+      for (const [hx, hy, hr] of holes) f -= 1.4 * Math.exp(-(((x - hx) ** 2 + (y - hy) ** 2) / (hr * hr)));
+      const cover = Math.min(1, Math.max(0, f / 0.1));
+      const rim = Math.exp(-(((f - 0.05) / 0.09) ** 2));
+      const o = (j * W + i) * 4;
+      img.data[o] = Math.round(cover * 255);
+      img.data[o + 1] = Math.round(rim * cover * 255);
+    }
+  }
+  for (let o = 3; o < img.data.length; o += 4) img.data[o] = 255;
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.NoColorSpace;
+  t.anisotropy = 4;
+  gumCache[key] = t;
+  return t;
+};

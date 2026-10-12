@@ -223,7 +223,8 @@ export const deform = (sh: Shape, e: Expr, p: THREE.Vector3) => {
   const front = smooth(-0.02, 0.05, p.z);
   // the jaw: everything below the lip line turns down about the hinge (fading out behind the cheeks)
   const below = smooth(ms.y + 0.0012, ms.y - 0.0042, y) * (1 - smooth(0.06, 0.08, Math.abs(x)));
-  const jawW = below * smooth(-0.07, 0.02, p.z);
+  // (under the chin the skin follows less, so it doesn't fold into the neck)
+  const jawW = below * smooth(-0.07, 0.02, p.z) * (1 - 0.75 * smooth(sh.chinY + 0.006, sh.chinY - 0.022, y));
   if (jawW > 0) {
     const a = jawAngle(e) * jawW;
     const pv = jawPivot(sh);
@@ -262,10 +263,15 @@ export const deform = (sh: Shape, e: Expr, p: THREE.Vector3) => {
   const under = g2(Math.abs(x), y, sh.eyeX, sh.eyeY - 0.016, 0.016, 0.008) * front;
   p.y += 0.0022 * e.squint * under;
   p.z += 0.0012 * e.squint * under;
-  // the skin round each eye wraps onto the lids' sphere
+  // the skin round each eye wraps onto the lids' sphere, and is never pushed into the eyeball (a big smile
+  // or a squint would otherwise bring the white through the skin at the corners)
   for (const side of [-1, 1]) {
     if (Math.abs(p.x - side * sh.eyeX) < sh.eyeR * 2.6 && Math.abs(p.y - sh.eyeY) < sh.eyeR * 2.6) {
-      wrapEye(sh, eyeCentre(sh, side), side, eyeLids(sh, e, side), p);
+      const c = eyeCentre(sh, side);
+      wrapEye(sh, c, side, eyeLids(sh, e, side), p);
+      const d = p.distanceTo(c);
+      const rmin = sh.eyeR * 1.06;
+      if (d < rmin) p.sub(c).multiplyScalar(rmin / Math.max(d, 1e-6)).add(c);
     }
   }
   return p;
@@ -367,9 +373,9 @@ export const eyeAngles = (c: THREE.Vector3, side: number, p: THREE.Vector3) => {
 /** Wrap the skin round the eye onto the lid sphere (p changed in place). */
 export const wrapEye = (sh: Shape, c: THREE.Vector3, side: number, l: EyeLids, p: THREE.Vector3) => {
   const a = eyeAngles(c, side, p);
-  if (a.d > sh.eyeR * 2.4 || p.z < c.z - sh.eyeR * 0.3) return p;
+  if (a.d > sh.eyeR * 2.6 || p.z < c.z - sh.eyeR * 0.3) return p;
   const tAbs = Math.abs(a.t);
-  const span = l.half + 0.42;
+  const span = l.half + 0.85;
   if (tAbs > span) return p;
   // the lids always cover the eyeball's top and bottom: wrap over the widest (open, unsquinted) extent;
   // closing them only moves the cut (in the skin shader)
@@ -379,7 +385,7 @@ export const wrapEye = (sh: Shape, c: THREE.Vector3, side: number, l: EyeLids, p
   const below = ed.lo - a.el;
   // 1 inside the opening and on the lids near it, fading out over ~0.45 rad beyond the edges
   const out = Math.max(above, below, tAbs - l.half);
-  const w = 1 - Math.min(1, Math.max(0, out / 0.55));
+  const w = 1 - Math.min(1, Math.max(0, out / 0.85));
   if (w <= 0) return p;
   const ww = w * w * (3 - 2 * w);
   const rl = sh.eyeR * LID_T;

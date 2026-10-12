@@ -124,6 +124,10 @@ const GradeShader = {
     uVig: { value: 0.32 },
     uSat: { value: 1 },
     uCon: { value: 1 },
+    uDrops: { value: 0 },
+    uDropT: { value: 0 },
+    uGrey: { value: 0 },
+    uMist: { value: 0 },
   },
   vertexShader: VERT,
   fragmentShader: /* glsl */ `
@@ -140,13 +144,50 @@ const GradeShader = {
     uniform float uVig;
     uniform float uSat;
     uniform float uCon;
+    uniform float uDrops;
+    uniform float uDropT;
+    uniform float uGrey;
+    uniform float uMist;
+
     varying vec2 vUv;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float noise1(float x) { float i = floor(x); float f = fract(x); return mix(hash(vec2(i, 0.0)), hash(vec2(i + 1.0, 0.0)), f * f * (3.0 - 2.0 * f)); }
     vec3 tap(vec2 uv) { return texture2D(tDiffuse, clamp(uv, vec2(0.0005), vec2(0.9995))).rgb; }
+    // water on the lens: drops in a few layers of cells, each sliding down at its own pace;
+    // returns the uv offset (refraction) in xy and how much of a drop is here in z
+    vec3 lensDrops(vec2 uv, float t) {
+      vec3 acc = vec3(0.0);
+      for (int L = 0; L < 3; L++) {
+        float fl = float(L);
+        float cells = 7.0 + fl * 5.0;
+        vec2 g = vec2(uv.x * cells * uAspect, uv.y * cells);
+        vec2 id = floor(g);
+        float h = hash(id + fl * 17.0);
+        float slide = t * (0.15 + 0.6 * h * h) * (h > 0.6 ? 1.0 : 0.15);
+        g.y += slide * cells * 0.25;
+        id = floor(g);
+        h = hash(id + fl * 17.0);
+        if (h > 0.55) continue;
+        vec2 f = fract(g) - 0.5 - (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.5;
+        float r = 0.12 + 0.2 * hash(id + 11.3);
+        // drops are a little taller than wide, with a tail above
+        vec2 q = f * vec2(1.0, 0.85);
+        float d = length(q);
+        float m = smoothstep(r, r * 0.8, d);
+        acc.xy += -q / max(r, 1e-3) * m * 0.035 / cells * 8.0;
+        acc.z = max(acc.z, m);
+      }
+      return acc;
+    }
     void main() {
       vec2 uv = vUv;
       float vhs = uVhs;
+      float dropMask = 0.0;
+      if (uDrops > 0.0) {
+        vec3 dr = lensDrops(vUv, uDropT);
+        uv += dr.xy * uDrops;
+        dropMask = dr.z * uDrops;
+      }
       // VHS: lines wobble, a tracking band rolls up the picture tearing it sideways, the head-switch
       // noise chews the bottom edge
       float band = 0.0;
@@ -198,6 +239,17 @@ const GradeShader = {
       col *= 1.0 - uDark;
       // a hit's flash brightens what's there (and only a little lifts the blacks), so it doesn't fog
       col = col * (1.0 + 2.5 * uFlash) + uFlash * 0.12;
+      // a drop catches the light at its rim and darkens a little at its edge
+      col = mix(col, col * 0.82 + 0.035, dropMask * 0.35);
+      // mist from the splash: a bright haze
+      col = mix(col, vec3(0.75, 0.8, 0.82) * 0.9 + col * 0.25, uMist);
+      // grey-out at high g: the edges drain of colour and darken
+      if (uGrey > 0.0) {
+        float r = length(c * vec2(1.0, 1.15));
+        float k = smoothstep(0.25, 0.8, r) * uGrey;
+        float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+        col = mix(col, vec3(l) * 0.55, k);
+      }
       // vignette and grain
       float v = smoothstep(0.85, 0.25, length(c * vec2(1.0, 1.25)));
       col *= mix(1.0 - uVig, 1.0, v);
@@ -217,6 +269,11 @@ export type Grade = {
   /** optional: saturation and contrast (1 = unchanged) */
   sat?: number;
   con?: number;
+  /** water on the lens (0..1) and its clock; grey-out; splash mist */
+  drops?: number;
+  dropT?: number;
+  grey?: number;
+  mist?: number;
 };
 
 export const CoasterPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom: number }> = ({
@@ -297,6 +354,10 @@ export const CoasterPost: React.FC<{ prev: Pose; blur: number; grade: Grade; blo
   g.uTime.value = grade.time;
   g.uSat.value = grade.sat ?? 1;
   g.uCon.value = grade.con ?? 1;
+  g.uDrops.value = grade.drops ?? 0;
+  g.uDropT.value = grade.dropT ?? 0;
+  g.uGrey.value = grade.grey ?? 0;
+  g.uMist.value = grade.mist ?? 0;
   useFrame(() => {
     // the current camera is set by the rig just before; read it at render time
     camera.updateMatrixWorld();

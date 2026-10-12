@@ -16,7 +16,7 @@ import {
   type Expr,
   type Shape,
 } from "./sculpt";
-import { IRIS_R, irisMap, skinMaps, strandMaps, type SkinLook } from "./textures";
+import { IRIS_R, gumMap, irisMap, skinMaps, strandMaps, type SkinLook } from "./textures";
 
 /**
  * A head with a face that acts: the sculpted skin (re-shaped every frame for the expression, with the open
@@ -45,7 +45,7 @@ export type Person = {
 };
 
 const SEG_HI = { w: 128, h: 96 };
-const SEG_LO = { w: 80, h: 60 };
+const SEG_LO = { w: 112, h: 84 };
 
 type Base = { dirs: Float32Array; neutral: Float32Array; geo: THREE.BufferGeometry };
 const baseCache: Record<string, Base> = {};
@@ -81,6 +81,14 @@ export const skinShade = (s: { fragmentShader: string }) => {
   s.fragmentShader = s.fragmentShader.replace("#include <lights_physical_pars_fragment>", WRAPPED);
 };
 
+/** Bubblegum pink, and a blank gum map for everyone without gum on their face. */
+const GUM_COL = new THREE.Color("#FF86BC");
+const NO_GUM = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  t.needsUpdate = true;
+  return t;
+})();
+
 /** Skin material: soft sheen, warm; the mouth's opening is discarded between the lips' inner edges. */
 const skinMaterial = (sh: Shape, look: SkinLook, rider: boolean) => {
   const maps = skinMaps(sh, look);
@@ -93,6 +101,8 @@ const skinMaterial = (sh: Shape, look: SkinLook, rider: boolean) => {
     sheenRoughness: 0.55,
     clearcoat: 0.04,
     clearcoatRoughness: 0.5,
+    // the inside of the head is what you see through the open mouth: dark
+    side: THREE.DoubleSide,
   });
   const uniforms = {
     uLipX: { value: new THREE.Vector2(-0.02, 0.02) },
@@ -102,11 +112,37 @@ const skinMaterial = (sh: Shape, look: SkinLook, rider: boolean) => {
     uEyeC: { value: [new THREE.Vector3(), new THREE.Vector3()] },
     uEyeL: { value: [new THREE.Vector4(), new THREE.Vector4()] },
     uEyeR: { value: sh.eyeR },
+    uGumMap: { value: NO_GUM },
+    uGum: { value: 0 },
+    uGumCol: { value: GUM_COL },
   };
   m.userData.mouth = uniforms;
   m.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, uniforms);
     skinShade(s);
+    s.fragmentShader = s.fragmentShader.replace(
+      "#include <map_fragment>",
+      `#include <map_fragment>
+  float crease = max(eyeCrease(vHead, uEyeC[0], -1.0, uEyeL[0]), eyeCrease(vHead, uEyeC[1], 1.0, uEyeL[1]));
+  diffuseColor.rgb *= 1.0 - 0.72 * crease;
+  vec2 gumS = texture2D(uGumMap, vMapUv).rg;
+  float gumK = gumS.r * uGum;
+  diffuseColor.rgb = mix(diffuseColor.rgb, uGumCol * (0.86 + 0.4 * gumS.g), gumK);`,
+    );
+    s.fragmentShader = s.fragmentShader
+      .replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
+  roughnessFactor = mix(roughnessFactor, 0.16, gumK);`,
+      )
+      .replace(
+        "#include <lights_physical_fragment>",
+        `#include <lights_physical_fragment>
+  #ifdef USE_CLEARCOAT
+  material.clearcoat = mix(material.clearcoat, 1.0, gumK);
+  material.clearcoatRoughness = mix(material.clearcoatRoughness, 0.07, gumK);
+  #endif`,
+      );
     s.vertexShader = s.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vHead;")
       .replace("#include <begin_vertex>", "#include <begin_vertex>\nvHead = position;");
@@ -122,6 +158,25 @@ uniform float uZMin;
 uniform vec3 uEyeC[2];
 uniform vec4 uEyeL[2];
 uniform float uEyeR;
+uniform sampler2D uGumMap;
+uniform float uGum;
+uniform vec3 uGumCol;
+/** How dark the crease of a shut eye is at P (0 none .. 1 on the line). */
+float eyeCrease(vec3 P, vec3 C, float side, vec4 l) {
+  vec3 d = P - C;
+  if (d.z < -0.001 || length(d) > uEyeR * 1.7) return 0.0;
+  float t = atan(d.x * side, d.z);
+  float hw = t < 0.0 ? l.z * 0.86 : l.z;
+  if (abs(t) >= hw * 1.05) return 0.0;
+  float el = atan(d.y, length(d.xz));
+  float k = min(1.0, abs(t) / hw);
+  float c = max(0.0, cos(1.5707963 * k));
+  float mid = (l.x + l.y) * 0.5;
+  float corner = mid * 0.25 + l.w * (t / hw);
+  float line = corner + (mid - corner) * pow(c, 0.8);
+  float shut = smoothstep(0.08, -0.02, l.x - l.y);
+  return shut * smoothstep(0.09, 0.0, abs(el - line)) * (0.4 + 0.6 * c);
+}
 bool inEye(vec3 P, vec3 C, float side, vec4 l) {
   vec3 d = P - C;
   if (d.z < -0.001 || length(d) > uEyeR * 1.7) return false;
@@ -159,6 +214,15 @@ float lipAt(float arr[9], float t) {
     if (vHead.y < up && vHead.y > lo) discard;
   }`,
       );
+    // (dark down by the mouth; pink up by the eyes, where you see past a lid's corner into the socket)
+    s.fragmentShader = s.fragmentShader.replace(
+      /}\s*$/,
+      `  if (!gl_FrontFacing) {
+    float hi = smoothstep(uEyeC[0].y - uEyeR * 4.5, uEyeC[0].y - uEyeR * 1.2, vHead.y);
+    gl_FragColor.rgb = mix(vec3(0.15, 0.045, 0.055), vec3(0.6, 0.36, 0.35), hi);
+  }
+}`,
+    );
     if (rider) s.fragmentShader = s.fragmentShader.replace(/}\s*$/, "  gl_FragColor.a = 0.0;\n}");
   };
   m.customProgramCacheKey = () => `skin-mouth-${rider}`;
@@ -519,6 +583,7 @@ const Eye: React.FC<{
   );
   const c = eyeCentre(sh, side);
   const l = eyeLids(sh, e, side);
+  const shutK = 1 - 0.16 * Math.min(1, Math.max(0, 1 - (l.up - l.lo) / 0.12));
   const thick = sh.kid ? 0.00075 : 0.0009;
   taperTube(lidCurve(sh, c, side, l, true, 20, 0.02), (t) => thick * (0.4 + 0.6 * Math.sin(Math.PI * t) ** 0.5), 24, 6, geos.up);
   taperTube(lidCurve(sh, c, side, l, false, 20, 0.02), (t) => thick * 0.8 * (0.4 + 0.6 * Math.sin(Math.PI * t) ** 0.5), 24, 6, geos.lo);
@@ -551,9 +616,9 @@ const Eye: React.FC<{
   strandRibbons(mkLashes(false, 18, lashLen * 0.38), geos.lash2, 3);
   return (
     <>
-      <mesh geometry={ball} material={ballMat} position={c} rotation={[-e.eyePitch, e.eyeYaw, 0]} />
+      <mesh geometry={ball} material={ballMat} position={c} rotation={[-e.eyePitch, e.eyeYaw, 0]} scale={shutK} />
       {/* the socket behind the eye: pink in the corners where you see past the eyeball */}
-      <mesh material={socketMat} position={c} scale={r * 1.25}>
+      <mesh material={socketMat} position={c} scale={r * 1.25 * shutK}>
         <sphereGeometry args={[1, 24, 16]} />
       </mesh>
       <mesh geometry={geos.up} material={marginMat} />
@@ -574,7 +639,9 @@ export const Head: React.FC<{
   chains?: THREE.Vector3[][];
   /** wind strength 0..1 (flattens bangs, flutters) */
   wind?: number;
-}> = ({ person, e, hi = false, rider = true, chains }) => {
+  /** a popped bubble's gum stuck over the lower face (0..1) */
+  gum?: number;
+}> = ({ person, e, hi = false, rider = true, chains, gum = 0 }) => {
   const sh = person.shape;
   const base = baseFor(sh, hi);
   const geo = useMemo(() => {
@@ -642,24 +709,27 @@ export const Head: React.FC<{
   mu.uLipX.value.set(x0, x1);
   mu.uUp.value = upY;
   mu.uLo.value = loY;
+  mu.uGum.value = gum;
+  if (gum > 0) mu.uGumMap.value = gumMap(sh, person.skin.seed);
   const lipGeoU = useMemo(() => new THREE.BufferGeometry(), []);
   const lipGeoL = useMemo(() => new THREE.BufferGeometry(), []);
   lipTube(upPts, upR, 0.5, lipGeoU);
   lipTube(loPts, loR, 0.56, lipGeoL);
+  const lipCol = useMemo(() => new THREE.Color(person.skin.tone).lerp(new THREE.Color(person.skin.lip), 0.55), [person.skin.lip, person.skin.tone]);
   const lipMat = useMemo(
     () =>
-      plain(
-        new THREE.Color(person.skin.tone).lerp(new THREE.Color(person.skin.lip), 0.55).getStyle(),
-        0.38,
-        { sheen: 0.15, sheenColor: new THREE.Color("#FFC0B0"), clearcoat: 0.25, clearcoatRoughness: 0.3 },
-        true,
-      ),
-    [person.skin.lip, person.skin.tone],
+      plain(lipCol.getStyle(), 0.38, { sheen: 0.15, sheenColor: new THREE.Color("#FFC0B0"), clearcoat: 0.25, clearcoatRoughness: 0.3 }, true),
+    [lipCol],
   );
-  const mouthMat = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({ color: "#2B0D10", roughness: 0.55, side: THREE.BackSide });
+  // under the gum the lips are pink film too
+  (lipMat as THREE.MeshPhysicalMaterial).color.copy(lipCol).lerp(GUM_COL, 0.9 * gum);
+  (lipMat as THREE.MeshPhysicalMaterial).roughness = 0.38 - 0.2 * gum;
+  // the throat: a dark ball inside the head, so nothing inside it (the neck, a collar) shows through the mouth
+  const throatMat = useMemo(() => {
+    const m = new THREE.MeshBasicMaterial({ color: "#22080A" });
     return rider ? markRider(m) : m;
   }, [rider]);
+  const hs = sh.w / 0.076;
   const toothMat = useMemo(() => plain("#F2EDE0", 0.25, { clearcoat: 0.5 }), []);
   const tongueMat = useMemo(() => plain("#C25A5E", 0.4, { sheen: 0.4, sheenColor: new THREE.Color("#FF9A9A") }), []);
   const mouthZ = frontZ(sh, 0, sh.mouthY).p.z;
@@ -713,6 +783,18 @@ export const Head: React.FC<{
     });
     return rider ? markRider(m) : m;
   }, [person.hair.color, rider]);
+  // the pigtails: the same hair, but a thin tube is nearly all grazing angles, where sheen would grey it out
+  const chainMat = useMemo(() => {
+    const st = strandMaps();
+    const m = new THREE.MeshPhysicalMaterial({
+      color: person.hair.color,
+      map: st.map,
+      bumpMap: st.bump,
+      bumpScale: 0.4,
+      roughness: 0.55,
+    });
+    return rider ? markRider(m) : m;
+  }, [person.hair.color, rider]);
   const browMat = useMemo(() => plain(person.brow, 0.75, { side: THREE.DoubleSide }), [person.brow]);
   const chainGeos = useMemo(() => (chains ?? []).map(() => new THREE.BufferGeometry()), [chains?.length]);
   const style = person.hair.style;
@@ -761,13 +843,9 @@ export const Head: React.FC<{
   return (
     <group>
       <mesh geometry={geo} material={skin} castShadow receiveShadow />
-      {/* the mouth: dark inside, teeth, tongue; the lower teeth and tongue ride the jaw */}
-      <mesh
-        material={mouthMat}
-        position={[0, sh.mouthY - 0.01 - ms.open * 0.4, mouthZ - 0.03]}
-        scale={[sh.mouthW * 0.58, 0.016 + ms.open * 0.6, 0.024]}
-      >
-        <sphereGeometry args={[1, 20, 14]} />
+      {/* the mouth: teeth, tongue (the lower teeth and tongue ride the jaw); its dark is the inside of the head */}
+      <mesh material={throatMat} position={[0, sh.mouthY + 0.02 * hs, -0.004 * hs]} scale={[0.044 * hs, 0.04 * hs, 0.046 * hs]}>
+        <sphereGeometry args={[1, 18, 12]} />
       </mesh>
       {teeth
         .filter((t) => t.up)
@@ -823,7 +901,7 @@ export const Head: React.FC<{
       ))}
       <HairCap sh={sh} person={person} mat={hairMat} />
       {chainGeos.map((g, i) => (
-        <mesh key={`ch${i}`} geometry={g} material={hairMat} castShadow />
+        <mesh key={`ch${i}`} geometry={g} material={chainMat} castShadow />
       ))}
       {(chains ?? []).map((pts, i) =>
         pts.length && person.hair.tie ? (

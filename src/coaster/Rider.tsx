@@ -132,8 +132,11 @@ const armTarget = (sc: RiderScript, side: number, S: THREE.Vector3, p: ArmPose, 
   return { T, pole, hand };
 };
 
-/** Bubblegum: a pink bubble from her lips during the hold, popping on the release, then gum on her face. */
-const Gum: React.FC<{ u: number }> = ({ u }) => {
+/** Bubblegum: a pink bubble from her lips during the hold, popping on the release (then it's on her face: see gumOn). */
+/** How much of the popped bubble is on her face. */
+export const gumOn = (u: number) => smooth(SIS.pop, SIS.pop + 0.05, u);
+
+export const Gum: React.FC<{ u: number }> = ({ u }) => {
   const sh = useMemo(() => SIS_SHAPE(), []);
   const mat = useMemo(
     () =>
@@ -151,7 +154,6 @@ const Gum: React.FC<{ u: number }> = ({ u }) => {
       ),
     [],
   );
-  const splat = useMemo(() => markRider(new THREE.MeshPhysicalMaterial({ color: "#FF6FAE", roughness: 0.35, clearcoat: 0.6 })), []);
   const [b0, b1] = BEAT.bubble;
   const grow = smooth(b0 + 0.2, b1 - 0.1, u);
   const mouth = frontZ(sh, 0, sh.mouthY).p;
@@ -162,32 +164,6 @@ const Gum: React.FC<{ u: number }> = ({ u }) => {
       <mesh material={mat} position={[0, sh.mouthY - 0.002, mouth.z + r * 0.92]} scale={[r * wob, r / wob, r]}>
         <sphereGeometry args={[1, 32, 24]} />
       </mesh>
-    );
-  }
-  if (u >= SIS.pop && u < BEAT.brakes + 30) {
-    // the popped skin of the bubble, stuck over her nose, cheeks and chin
-    const spots: [number, number, number][] = [
-      [0.0, sh.noseY + 0.004, 0.011],
-      [0.024, sh.mouthY + 0.012, 0.012],
-      [-0.027, sh.mouthY + 0.016, 0.01],
-      [0.008, sh.chinY + 0.014, 0.011],
-      [-0.012, sh.mouthY - 0.012, 0.008],
-      [0.034, sh.eyeY - 0.022, 0.007],
-    ];
-    const k = smooth(SIS.pop, SIS.pop + 0.06, u);
-    return (
-      <>
-        {spots.map(([x, y, r], i) => {
-          const f = frontZ(sh, x, y);
-          const n = f.dir;
-          const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-          return (
-            <mesh key={i} material={splat} position={f.p.clone().addScaledVector(n, 0.0008)} quaternion={q} scale={[r * k, r * 0.8 * k, 0.0012]}>
-              <sphereGeometry args={[1, 16, 10]} />
-            </mesh>
-          );
-        })}
-      </>
     );
   }
   return null;
@@ -330,7 +306,7 @@ export const Rider: React.FC<{ sc: RiderScript; frame: number; noHead?: boolean;
             <cylinderGeometry args={[0.92, 1.08, 1, 18]} />
           </mesh>
           <group position={hp.pos} quaternion={hp.quat}>
-            <Head person={sc.person} e={sc.face(u)} hi={hi} chains={myChains} />
+            <Head person={sc.person} e={sc.face(u)} hi={hi} chains={myChains} gum={sc.person.name === "sister" ? gumOn(u) : 0} />
             {sc.person.name === "sister" ? <Gum u={u} /> : null}
           </group>
         </>
