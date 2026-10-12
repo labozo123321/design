@@ -582,3 +582,71 @@ run pick up where it stopped), join them and lay the bed under them, mastered to
     ffmpeg -i out/coaster/part-0.mp4 -i out/coaster/part-1.mp4 -i out/coaster/part-2.mp4 -i out/coaster/part-3.mp4 -i out/coaster/bed.wav \
       -filter_complex "[0:v][1:v][2:v][3:v]concat=n=4:v=1:a=0[v];[4:a]volume=5.2dB,alimiter=limit=0.6:attack=5:release=60:level=disabled[a]" \
       -map "[v]" -map "[a]" -c:v libx264 -crf 18 -c:a aac -b:a 256k coaster.mp4
+
+## Wedding (first person, the drone carrying the wedding rings)
+
+"POV: you're the drone carrying the wedding rings". A 72 s first-person flight with no voice and no
+words but the title: a lakeside wedding at golden hour, seen from a drone a nine-year-old ring bearer is
+flying (tongue out, his golden retriever beside him), the ring box swinging under it on a satin ribbon.
+Liftoff, eye to eye with the kid, then the reveal of the ceremony; down the aisle while the guests hold up
+their phones; the groom reaches for the box and it yanks away; it dips over the guests (a hat flips off
+over the lens), hovers in the officiant's face in total silence, turns to the groom's glare and the
+bride's awkward little wave, then goes full throttle straight up into the sunset. It dives at the tent
+past a spinning waiter, threads the tables, buzzes the DJ, swings under the chandelier, and goes, in
+slow motion, through the champagne tower and into the cake. The feed breaks up. When it comes back, the
+camera is lying in the cake with frosting on the lens and faces leaning in over it: the baker (who
+faints), the bride, the groom, the kid. The groom glares at the kid, digs the ribbon out of the cake and
+holds it up to the lens: nothing on it. The kid points; the camera turns: the dog, on a chair at the
+cake table, frosting on its nose, the ring box in its mouth. It tilts its head.
+
+1. **Flight:** `python3 scripts/generate-wedding-path.py` writes `src/wedding/flight.json`:
+   - the venue's layout (the lake shore, the arch, the aisle and its rows of chairs, who sits where, the
+     tent and its tables, the champagne tower, the cake, the dog's chair at the end);
+   - the drone's path, keyed in world time and interpolated monotone (pchip), with video time mapped
+     onto world time through two slow-motion windows (the tower at 0.12x, the cake at 0.15x) and a jump
+     while the feed is black; the camera's FPV roll from the drone's lateral acceleration, the ring box
+     as a damped pendulum on its ribbon, the lens wide in the cake, then the zoom onto the dog;
+   - every cue the picture and the sound are timed from, in video and in world time;
+   - a clearance report: the drone and the box against every head, chair, pole and glass they must
+     miss.
+2. **Sound:** `python3 scripts/generate-wedding-audio.py` builds `public/wedding/bed.mp3` (and
+   `out/wedding/bed.wav` for mastering), all synthesised: a string quartet playing Pachelbel's Canon in D
+   (tempo set so its second and third times round land on the reveal and the couple), slipping and
+   losing its place as the drone misbehaves, stopping dead at the officiant (a cricket, a cough, grandma
+   losing it); the props' buzz from the thrust the path needs, the wind from its speed; a riser into the
+   DJ's house remix of the canon at the top of the climb, the air horn, the chandelier's crystals; the
+   slow motion as tape at half speed with a heartbeat, the tower shattering, the cake's splat and the
+   music dying in it; the props clogged and winding down, the feed's glitch; then the hush round the
+   cake through the frosting, the baker going down, the digging, the gimbal whirring round, an
+   orchestra hit on the zoom, the dog's little "hm?", the room's "aww" and the canon's last cadence.
+3. **Picture:** `src/wedding/`:
+   - `flight.ts` reads the flight (camera, box, cues, world time per frame);
+   - `Sky.tsx`, `Land.tsx` (the lake with the mountains reflected in it, the mountains, the striped lawn,
+     the balustrade, cypresses and olives, vines, the villa), `Flowers.tsx`, `Ceremony.tsx` (the arch
+     with its chiffon and roses, gold chairs, urns, the runner and petals, lanterns), `Tent.tsx` (roof,
+     valance, poles, floors, tables laid for dinner, festoons, the chandelier, the DJ booth), `Treats.tsx`
+     (the champagne tower and the four-tier cake);
+   - `Figure.tsx` gives everyone a body (outfits painted onto the torso, skirts and the gown with its
+     train, the bride's veil, two-bone arms with hands, props: phones, the officiant's book, the bottle,
+     the baker's spatula, the waiter's tray), with the sculpted heads from `src/coaster/face/`;
+     `cast.ts` is who they are and what they wear, and `People.tsx` scripts every face, look and arm:
+     the guests watching, ducking and filming, the couple, the officiant, the staff, and the ending;
+   - `Dog.tsx` (the golden retriever with its bow tie, the ring box), `Drone.tsx` (the prop guards in the
+     corners of the picture, the box on its ribbon, the grass blown flat), `Effects.tsx` (the tower's
+     glasses breaking tier by tier and the champagne, the cake bursting, what's left of it, the hat);
+   - `WeddingPost.tsx` adds motion blur, bloom, the lens's barrel distortion, champagne drops on it, the
+     frosting and the feed breaking up; `Overlay.tsx` is the title.
+
+The render is long under software GL (`--gl=swangle`, 20-35 s a frame per process), so bundle once and
+render a resumable JPEG sequence in batches (each pass renders only the frames not yet on disk), then lay
+the bed under it, mastered to -15 LUFS:
+
+    npx remotion bundle --out-dir=out/wedding/bundle
+    npx remotion render out/wedding/bundle Wedding out/wedding/frames --sequence --image-format=jpeg \
+      --jpeg-quality=95 --frames=0-539 --gl=swangle --timeout=900000 --concurrency=1   # and so on to 2159
+    ffmpeg -framerate 30 -i out/wedding/seq/f%04d.jpeg -i out/wedding/bed.wav \
+      -af "acompressor=threshold=-26dB:ratio=2.2:attack=25:release=350:knee=6,volume=9.8dB,alimiter=limit=0.89:attack=5:release=60:level=disabled" \
+      -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -b:a 256k wedding.mp4
+
+(`out/wedding/seq/` holds the frames renamed to `f0000.jpeg`...: Remotion pads the names to the length
+of each range's last frame.)

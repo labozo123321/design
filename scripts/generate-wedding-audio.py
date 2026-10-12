@@ -278,19 +278,19 @@ def quartet():
         for i in range(8):
             t0 = g0 + i * beat
             seed += 1
-            play("cello", GROUND[i], t0, beat * 0.98, 0.5, 0.35, seed, vib=0.003, att=0.05, rel=0.12)
+            play("cello", GROUND[i], t0, beat * 0.98, 0.5, 0.0, seed, vib=0.003, att=0.05, rel=0.12)
             # the viola holds the chord's middle, the second violin the top, both soft
             ch = CHORDS[i]
-            play("viola", ch[1] - 12 + 12, t0, beat, 0.13, 0.15, seed + 100, att=0.18, rel=0.25)
+            play("viola", ch[1], t0, beat, 0.13, 0.3, seed + 100, att=0.18, rel=0.25)
             if g >= 1:
-                play("violin", LINE1[i] - 12 if g == 2 else LINE1[i], t0, beat, 0.2, -0.3, seed + 200)
+                play("violin", LINE1[i] - 12 if g == 2 else LINE1[i], t0, beat, 0.2, -0.32, seed + 200)
         # the first violin's line for this time round
         line = [LINE1, LINE2, None][g]
         if line is not None:
             for i, n in enumerate(line):
                 t0 = g0 + i * beat
                 seed += 1
-                play("violin", n, t0, beat * 1.02, 0.3, -0.15, seed + 300)
+                play("violin", n, t0, beat * 1.02, 0.3, -0.1, seed + 300)
         else:
             for i, n in enumerate(LINE3):
                 t0 = g0 + i * beat / 2
@@ -298,9 +298,9 @@ def quartet():
                 sl = None
                 if t0 <= yank < t0 + beat / 2:
                     sl = (yank - t0, -2.5, 0.45)
-                play("violin", n, t0, beat / 2 * 1.05, 0.32, -0.15, seed + 300, slide=sl, att=0.04, rel=0.08)
+                play("violin", n, t0, beat / 2 * 1.05, 0.32, -0.1, seed + 300, slide=sl, att=0.04, rel=0.08)
     # the falter: a held, anxious tremolo after the dip
-    for n, part, pan in ((74, "violin", -0.15), (69, "violin", -0.3), (66, "viola", 0.15), (50, "cello", 0.35)):
+    for n, part, pan in ((74, "violin", -0.1), (69, "violin", -0.32), (66, "viola", 0.3), (50, "cello", 0.0)):
         s = bowed(midi(n), 1.0, part, trem=0.7, seed=900 + n, att=0.05, rel=0.2)
         place(b, stereo(s, pan, 0.2) * 0.22, falter0 + 0.05)
     # the stop: the first violin's bow scrapes off the string
@@ -865,7 +865,7 @@ def finale():
     # the tent again, hushed, close round the cake: its air, people murmuring
     b += murmur(fb - 0.1, DUR - fb + 0.1, 0.014, 4)
     sec = DUR - fb + 0.1
-    air = lp(RNG.standard_normal(int(sec * SR)), 700) * 0.012 + hp(RNG.standard_normal(int(sec * SR)), 4000) * 0.002
+    air = lp(RNG.standard_normal(int(sec * SR)), 700) * 0.012
     place(b, stereo(air, 0, 0.9) * adsr(int(sec * SR), 0.3, 0.5)[:, None], fb - 0.1)
     # the baker: a horrified gasp; then he goes down
     place(b, stereo(gasp(0.6, 51, "a"), 0.1) * 0.22, C["baker"] - 0.05)
@@ -977,6 +977,8 @@ def mix():
     # the hush round the cake is close to the mic: up front; then under the strings for the dog
     tf = np.arange(len(fin)) / SR
     fin_g = 5.0 - 3.0 * smooth(C["dog"] + 0.2, C["dog"] + 0.6, tf)
+    # heard through the frosting still on the mic
+    fin = np.stack([lp(fin[:, c], 4800) for c in range(2)], axis=1)
     out += fin * fin_g[:, None]
     out += finale_music() * 0.9
     # silence while the feed is black
