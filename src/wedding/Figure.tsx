@@ -719,7 +719,7 @@ export const Figure: React.FC<{
       {arm(-1)}
       {arm(1)}
       <group position={headP} quaternion={headQ}>
-        <Head person={who} e={expr} rider={false} hi={hi} chains={chains} />
+        <Head person={who} e={expr} rider={false} hi={hi} chains={chains} plainHair />
         {hat}
         {headExtra}
       </group>

@@ -641,7 +641,10 @@ export const Head: React.FC<{
   wind?: number;
   /** a popped bubble's gum stuck over the lower face (0..1) */
   gum?: number;
-}> = ({ person, e, hi = false, rider = true, chains, gum = 0 }) => {
+  /** hair without the anisotropic highlight (a crowd in a low sun: grazing it, that lobe blows up into
+   * pinpoints the bloom turns into flares) */
+  plainHair?: boolean;
+}> = ({ person, e, hi = false, rider = true, chains, gum = 0, plainHair = false }) => {
   const sh = person.shape;
   const base = baseFor(sh, hi);
   const geo = useMemo(() => {
@@ -778,11 +781,11 @@ export const Head: React.FC<{
       sheen: 0.8,
       sheenColor: new THREE.Color(person.hair.color).lerp(new THREE.Color("#FFE6C0"), 0.5),
       sheenRoughness: 0.35,
-      anisotropy: 0.7,
+      anisotropy: plainHair ? 0 : 0.7,
       anisotropyRotation: Math.PI / 2,
     });
     return rider ? markRider(m) : m;
-  }, [person.hair.color, rider]);
+  }, [person.hair.color, rider, plainHair]);
   // the pigtails: the same hair, but a thin tube is nearly all grazing angles, where sheen would grey it out
   const chainMat = useMemo(() => {
     const st = strandMaps();
