@@ -875,8 +875,8 @@ export const Head: React.FC<{
             ))}
           <mesh
             material={tongueMat}
-            position={[0, sh.mouthY - 0.0115, mouthZ - 0.026]}
-            scale={[sh.mouthW * 0.36, 0.006, 0.017]}
+            position={[0.007 * (e.tongue ?? 0), sh.mouthY - 0.0115 + 0.004 * (e.tongue ?? 0), mouthZ - 0.026 + 0.03 * (e.tongue ?? 0)]}
+            scale={[sh.mouthW * (0.36 - 0.06 * (e.tongue ?? 0)), 0.006 + 0.002 * (e.tongue ?? 0), 0.017 + 0.006 * (e.tongue ?? 0)]}
           >
             <sphereGeometry args={[1, 18, 12]} />
           </mesh>

@@ -114,6 +114,8 @@ export type Expr = {
   eyePitch: number;
   /** chewing: the jaw's small sideways grind (-1..1) */
   chew: number;
+  /** tongue poked out between the lips (concentration, cheek): 0..1 */
+  tongue?: number;
 };
 
 export const NEUTRAL: Expr = {
