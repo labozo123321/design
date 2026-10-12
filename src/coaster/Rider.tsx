@@ -123,10 +123,11 @@ const armTarget = (sc: RiderScript, side: number, S: THREE.Vector3, p: ArmPose, 
     pole = new THREE.Vector3(side, -0.2 + 0.4 * w, 0.4).normalize();
     hand = mixHand(GRIP, p.mode === "wave" ? OPEN : RELAX, w);
   } else if (p.mode === "thumb") {
-    // a thumbs-up held out toward you (her left arm, toward -x)
-    const out = S.clone().add(new THREE.Vector3(-0.17 * k, -0.02 * k, -0.36 * k));
+    // a thumbs-up held up beside her head, forearm up and forward, pumping a little
+    const pump = 0.015 * Math.sin(u * 2 * Math.PI * 1.2);
+    const out = S.clone().add(new THREE.Vector3(side * 0.1 * k, (0.3 + pump) * k, -0.22 * k));
     T = grip.lerp(out, w);
-    pole = new THREE.Vector3(side, -0.5, 0.5).normalize();
+    pole = new THREE.Vector3(side * 0.6, -1, 0.3).normalize();
     hand = mixHand(GRIP, THUMBS_UP, w);
   }
   return { T, pole, hand };
@@ -141,15 +142,14 @@ export const Gum: React.FC<{ u: number }> = ({ u }) => {
   const mat = useMemo(
     () =>
       markRider(
+        // opaque: the motion blur's rider mask writes alpha 0, which would make a see-through bubble vanish
         new THREE.MeshPhysicalMaterial({
-          color: "#FF7EB6",
-          roughness: 0.2,
+          color: "#FF86BC",
+          roughness: 0.22,
           clearcoat: 1,
-          clearcoatRoughness: 0.1,
-          transparent: true,
-          opacity: 0.86,
-          sheen: 0.6,
-          sheenColor: new THREE.Color("#FFD0E6"),
+          clearcoatRoughness: 0.08,
+          sheen: 0.7,
+          sheenColor: new THREE.Color("#FFD6EA"),
         }),
       ),
     [],
@@ -158,7 +158,7 @@ export const Gum: React.FC<{ u: number }> = ({ u }) => {
   const grow = smooth(b0 + 0.2, b1 - 0.1, u);
   const mouth = frontZ(sh, 0, sh.mouthY).p;
   if (u > b0 && u < SIS.pop) {
-    const r = 0.006 + 0.052 * Math.pow(grow, 1.4);
+    const r = 0.006 + 0.066 * Math.pow(grow, 1.4);
     const wob = 1 + 0.03 * Math.sin(u * 23) * grow;
     return (
       <mesh material={mat} position={[0, sh.mouthY - 0.002, mouth.z + r * 0.92]} scale={[r * wob, r / wob, r]}>
@@ -230,7 +230,11 @@ export const Rider: React.FC<{ sc: RiderScript; frame: number; noHead?: boolean;
     const fore = W.clone().sub(E).normalize();
     // the hand continues the forearm; the palm turns inward to the grip (or forward when up)
     const handY = fore.clone().negate();
-    const palmWant = new THREE.Vector3(-side, 0, 0).lerp(new THREE.Vector3(0, 0, -1), pose.mode === "grip" ? 0 : Math.min(1, pose.k));
+    // (a thumbs-up keeps the fist upright, knuckles out: the same palm as the people in the queue)
+    const palmWant =
+      pose.mode === "thumb"
+        ? new THREE.Vector3(-side, 0, 0).lerp(new THREE.Vector3(side, 0, 0), Math.min(1, pose.k)).add(new THREE.Vector3(0, 0, 1e-3))
+        : new THREE.Vector3(-side, 0, 0).lerp(new THREE.Vector3(0, 0, -1), pose.mode === "grip" ? 0 : Math.min(1, pose.k));
     const handZ = palmWant.addScaledVector(handY, -palmWant.dot(handY)).normalize();
     const handX = new THREE.Vector3().crossVectors(handY, handZ);
     const hq = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(handX, handY, handZ));

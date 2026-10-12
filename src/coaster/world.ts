@@ -18,6 +18,8 @@ export const smooth = (a: number, b: number, x: number) => {
   return k * k * (3 - 2 * k);
 };
 export const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
+/** 1 between a and b, easing in and out over e either side. */
+const span = (u: number, a: number, b: number, e = 0.25) => smooth(a - e, a + e, u) * (1 - smooth(b - e, b + e, u));
 export const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
 /** Golden hour: the sun 13 degrees up, 20 degrees south of west (ahead of you, left, at the hold). */
@@ -119,9 +121,8 @@ const LOOK: [number, number, number][] = [
   [H + 0.1, 0.02, -0.82],
   [H + 0.6, 0.04, -0.84],
   [H + 1.05, 1.44, -0.22],
-  [R0 - 1.15, 1.42, -0.24],
-  [R0 - 0.55, 0.02, -0.8],
-  [R0, 0.0, -0.82],
+  [R0 + 0.3, 1.42, -0.24],
+  [R0 + 0.85, 0.02, -0.8],
   // the drop
   [CUE.over, 0.0, -0.62],
   [CUE.over + 1.6, 0.0, -0.28],
@@ -216,7 +217,7 @@ export const camAt = (frame: number): Cam => {
   const roll = clamp(0.05 * g.l, -0.06, 0.06) + tnoise(u, 9, 5) * rat;
   // neck pivot above the chest; the eyes sit up and forward of it and swing with the head. In the
   // station you lean over to her and sit up a little (clear of your own restraint) until the train moves
-  const lean = 1 - smooth(CUE.dispatch - 0.1, CUE.dispatch + 0.7, u);
+  const lean = Math.max(1 - smooth(CUE.dispatch - 0.1, CUE.dispatch + 0.7, u), span(u, H + 0.7, R0 + 0.45, 0.35));
   const neck = f.P.clone()
     .addScaledVector(f.R, SEATS[YOUR_SEAT] + side + 0.07 * lean)
     .addScaledVector(f.U, 0.27 + sink + 0.05 * lean)

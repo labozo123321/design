@@ -23,7 +23,8 @@ const pop = (t: number, t0: number, dur = 0.24, over = 1.12) => {
 
 const Title: React.FC<{ t: number }> = ({ t }) => {
   const t0 = 0.15;
-  const t1 = 3.5;
+  // gone before the train rolls out under the ride's sign
+  const t1 = 2.35;
   const a = smooth(t0, t0 + 0.12, t) * (1 - smooth(t1 - 0.25, t1, t));
   if (a <= 0) return null;
   const s1 = pop(t, t0);

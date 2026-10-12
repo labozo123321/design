@@ -86,7 +86,7 @@ const sisterLook = (u: number) => {
   const atYou =
     span(u, -1, 2.4, 0.2) +
     span(u, SIS.yawn[0] - 0.3, SIS.yawn[1], 0.25) +
-    span(u, BEAT.bubble[0] + 0.3, BEAT.bubble[1] - 0.2, 0.3) +
+    span(u, BEAT.bubble[0] + 0.3, SIS.pop + 0.45, 0.25) +
     span(u, SIS.thumb[0], SIS.thumb[1], 0.2) +
     span(u, SIS.soaked[0], SIS.soaked[1], 0.2) +
     smooth(SIS.again - 0.2, SIS.again + 0.5, u);
@@ -107,7 +107,7 @@ const sisterAtYou = (u: number) =>
     1,
     span(u, -1, 2.4, 0.2) +
       span(u, SIS.yawn[0] - 0.3, SIS.yawn[1], 0.25) +
-      span(u, BEAT.bubble[0] + 0.3, BEAT.bubble[1] - 0.2, 0.3) +
+      span(u, BEAT.bubble[0] + 0.3, SIS.pop + 0.45, 0.25) +
       span(u, SIS.thumb[0], SIS.thumb[1], 0.2) +
       span(u, SIS.soaked[0], SIS.soaked[1], 0.2) +
       smooth(SIS.again - 0.2, SIS.again + 0.5, u),
@@ -174,9 +174,10 @@ const sisterArms = (u: number) => {
   const upRide = smooth(BEAT.over + 1.5, BEAT.over + 2.5, u) * (1 - smooth(BEAT.immTop - 1.0, BEAT.immTop - 0.5, u));
   const upLate = span(u, BEAT.zr[0] - 0.5, BEAT.brakes - 0.5, 0.4);
   const wave = span(u, 0.2, 1.6, 0.3);
+  // (the thumbs-up is her far hand, held up against the sky where you can see it)
   return {
-    L: thumb > 0.02 ? ({ mode: "thumb", k: thumb } as ArmPose) : ({ mode: "up", k: Math.max(upRide, upLate) * 0.9 } as ArmPose),
-    R: wave > 0.02 ? ({ mode: "wave", k: wave } as ArmPose) : ({ mode: "up", k: Math.max(upRide, upLate) } as ArmPose),
+    L: { mode: "up", k: Math.max(upRide, upLate) * 0.9 } as ArmPose,
+    R: wave > 0.02 ? ({ mode: "wave", k: wave } as ArmPose) : thumb > 0.02 ? ({ mode: "thumb", k: thumb } as ArmPose) : ({ mode: "up", k: Math.max(upRide, upLate) } as ArmPose),
   };
 };
 
