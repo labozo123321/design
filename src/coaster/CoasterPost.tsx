@@ -157,9 +157,9 @@ const GradeShader = {
     // returns the uv offset (refraction) in xy and how much of a drop is here in z
     vec3 lensDrops(vec2 uv, float t) {
       vec3 acc = vec3(0.0);
-      for (int L = 0; L < 3; L++) {
+      for (int L = 0; L < 2; L++) {
         float fl = float(L);
-        float cells = 7.0 + fl * 5.0;
+        float cells = 9.0 + fl * 7.0;
         vec2 g = vec2(uv.x * cells * uAspect, uv.y * cells);
         vec2 id = floor(g);
         float h = hash(id + fl * 17.0);
@@ -167,14 +167,14 @@ const GradeShader = {
         g.y += slide * cells * 0.25;
         id = floor(g);
         h = hash(id + fl * 17.0);
-        if (h > 0.55) continue;
+        if (h > 0.3) continue;
         vec2 f = fract(g) - 0.5 - (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.5;
-        float r = 0.12 + 0.2 * hash(id + 11.3);
+        float r = 0.09 + 0.14 * hash(id + 11.3);
         // drops are a little taller than wide, with a tail above
         vec2 q = f * vec2(1.0, 0.85);
         float d = length(q);
         float m = smoothstep(r, r * 0.8, d);
-        acc.xy += -q / max(r, 1e-3) * m * 0.035 / cells * 8.0;
+        acc.xy += -q / max(r, 1e-3) * m * 0.012 / cells * 8.0;
         acc.z = max(acc.z, m);
       }
       return acc;

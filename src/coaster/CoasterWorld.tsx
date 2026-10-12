@@ -92,7 +92,9 @@ export const CoasterWorld: React.FC<{ frame: number; mode?: "ride" | "photo" }> 
         ? frontCam(frame)
         : debug === "near"
           ? frontCam(frame, 1.6, 0.35, 0.3, 50)
-          : camAt(frame);
+          : debug === "wide"
+            ? frontCam(frame, 14, 5, 9, 60)
+            : camAt(frame);
   const u = frame / FPS;
   // the shadow box: round the train, and stretched toward what you look at
   const look = new THREE.Vector3(0, 0, -1).applyQuaternion(c.quat);

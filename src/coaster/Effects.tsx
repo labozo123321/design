@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
-import { MARK, NFRAMES, TR, frameAt, sAt } from "./track";
+import { MARK, NFRAMES, TR, frameAt, sAt, vAt } from "./track";
 import { BEAT, FPS, PHOTO_MAST, smooth } from "./world";
 
 /**
@@ -15,48 +15,216 @@ import { BEAT, FPS, PHOTO_MAST, smooth } from "./world";
  */
 
 const G = 9.81;
-const SPLASH = { s0: MARK.splash0 - 1.0, s1: MARK.splash1 + 2.0, step: 0.5 };
+const WATER_Y = -0.12;
+const SPLASH = { s0: MARK.splash0 - 0.5, s1: MARK.splash1 + 1.0, step: 0.5 };
 
-/** When the front row reached track position s (video seconds). */
-const hitTimes = (() => {
+/** For each half metre of trough: when the front row reached it (video seconds) and how fast it was going. */
+const hits = (() => {
   const S = TR.frames.s;
-  const out: number[] = [];
+  const out: { t: number; v: number }[] = [];
   for (let s = SPLASH.s0; s <= SPLASH.s1; s += SPLASH.step) {
     let f = 0;
     while (f < NFRAMES - 1 && S[f + 1] < s) f++;
     const k = S[f + 1] > S[f] ? (s - S[f]) / (S[f + 1] - S[f]) : 0;
-    out.push((f + Math.min(1, Math.max(0, k))) / FPS);
+    const fr = f + Math.min(1, Math.max(0, k));
+    out.push({ t: fr / FPS, v: vAt(fr) });
   }
   return out;
 })();
+const SLICES = hits.length;
 
 const hash = (n: number) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
 
-const NF = 10; // points across a sheet (slow water .. fast water)
-const SLICES = hitTimes.length;
+/**
+ * One blob of spray: thrown from the scoop under the front of the train when it ploughs into the trough,
+ * then slowed by the air (horizontally and vertically, e^-kt) and pulled down. Kinds:
+ *  - wing: the two walls, out and up beside the train, keeping up with it for a moment, then left behind;
+ *  - bow: a burst thrown on ahead of the train, which drives through it;
+ *  - rain: straight up over the front rows, coming down on them.
+ */
+type Blob = {
+  slice: number;
+  side: number;
+  kind: 0 | 1 | 2;
+  delay: number;
+  off: number;
+  kf: number;
+  lat: number;
+  up: number;
+  k: number;
+  s0: number;
+  s1: number;
+  life: number;
+  alpha: number;
+  rot: number;
+  spin: number;
+  tile: number;
+};
+
+const BLOBS: Blob[] = (() => {
+  const out: Blob[] = [];
+  let n = 0;
+  const h = () => hash(++n * 1.37);
+  for (let i = 0; i < SLICES; i++) {
+    // hardest where the train hits the water, easing off as it slows
+    const str = 0.45 + 0.75 * Math.exp(-i / (0.3 * SLICES));
+    const entry = Math.exp(-i / (0.12 * SLICES));
+    for (const side of [-1, 1]) {
+      for (let q = 0; q < 16; q++)
+        out.push({
+          slice: i, side, kind: 0, delay: 0.05 * h(), off: 0.55 + 0.5 * h(),
+          kf: 0.92 + 0.09 * h(), lat: (3.5 + 6 * h()) * str, up: (7.5 + 8 * h()) * str, k: 0.55 + 0.6 * h(),
+          s0: 0.45 + 0.4 * h(), s1: 1.8 + 1.6 * h(), life: 1.4 + 0.8 * h(), alpha: 0.45 + 0.3 * h(),
+          rot: h() * 6.28, spin: (h() - 0.5) * 2, tile: Math.floor(h() * 4),
+        });
+      for (let q = 0; q < 5; q++)
+        out.push({
+          slice: i, side, kind: 2, delay: 0.04 * h(), off: 0.3 + 0.5 * h(),
+          kf: 0.97 + 0.03 * h(), lat: 0.2 + 1.0 * h(), up: (9 + 4 * h()) * str, k: 0.45 + 0.2 * h(),
+          s0: 0.14 + 0.08 * h(), s1: 0.35 + 0.25 * h(), life: 2.2 + 0.5 * h(), alpha: 0.75,
+          rot: h() * 6.28, spin: (h() - 0.5) * 3, tile: Math.floor(h() * 4),
+        });
+    }
+    for (let q = 0; q < Math.round(10 * entry); q++)
+      out.push({
+        slice: i, side: h() < 0.5 ? -1 : 1, kind: 1, delay: 0.03 * h(), off: 0.2 + 0.6 * h(),
+        kf: 1.05 + 0.12 * h(), lat: 0.5 + 2.5 * h(), up: 3 + 5 * h(), k: 1.4 + 0.8 * h(),
+        s0: 0.4 + 0.3 * h(), s1: 1.5 + 0.9 * h(), life: 0.9 + 0.3 * h(), alpha: 0.7,
+        rot: h() * 6.28, spin: (h() - 0.5) * 2, tile: Math.floor(h() * 4),
+      });
+  }
+  return out;
+})();
+
+/** Where a blob is at age a (or null once it's back in the lake). */
+const blobAt = (b: Blob, a: number, out: THREE.Vector3) => {
+  const f = frameAt(SPLASH.s0 + b.slice * SPLASH.step);
+  const v = hits[b.slice].v;
+  // the scoop: a metre ahead of the front row, down at the water
+  const P0 = f.P.clone().addScaledVector(f.T, 0.9).addScaledVector(f.R, b.side * b.off);
+  P0.y = Math.max(WATER_Y + 0.05, f.P.y - 1.25);
+  const e = 1 - Math.exp(-b.k * a);
+  const fwd = (b.kf * v * e) / b.k;
+  const lat = (b.lat * e) / b.k;
+  const y = ((b.up + G / b.k) * e) / b.k - (G / b.k) * a;
+  out.copy(P0).addScaledVector(f.T, fwd).addScaledVector(f.R, b.side * lat);
+  out.y += y;
+  return out.y > WATER_Y || a < 0.1 ? out : null;
+};
+
+/** A sheet of soft foam puffs (four to a texture), drawn once. */
+const puffTexture = (() => {
+  let tex: THREE.Texture | null = null;
+  return () => {
+    if (tex) return tex;
+    const N = 256;
+    const c = document.createElement("canvas");
+    c.width = c.height = N;
+    const g = c.getContext("2d")!;
+    let n = 7;
+    const r = () => hash(++n * 2.31);
+    for (let t = 0; t < 4; t++) {
+      const ox = (t % 2) * 128;
+      const oy = Math.floor(t / 2) * 128;
+      // a soft body, then lots of small foam bubbles and droplets, denser at the middle
+      for (let k = 0; k < 10; k++) {
+        const a = r() * 6.28;
+        const d = Math.pow(r(), 0.8) * 26;
+        const x = ox + 64 + Math.cos(a) * d;
+        const y = oy + 64 + Math.sin(a) * d;
+        const rad = 14 + r() * 20;
+        const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+        grd.addColorStop(0, `rgba(235,240,242,${0.3 + 0.2 * r()})`);
+        grd.addColorStop(1, "rgba(235,240,242,0)");
+        g.fillStyle = grd;
+        g.beginPath();
+        g.arc(x, y, rad, 0, Math.PI * 2);
+        g.fill();
+      }
+      for (let k = 0; k < 140; k++) {
+        const a = r() * 6.28;
+        const d = Math.pow(r(), 0.6) * 52;
+        const x = ox + 64 + Math.cos(a) * d;
+        const y = oy + 64 + Math.sin(a) * d;
+        const rad = 1.5 + r() * 6 * (1 - d / 60);
+        const w = 225 + Math.round(r() * 30);
+        const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+        grd.addColorStop(0, `rgba(${w},${w},${w},${0.55 + 0.4 * r()})`);
+        grd.addColorStop(0.6, `rgba(${w},${w},${w},${0.3 + 0.2 * r()})`);
+        grd.addColorStop(1, `rgba(${w},${w},${w},0)`);
+        g.fillStyle = grd;
+        g.beginPath();
+        g.arc(x, y, rad, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+    tex = new THREE.CanvasTexture(c);
+    return tex;
+  };
+})();
+
+const SPRITE_VERT = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+attribute vec3 iPos;
+attribute vec2 iSA;
+attribute float iRot;
+attribute float iTile;
+varying vec2 vUv;
+varying float vA;
+void main() {
+  float c = cos(iRot);
+  float s = sin(iRot);
+  vec2 q = mat2(c, s, -s, c) * position.xy;
+  vUv = (uv + vec2(mod(iTile, 2.0), floor(iTile / 2.0))) * 0.5;
+  vA = iSA.y;
+  vec4 mv = modelViewMatrix * vec4(iPos, 1.0);
+  mv.xy += q * iSA.x;
+  gl_Position = projectionMatrix * mv;
+  #include <logdepthbuf_vertex>
+}`;
+const SPRITE_FRAG = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform sampler2D uTex;
+uniform vec3 uCol;
+varying vec2 vUv;
+varying float vA;
+void main() {
+  #include <logdepthbuf_fragment>
+  vec4 t = texture2D(uTex, vUv);
+  float a = t.a * vA;
+  if (a < 0.003) discard;
+  gl_FragColor = vec4(uCol * (0.7 + 0.3 * t.r), a);
+}`;
 
 export const Splash: React.FC<{ t: number }> = ({ t }) => {
-  const geo = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const n = SLICES * 2 * NF;
-    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-    g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 4), 4));
-    const idx: number[] = [];
-    for (let side = 0; side < 2; side++)
-      for (let i = 0; i < SLICES - 1; i++)
-        for (let j = 0; j < NF - 1; j++) {
-          const a = (side * SLICES + i) * NF + j;
-          const b = (side * SLICES + i + 1) * NF + j;
-          idx.push(a, b, a + 1, a + 1, b, b + 1);
-        }
-    g.setIndex(idx);
-    return g;
+  const sprites = useMemo(() => {
+    const base = new THREE.PlaneGeometry(1, 1);
+    const g = new THREE.InstancedBufferGeometry();
+    g.index = base.index;
+    g.setAttribute("position", base.attributes.position);
+    g.setAttribute("uv", base.attributes.uv);
+    const n = BLOBS.length;
+    g.setAttribute("iPos", new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute("iSA", new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2));
+    g.setAttribute("iRot", new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+    g.setAttribute("iTile", new THREE.InstancedBufferAttribute(new Float32Array(BLOBS.map((b) => b.tile)), 1));
+    g.instanceCount = n;
+    const m = new THREE.ShaderMaterial({
+      uniforms: { uTex: { value: puffTexture() }, uCol: { value: new THREE.Color(1.22, 1.27, 1.3) } },
+      vertexShader: SPRITE_VERT,
+      fragmentShader: SPRITE_FRAG,
+      transparent: true,
+      depthWrite: false,
+    });
+    return { g, m };
   }, []);
   const drops = useMemo(() => {
-    const per = 26;
+    const per = 70;
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(SLICES * 2 * per * 3), 3));
     return { g, per };
@@ -72,91 +240,77 @@ export const Splash: React.FC<{ t: number }> = ({ t }) => {
   }, []);
   const mats = useMemo(
     () => ({
-      sheet: new THREE.MeshStandardMaterial({
-        color: "#E8F4F6",
-        roughness: 0.25,
-        transparent: true,
-        vertexColors: true,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      }),
-      drop: new THREE.PointsMaterial({ color: "#F2FAFF", size: 0.07, transparent: true, opacity: 0.85, depthWrite: false }),
+      drop: new THREE.PointsMaterial({ color: "#F6FBFF", size: 0.08, transparent: true, opacity: 0.95, depthWrite: false }),
       foam: new THREE.MeshStandardMaterial({ color: "#F4F8F8", roughness: 0.6, transparent: true, vertexColors: true, depthWrite: false }),
     }),
     [],
   );
-  if (t < hitTimes[0] - 0.1 || t > hitTimes[SLICES - 1] + 6) return null;
-  const pos = geo.attributes.position as THREE.BufferAttribute;
-  const col = geo.attributes.color as THREE.BufferAttribute;
-  const dpos = drops.g.attributes.position as THREE.BufferAttribute;
-  const fpos = foam.attributes.position as THREE.BufferAttribute;
-  const fcol = foam.attributes.color as THREE.BufferAttribute;
+  if (t < hits[0].t - 0.1 || t > hits[SLICES - 1].t + 7) return null;
   const p = new THREE.Vector3();
+  // the spray
+  const ip = sprites.g.attributes.iPos as THREE.InstancedBufferAttribute;
+  const isa = sprites.g.attributes.iSA as THREE.InstancedBufferAttribute;
+  const irot = sprites.g.attributes.iRot as THREE.InstancedBufferAttribute;
+  BLOBS.forEach((b, i) => {
+    const a = t - hits[b.slice].t - b.delay;
+    const at = a > 0 && a < b.life ? blobAt(b, a, p) : null;
+    if (!at) {
+      isa.setXY(i, 0, 0);
+      return;
+    }
+    ip.setXYZ(i, p.x, p.y, p.z);
+    const size = b.s0 + (b.s1 - b.s0) * (1 - Math.exp(-2.4 * a));
+    const al = b.alpha * smooth(0, 0.06, a) * (1 - smooth(b.life * 0.5, b.life, a)) * smooth(WATER_Y, WATER_Y + 0.4, p.y);
+    isa.setXY(i, size, al);
+    irot.setX(i, b.rot + b.spin * a);
+  });
+  ip.needsUpdate = true;
+  isa.needsUpdate = true;
+  irot.needsUpdate = true;
+  // droplets: launched like the walls, faster and more scattered
+  const dpos = drops.g.attributes.position as THREE.BufferAttribute;
   let di = 0;
   for (let i = 0; i < SLICES; i++) {
-    const s = SPLASH.s0 + i * SPLASH.step;
-    const f = frameAt(s);
-    const age = t - hitTimes[i];
-    const v = 26;
-    // fade the walls in over the trough's entry and exit
-    const edge = smooth(0, 4, i) * smooth(SLICES - 1, SLICES - 7, i);
-    for (let side = 0; side < 2; side++) {
-      const sd = side ? 1 : -1;
-      const L = f.P.clone().addScaledVector(f.U, -1.05).addScaledVector(f.R, sd * 0.9);
-      const k1 = 0.85 + 0.3 * hash(i * 2 + side);
-      const v0 = new THREE.Vector3()
-        .addScaledVector(f.R, sd * 7.5 * k1)
-        .addScaledVector(f.U, 8.5 * k1)
-        .addScaledVector(f.T, 0.22 * v);
-      for (let j = 0; j < NF; j++) {
-        const fr = j / (NF - 1);
-        const vv = v0.clone().multiplyScalar(0.3 + 0.7 * fr);
-        const a = Math.max(0, age);
-        p.copy(L).addScaledVector(vv, a);
-        p.y -= 0.5 * G * a * a;
-        // water below the lake's surface has rejoined it
-        const under = p.y < -0.12;
-        if (under) p.y = -0.12;
-        const k = (side * SLICES + i) * NF + j;
-        pos.setXYZ(k, p.x, p.y, p.z);
-        const alpha = age < 0 ? 0 : edge * smooth(0, 0.08, age) * (1 - smooth(0.7, 1.6, age)) * (0.25 + 0.5 * Math.sin(Math.PI * fr)) * (under ? 0 : 1);
-        col.setXYZW(k, 1, 1, 1, alpha);
-      }
-      // spray droplets: launched with the sheet, a little faster and scattered
+    const str = 0.45 + 0.75 * Math.exp(-i / (0.3 * SLICES));
+    for (const side of [-1, 1]) {
       for (let q = 0; q < drops.per; q++) {
         const h1 = hash(i * 97 + side * 31 + q);
         const h2 = hash(i * 13 + side * 7 + q * 3.1);
         const h3 = hash(i * 5 + q * 11.7 + side);
-        const vv = v0
-          .clone()
-          .multiplyScalar(0.4 + 0.9 * h1)
-          .addScaledVector(f.T, (h2 - 0.5) * 4)
-          .addScaledVector(f.U, (h3 - 0.3) * 4);
-        const a = Math.max(0, age) * (age > 0 ? 1 : 0);
-        p.copy(L).addScaledVector(vv, a);
-        p.y -= 0.5 * G * a * a;
-        if (age <= 0 || p.y < -0.1 || edge < 0.2) p.set(0, -100, 0);
-        dpos.setXYZ(di++, p.x, p.y, p.z);
+        const b: Blob = {
+          slice: i, side, kind: 0, delay: 0.06 * h3, off: 0.5 + 0.6 * h2,
+          kf: 0.9 + 0.12 * h1, lat: (1 + 10 * h2) * str, up: (5 + 12 * h3) * str, k: 0.4 + 0.6 * h1,
+          s0: 0, s1: 0, life: 2.6, alpha: 1, rot: 0, spin: 0, tile: 0,
+        };
+        const a = t - hits[i].t - b.delay;
+        const at = a > 0 && a < b.life ? blobAt(b, a, p) : null;
+        if (at) dpos.setXYZ(di++, p.x, p.y, p.z);
+        else dpos.setXYZ(di++, 0, -100, 0);
       }
-      // foam on the water either side of the trough
-      const fp = f.P.clone().addScaledVector(f.R, sd * 3.2);
-      fpos.setXYZ(i * 2 + side, fp.x, -0.1, fp.z);
-      fcol.setXYZW(i * 2 + side, 1, 1, 1, age < 0 ? 0 : edge * 0.7 * (1 - smooth(1, 6, age)));
     }
   }
-  pos.needsUpdate = true;
-  col.needsUpdate = true;
   dpos.needsUpdate = true;
+  // foam on the water either side of the trough
+  const fpos = foam.attributes.position as THREE.BufferAttribute;
+  const fcol = foam.attributes.color as THREE.BufferAttribute;
+  for (let i = 0; i < SLICES; i++) {
+    const f = frameAt(SPLASH.s0 + i * SPLASH.step);
+    const age = t - hits[i].t;
+    const edge = smooth(0, 3, i) * smooth(SLICES - 1, SLICES - 4, i);
+    for (const side of [0, 1]) {
+      const sd = side ? 1 : -1;
+      const fp = f.P.clone().addScaledVector(f.R, sd * (2.2 + 1.5 * smooth(0, 3, age)));
+      fpos.setXYZ(i * 2 + side, fp.x, WATER_Y + 0.02, fp.z);
+      fcol.setXYZW(i * 2 + side, 1, 1, 1, age < 0 ? 0 : edge * 0.75 * (1 - smooth(1.5, 7, age)));
+    }
+  }
   fpos.needsUpdate = true;
   fcol.needsUpdate = true;
-  geo.computeVertexNormals();
-  geo.computeBoundingSphere();
-  drops.g.computeBoundingSphere();
-  foam.computeBoundingSphere();
+  foam.computeVertexNormals();
   return (
     <>
-      <mesh geometry={geo} material={mats.sheet} frustumCulled={false} renderOrder={5} />
-      <points geometry={drops.g} material={mats.drop} frustumCulled={false} renderOrder={6} />
+      <mesh geometry={sprites.g} material={sprites.m} frustumCulled={false} renderOrder={6} />
+      <points geometry={drops.g} material={mats.drop} frustumCulled={false} renderOrder={7} />
       <mesh geometry={foam} material={mats.foam} frustumCulled={false} renderOrder={4} />
     </>
   );

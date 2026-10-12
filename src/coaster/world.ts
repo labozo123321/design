@@ -134,8 +134,11 @@ const LOOK: [number, number, number][] = [
   // into the diving turn (right)
   [CUE.dive0 + 1.4, 0.22, -0.06],
   [CUE.splash0 - 0.6, 0.0, -0.04],
-  // the splash, then her, soaked
-  [CUE.splash1 + 0.1, 0.0, -0.02],
+  // the splash: you turn to her as the wall of water goes up beside her, and comes down on her
+  [CUE.splash0 + 0.02, 0.0, -0.03],
+  [CUE.splash0 + 0.28, 0.7, -0.06],
+  [CUE.splash0 + 0.7, 1.3, -0.1],
+  [CUE.splash1 + 0.2, 1.38, -0.16],
   [CUE.splash1 + 0.55, 1.4, -0.22],
   [CUE.zrRoll - 0.3, 1.38, -0.22],
   [CUE.zrRoll + 0.15, 0.0, 0.0],
