@@ -513,3 +513,71 @@ Render the pinball in three chunks of 700 frames and the ending in two, all mute
       -filter_complex "[0:v][1:v][2:v][3:v][4:v]concat=n=5:v=1:a=0[v]" -map "[v]" -map 5:a -c:v libx264 -crf 18 -c:a aac -b:a 256k pinball.mp4
 
 The delivered cut (83.5 s) is tighter at the start: after the record scratch it holds the freeze frame for only half a second, plays the 1 s VHS rewind, and goes straight to the title. In composition frames it keeps 0-40, 90-119 and 164 onward (the soundtrack at the same times, from 5.45 s for the title's kick, with 6 ms fades at the joins).
+
+## Coaster (first person, a dive coaster with your little sister)
+
+"POV: your little sister wanted the front row". A 72.3 s first-person ride with no voice and almost no
+words: a dive coaster at golden hour, front row, with your seven-year-old sister in the seat beside you.
+You are terrified; she is bored. She grins in the station, yawns on the lift, blows a bubblegum bubble
+while you hang over the vertical drop (it pops on her face as the brake lets go), gives you a deadpan
+thumbs-up upside down, gets soaked at the splashdown, and grins at you in the brakes. Then the ride
+photo comes up at the exit booth: everyone screaming, you loudest of all, her in the middle with her arms
+up, bored, gum all over her face. The camera pushes in on the two of you, you look down at her: "again?".
+
+1. **Track:** `scripts/coaster_track.py` builds track the way coaster designers do, by the forces on the
+   riders: a moving frame (along, up, right) turned by an angular rate, with force-vector sections that
+   ask for a given g into the seat and sideways at the speed the train will have there, plus yaws,
+   pitches, rolls, banked turns and a Bézier closer. `scripts/coaster_layout.py` lays out the ride:
+   out of the station onto a chain lift (57 m), a turnaround, the holding brake over a vertical drop,
+   a tunnel, an Immelmann, a diving turn, a splashdown trough, a zero-g roll, a swoop over the lake,
+   an airtime hop and the brakes back into the station (798.5 m).
+2. **Ride:** `python3 scripts/generate-coaster-path.py` writes `src/coaster/track.json`:
+   - the train (three rows of six) pushed out by tyres, pulled up the lift by the chain, held 3.4 s
+     at the edge, then rolling under gravity with rolling resistance and drag, slowed by the water in
+     the trough and stopped by the magnetic brakes (32 m/s at the bottom, 4.5 g in the pull-outs, -1 g
+     of airtime);
+   - per frame: where the front row is, its speed and the g's it feels, and the moments (cues) the
+     picture and the sound are timed from;
+   - the supports: columns and arms placed clear of the track and each other, piers in the lake;
+   - the site: the lake, the cut the tunnel runs through.
+3. **Sound:** `python3 scripts/generate-coaster-audio.py` builds `public/coaster/bed.mp3` (and
+   `out/coaster/bed.wav` for mastering), all synthesised: a festival track in F minor at 128 BPM muffled
+   through the station's speakers, opening up and building all the way up the lift (the chain's
+   ratchet clacks in time), stopping dead at the holding brake, and dropping with the train; wind and
+   wheel roar from the speed, the tunnel, the splash, screams behind you, the bubble stretching and
+   popping, the camera flash, the brakes tape-stopping the song, and the ending's ding and marimba.
+4. **Picture:** `src/coaster/`:
+   - `track.ts` and `world.ts` read the ride and hold the timing: where you look (your sister, the drop,
+     her again upside down...), your head pushed about by the g's, the lens widening with speed;
+   - `Track3D.tsx` (rails with worn tops, the spine, ties, the chain, the brakes, the supports),
+     `Train.tsx` (cars, seats, vest restraints that come down in the station), `Station.tsx` (the
+     building, gates, the floor that drops away, people in the queue, the operator's thumbs-up),
+     `Terrain.tsx`, `Rides.tsx` (a Ferris wheel, a drop tower, swings, a carousel, a pirate ship, a
+     wooden coaster, water slides), `Scenery.tsx` (trees, lamps, stalls, the crowd, the car park, hills
+     and a city), `Effects.tsx` (the splashdown: foam thrown from the scoop with air drag into two walls,
+     a bow burst and rain over the front rows; the on-ride camera and its flash);
+   - `face/` builds the faces: a sculpted head that deforms per frame for expressions (jaw, smile,
+     squint, brows, lids, pucker, chewing), eyes behind lids cut from the skin, an open mouth with teeth
+     and tongue, strand brows and lashes, painted skin with freckles, and the popped bubblegum as a
+     glossy film on her skin; `Rider.tsx` and `Person3D.tsx` give them bodies, hands and hair that swings
+     with the g's (`dynamics.ts`), and `riders.ts` scripts everyone's face, look and arms;
+   - `CoasterPost.tsx` adds motion blur from the camera's movement (riders masked out), bloom, water
+     drops on the lens after the splash, the flash and the grey-out at high g;
+   - `Ending.tsx` is the exit booth and the photo on its screen, and `Overlay.tsx` the only words: the
+     title and "again?".
+5. **The ride photo** is its own still (`CoasterPhoto`, the on-ride camera on its mast at the bottom of
+   the drop, with your face in it), rendered once and shown on the booth's screen:
+
+       npx remotion still CoasterPhoto out/coaster/photo.png --scale=2 --gl=angle
+       python3 scripts/coaster-photo.py out/coaster/photo.png   # public/coaster/photo.jpg, with the ride's badge
+
+Render in four chunks, muted (with software GL use `--gl=swangle --timeout=900000`), join them and lay
+the bed under them, mastered to -15 LUFS:
+
+    npx remotion render Coaster out/coaster/part-0.mp4 --frames=0-542 --muted --gl=angle
+    npx remotion render Coaster out/coaster/part-1.mp4 --frames=543-1085 --muted --gl=angle
+    npx remotion render Coaster out/coaster/part-2.mp4 --frames=1086-1628 --muted --gl=angle
+    npx remotion render Coaster out/coaster/part-3.mp4 --frames=1629-2169 --muted --gl=angle
+    ffmpeg -i out/coaster/part-0.mp4 -i out/coaster/part-1.mp4 -i out/coaster/part-2.mp4 -i out/coaster/part-3.mp4 -i out/coaster/bed.wav \
+      -filter_complex "[0:v][1:v][2:v][3:v]concat=n=4:v=1:a=0[v];[4:a]loudnorm=I=-15:TP=-1.5,alimiter=limit=0.6[a]" \
+      -map "[v]" -map "[a]" -c:v libx264 -crf 18 -c:a aac -b:a 256k coaster.mp4
