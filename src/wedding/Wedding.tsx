@@ -1,6 +1,7 @@
 import React from "react";
 import { ThreeCanvas } from "@remotion/three";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Html5Audio as Audio, staticFile, useCurrentFrame } from "remotion";
+import { Overlay } from "./Overlay";
 import { WeddingPost } from "./WeddingPost";
 import { WeddingWorld } from "./WeddingWorld";
 import { CUE, DURATION, FPS, camAt, smooth } from "./flight";
@@ -56,6 +57,8 @@ export const Wedding: React.FC = () => {
           bloom={0.25}
         />
       </ThreeCanvas>
+      <Overlay t={u} />
+      <Audio src={staticFile("wedding/bed.mp3")} />
     </AbsoluteFill>
   );
 };

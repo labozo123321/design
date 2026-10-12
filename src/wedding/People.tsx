@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
 import { GRIP, OPEN, RELAX, THUMBS_UP, mixHand, type HandPose } from "../coaster/Hand";
 import { Controller, Figure, type Arm, type Pose } from "./Figure";
-import { BAKER, BRIDE, DJ_P, GRANDMA, GROOM, GUESTS, KID_P, OFFICIANT, OUTFITS, POURER, WAITER, type Guest } from "./cast";
+import { BAKER, BRIDE, DJ_P, GROOM, GUESTS, KID_P, OFFICIANT, OUTFITS, POURER, WAITER, type Guest } from "./cast";
 import { CUE_W, L, boxAtW, droneAtW, smooth, span, vnoise } from "./flight";
 
 /**
@@ -103,15 +103,19 @@ const guestPose = (g: Guest, w: number): Pose => {
 export const hatFlight = (w: number) => {
   const g = GUESTS.find((q) => q.role === "hatlady");
   if (!g || w < W.hat) return null;
-  const a = Math.min(w - W.hat, 2.2);
+  const a = Math.min(w - W.hat, 3);
   const p0 = v3(g.at[0], 1.42, g.at[2] + 0.04);
-  // blown up and back by the prop wash, then gliding down onto the grass behind the chairs
-  const vx = 1.6;
-  const vz = 2.4;
-  const p = p0.clone().add(v3(vx * a * (1 - a * 0.18), 2.2 * a - 2.4 * a * a + 0.35 * a * a * a, vz * a * (1 - a * 0.16)));
-  if (p.y < 0.03) p.y = 0.03;
-  const spin = a * 7 * (1 - a * 0.3);
-  return { p, spin, tilt: Math.sin(a * 5) * 0.6 * Math.max(0, 1 - a / 2) + (a > 1.6 ? 0 : 0.2) };
+  // the prop wash flips it up off her head and forward, in front of the lens (the drone's backing over
+  // the rows, looking up the aisle); the wide brim floats it down onto the grass by the aisle
+  const vy = 2.3;
+  const grav = 5.6;
+  const tLand = (vy + Math.sqrt(vy * vy + 2 * grav * (p0.y - 0.03))) / grav;
+  const t = Math.min(a, tLand);
+  const p = p0.clone().add(v3(-1.6 * t * (1 - 0.15 * t), vy * t - 0.5 * grav * t * t, -1.4 * t * (1 - 0.15 * t)));
+  if (a >= tLand) p.y = 0.03;
+  const spin = t * 9 * (1 - t * 0.25);
+  const tilt = a >= tLand ? 0 : Math.sin(t * 6) * 0.7 * Math.max(0, 1 - t / tLand) + 0.25 * (1 - t / tLand);
+  return { p, spin, tilt };
 };
 
 /* ------------------------------------------------------------------ */
@@ -245,8 +249,10 @@ const waiterPose = (w: number) => {
   const pose: Pose = {
     look: sur > 0.1 ? D : v3(30, 1.6, 4),
     e: E(mixE({ smile: 0.15 }, mixE(SHOCK, { smile: 0.8, brow: 0.6, squint: 0.3 }, smooth(W.waiter + 0.6, W.waiter + 1.1, w)), sur)),
-    armR: { at: v3(0.32, 1.42, -0.1), hand: OPEN, palm: v3(0, -1, 0), pole: v3(1, -1, 0.3) },
+    // the tray on his right hand, forearm level, palm up, at his chest
+    armR: { at: v3(0.2, 1.1, -0.36), hand: { curl: [0.25, 0.3, 0.3, 0.35], spread: 0.3, thumbOut: 0.5, thumbCurl: 0.2 }, palm: v3(0, 1, 0), pole: v3(0.6, -1, 0.4) },
     armL: { at: v3(-0.2, 0.92, -0.05), hand: RELAX },
+    holdR: "tray",
   };
   return { pose, yaw: faceToward(v3(...L.waiterOut), v3(10, 0, 3.5)) + spin };
 };
@@ -299,33 +305,31 @@ const bakerPose = (w: number): Pose => {
 const CAM_END = v3(24.02, 1.12, -7.42);
 export const DOG_HEAD = (() => {
   const d = v3(...L.dogEnd);
-  return d.clone().addScaledVector(CAM_END.clone().sub(d).setY(0).normalize(), 0.12).setY(0.62);
+  return d.clone().addScaledVector(CAM_END.clone().sub(d).setY(0).normalize(), 0.12).setY(d.y + 0.62);
 })();
-type Who = "baker" | "bride" | "groom" | "grandma" | "kid";
+type Who = "baker" | "bride" | "groom" | "kid";
 /** Where everyone stands round the cake table at the end (feet) and how far they lean in over it: placed so
- * every face is in the shot from the camera lying in the cake. */
+ * every face is in the shot from the camera lying in the cake (grandma's laughing somewhere behind). */
 export const END_AT: Record<Who, THREE.Vector3> = {
   baker: v3(24.02, 0, -6.68),
-  bride: v3(24.55, 0, -6.5),
+  bride: v3(24.5, 0, -6.55),
   groom: v3(23.7, 0, -6.8),
-  grandma: v3(23.95, 0, -6.05),
   kid: v3(24.15, 0, -6.73),
 };
-const END_LEAN: Record<Who, number> = { baker: 0.5, bride: 0.4, groom: 0.6, grandma: 0.3, kid: 0.2 };
-const END_K: Record<Who, number> = { baker: 1, bride: 0.95, groom: 1, grandma: 0.92, kid: 0.75 };
-const END_CUE: Record<Who, number> = { baker: W.baker, bride: W.bride, groom: W.groom, grandma: W.grandma, kid: W.kid };
+const END_LEAN: Record<Who, number> = { baker: 0.5, bride: 0.4, groom: 0.6, kid: 0.2 };
+const END_K: Record<Who, number> = { baker: 1, bride: 0.95, groom: 1, kid: 0.75 };
+const END_CUE: Record<Who, number> = { baker: W.baker, bride: W.bride, groom: W.groom, kid: W.kid };
 // which way each one comes in from (up to the table from behind and the sides)
 const END_FROM: Record<Who, THREE.Vector3> = {
   baker: v3(0.2, 0, 1).normalize(),
   bride: v3(0.9, 0, 0.5).normalize(),
   groom: v3(-0.8, 0, 0.6).normalize(),
-  grandma: v3(-0.3, 0, 1).normalize(),
   kid: v3(0.6, 0, 1).normalize(),
 };
 /** The ribbon the groom pulls out of the cake: where his fingers hold it, from the moment it comes out. */
 export const RIBBON_HOLD = (w: number) => {
   const up = smooth(W.ribbon - 0.15, W.ribbon + 0.55, w);
-  return v3(23.93, 1.14, -7.3).lerp(v3(23.95, 1.62, -7.06), up);
+  return v3(23.93, 1.14, -7.3).lerp(v3(24.04, 1.64, -7.13), up);
 };
 /** The baker sees his cake and faints, straight down out of the picture. */
 const faintAt = (w: number) => smooth(W.baker + 0.95, W.baker + 1.35, w);
@@ -367,49 +371,47 @@ const endPose = (who: Who, w: number): { pose: Pose; yaw: number; at: THREE.Vect
   }
   if (who === "bride") {
     // hands over her mouth, then just staring; at the ribbon, disbelief; at the dog, she can't
-    const cover = smooth(cue - 0.1, cue + 0.3, w) * (1 - smooth(W.groom + 0.3, W.groom + 0.9, w));
+    const cover = smooth(cue - 0.1, cue + 0.3, w) * (1 - smooth(W.groom + 0.2, W.groom + 0.9, w));
     e = mixE(SHOCK, { smile: -0.25, brow: 0.75, jaw: 0.15, squint: 0.05 }, smooth(cue + 1.2, cue + 2.2, w));
     e = mixE(e, { brow: 1, jaw: 0.4, wide: 0.25, smile: -0.2 }, smooth(W.ribbon + 0.4, W.ribbon + 0.9, w));
     e = mixE(e, { smile: 0.55, brow: 0.85, jaw: 0.35, squint: 0.25 }, smooth(W.dog - 0.2, W.dog + 0.5, w));
     const m = eyeLocal(lean).add(v3(0, -0.075, -0.07));
-    armR = { at: m.clone().add(v3(0.035, -0.06, 0.02)).lerp(v3(0.2, 0.86, -0.12), 1 - cover), hand: mixHand(RELAX, OPEN, cover), palm: v3(-0.5, 0, 1) };
-    armL = { at: m.clone().add(v3(-0.035, -0.07, 0.03)).lerp(v3(-0.2, 0.86, -0.12), 1 - cover), hand: mixHand(RELAX, OPEN, cover), palm: v3(0.5, 0, 1) };
-    if (cover < 0.05) {
-      // hands on the table's edge
-      armR = { at: v3(0.17, 0.82, -0.36), hand: OPEN, palm: v3(0, -1, 0) };
-      armL = { at: v3(-0.19, 0.82, -0.34), hand: OPEN, palm: v3(0, -1, 0) };
-    }
+    // before she's there her hands are at her sides; after, flat on the table's edge
+    const rest = smooth(W.groom + 0.2, W.groom + 0.9, w);
+    const sideR = v3(0.2, 0.86, -0.12).lerp(v3(0.17, 0.82, -0.36), rest);
+    const sideL = v3(-0.2, 0.86, -0.12).lerp(v3(-0.19, 0.82, -0.34), rest);
+    armR = { at: m.clone().add(v3(0.04, -0.06, 0.02)).lerp(sideR, 1 - cover), hand: mixHand(OPEN, OPEN, cover), palm: v3(-0.5, 0, 1).lerp(v3(0, -1, 0), rest), pole: v3(1, -0.7, 0.3) };
+    armL = { at: m.clone().add(v3(-0.04, -0.07, 0.03)).lerp(sideL, 1 - cover), hand: OPEN, palm: v3(0.5, 0, 1).lerp(v3(0, -1, 0), rest), pole: v3(-1, -0.7, 0.3) };
   }
   if (who === "groom") {
     e = mixE(GLARE, { smile: -0.45, brow: -1, squint: 0.55, jaw: 0.08 }, smooth(cue + 1, cue + 2, w));
-    // he digs in the cake beside the lens, pulls out the ribbon and holds it up: nothing on it
+    // he turns his head, slowly, to the kid; the kid's grin; back to the lens
+    const glare = span(w, W.glare - 0.1, W.glare + 1.1, 0.35);
+    look = CAM_END.clone().lerp(END_AT.kid.clone().setY(1.2), glare);
+    // he digs in the cake beside the lens, pulls out the ribbon and holds it up to it: nothing on it
     const reach = span(w, W.dig - 0.35, W.ribbon + 0.05, 0.4);
     const up = smooth(W.ribbon - 0.15, W.ribbon + 0.55, w);
     const dig = v3(23.93, 1.14, -7.3).add(v3(0.03 * Math.sin(w * 13), 0.02 * Math.abs(Math.sin(w * 9)), 0.02 * Math.cos(w * 11)).multiplyScalar(span(w, W.dig + 0.3, W.ribbon - 0.2, 0.2)));
+    const restR: Arm = { at: v3(0.12, 0.8, -0.42), hand: OPEN, palm: v3(0, -1, 0), pole: v3(1, -0.4, 0.3) };
+    armR = restR;
     if (reach > 0.01 || up > 0.01) {
       const hold = RIBBON_HOLD(w);
       const target = up > 0.01 ? hold : dig;
       armR = {
-        at: v3(0.2, 0.95, -0.3).lerp(toLocal(at, yaw, target).add(v3(0, -0.02, 0.03)), Math.max(reach, up)),
+        at: restR.at.clone().lerp(toLocal(at, yaw, target).add(v3(0, -0.02, 0.03)), Math.max(reach, up)),
         hand: up > 0.01 ? mixHand(OPEN, { curl: [0.9, 1.0, 1.1, 1.15], spread: 0, thumbOut: 0.1, thumbCurl: 0.9 }, up) : mixHand(RELAX, OPEN, reach),
         palm: up > 0.01 ? v3(-1, 0, -0.2) : v3(0, -1, 0),
         pole: v3(1, -0.5, 0.3),
       };
       lean = END_LEAN.groom + 0.12 * reach * (1 - up);
-      // he looks at what he's found
-      if (up > 0.3) look = CAM_END.clone().lerp(hold.clone().add(v3(0, -0.15, 0)), smooth(W.ribbon + 0.2, W.ribbon + 0.6, w) * (1 - toDog)).lerp(DOG_HEAD, toDog);
+      // a glance at what he's found, then straight back into the lens
+      const glance = span(w, W.ribbon + 0.15, W.ribbon + 0.95, 0.2);
+      look = look.clone().lerp(hold.clone().add(v3(0, -0.12, 0)), glance);
     }
-    e = mixE(e, { brow: 0.85, jaw: 0.3, smile: -0.25, squint: 0 }, smooth(W.ribbon + 0.5, W.ribbon + 1.0, w));
+    e = mixE(e, { brow: 0.85, jaw: 0.3, smile: -0.25, squint: 0 }, smooth(W.ribbon + 0.9, W.ribbon + 1.3, w));
     e = mixE(e, { brow: 0.9, jaw: 0.45, smile: 0.1, wide: 0.2 }, smooth(W.dog - 0.1, W.dog + 0.5, w));
+    look = look.clone().lerp(DOG_HEAD, toDog);
     armL = { at: v3(-0.2, 0.83, -0.38), hand: OPEN, palm: v3(0, -1, 0) };
-  }
-  if (who === "grandma") {
-    // she's having the best day of her life
-    const shake = Math.sin(w * 17) * 0.025;
-    e = mixE(LAUGH, { smile: 1, squint: 0.95, jaw: 0.55, brow: 0.45 }, smooth(W.ribbon + 0.4, W.ribbon + 0.8, w));
-    lean += shake;
-    armR = { at: v3(0.08, 1.22 * 0.92, -0.2), hand: OPEN, palm: v3(-0.3, 0, 1) };
-    armL = { at: v3(-0.22, 0.8, -0.3), hand: OPEN, palm: v3(0, -1, 0) };
   }
   if (who === "kid") {
     // up from behind; guilty: a tight little smile, eyes going from the camera to his dad and back; then he
@@ -417,12 +419,17 @@ const endPose = (who: Who, w: number): { pose: Pose; yaw: number; at: THREE.Vect
     const pointing = smooth(W.point - 0.25, W.point + 0.2, w);
     const dart = Math.sin(w * 2.6) > 0.2 ? 0.32 : Math.sin(w * 2.6) < -0.6 ? -0.15 : 0;
     e = { smile: 0.38, wide: 0.45, brow: 0.55, squint: 0.05, eyeYaw: dart * (1 - pointing) };
+    // his dad's glare: he looks up at him with the biggest, guiltiest grin
+    const glared = span(w, W.glare + 0.2, W.glare + 1.2, 0.3);
+    look = CAM_END.clone().lerp(END_AT.groom.clone().setY(1.55), glared);
+    e = mixE(e, { smile: 0.95, wide: 0.7, brow: 0.7, squint: 0.15, eyeYaw: 0 }, glared);
     crouch = 0.35 * (1 - smooth(cue - 0.2, cue + 0.35, w));
     if (pointing > 0.01) {
       const shoulder = v3(0.14, 0.93 * k + Math.cos(lean) * 0.47 * k, -Math.sin(lean) * 0.47 * k);
-      const dl = toLocal(at, yaw, DOG_HEAD.clone().setY(0.75)).sub(shoulder).normalize();
+      const dl = toLocal(at, yaw, DOG_HEAD).sub(shoulder).normalize();
       armR = { at: shoulder.clone().addScaledVector(dl, 0.12).lerp(shoulder.clone().addScaledVector(dl, 0.42), pointing).add(v3(0, -0.15 * (1 - pointing), 0)), hand: mixHand(RELAX, POINT, pointing), palm: v3(0, -1, 0), pole: v3(1, -1, 0.2) };
       e = mixE(e, { smile: 0.85, brow: 0.8, jaw: 0.25, wide: 0.2, squint: 0.2, eyeYaw: 0 }, pointing);
+      look = look.clone().lerp(DOG_HEAD, pointing);
     } else {
       armR = { at: v3(0.13, 0.66, -0.3), hand: OPEN, palm: v3(0, -1, 0) };
     }
@@ -431,51 +438,67 @@ const endPose = (who: Who, w: number): { pose: Pose; yaw: number; at: THREE.Vect
   return { pose: { look, e: E(e), armL, armR, lean, crouch, lift }, yaw, at };
 };
 
-/** The satin ribbon hanging from the groom's fingers: frosting on it, an empty loop where the box was. */
+/** The satin ribbon hanging from the groom's fingers: a twisting strip with frosting smeared on it, and at the
+ * end the empty bow it was tied to the box with. */
 const Ribbon: React.FC<{ w: number }> = ({ w }) => {
   const mats = React.useMemo(
     () => ({
-      satin: new THREE.MeshPhysicalMaterial({ color: "#F4EEE6", roughness: 0.38, sheen: 1, sheenColor: new THREE.Color("#FFFFFF"), side: THREE.DoubleSide }),
-      frost: new THREE.MeshPhysicalMaterial({ color: "#FFF6E8", roughness: 0.45, clearcoat: 0.5 }),
+      satin: new THREE.MeshPhysicalMaterial({ color: "#F2EADF", roughness: 0.32, sheen: 1, sheenRoughness: 0.35, sheenColor: new THREE.Color("#FFFFFF"), side: THREE.DoubleSide }),
+      frost: new THREE.MeshPhysicalMaterial({ color: "#FFF4E2", roughness: 0.5, clearcoat: 0.4 }),
     }),
     [],
   );
+  const geo = React.useMemo(() => new THREE.BufferGeometry(), []);
   if (w < W.ribbon - 0.15) return null;
   const top = RIBBON_HOLD(w);
-  const N = 14;
+  const N = 24;
   const len = 0.3;
-  // a swinging, slowly twisting strip
-  const swing = 0.22 * Math.sin((w - W.ribbon) * 3.3) * Math.exp(-(w - W.ribbon) * 0.45) + 0.03 * Math.sin(w * 1.7);
+  const width = 0.024;
+  // swinging from his fingers, slowly turning
+  const age = w - W.ribbon;
+  const swing = 0.22 * Math.sin(age * 3.3) * Math.exp(-Math.max(0, age) * 0.45) + 0.03 * Math.sin(w * 1.7);
   const pts: THREE.Vector3[] = [];
   for (let i = 0; i <= N; i++) {
     const u = i / N;
     const a = swing * u;
     pts.push(top.clone().add(v3(Math.sin(a) * len * u, -Math.cos(a) * len * u, 0.25 * Math.sin(a) * len * u)));
   }
-  const segs = pts.slice(1).map((p, i) => {
-    const a = pts[i];
-    const d = p.clone().sub(a);
-    const q = new THREE.Quaternion().setFromUnitVectors(v3(0, 1, 0), d.clone().normalize());
-    q.multiply(new THREE.Quaternion().setFromAxisAngle(v3(0, 1, 0), 0.6 + i * 0.12 + w * 0.4));
-    return { p: a.clone().add(p).multiplyScalar(0.5), q, l: d.length() };
-  });
-  const end = pts[N];
+  const pos: number[] = [];
+  const idx: number[] = [];
+  const frame: { c: THREE.Vector3; t: THREE.Vector3; side: THREE.Vector3; n: THREE.Vector3 }[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = pts[Math.min(N, i + 1)].clone().sub(pts[Math.max(0, i - 1)]).normalize();
+    const twist = 0.5 + 2.6 * (i / N) + w * 0.35;
+    const side = new THREE.Vector3(Math.cos(twist), 0, Math.sin(twist));
+    side.addScaledVector(t, -side.dot(t)).normalize();
+    const n = new THREE.Vector3().crossVectors(t, side).normalize();
+    frame.push({ c: pts[i], t, side, n });
+    // the snapped end frays a little narrower
+    const wd = width * (i === N ? 0.8 : 1);
+    const a = pts[i].clone().addScaledVector(side, wd / 2);
+    const b = pts[i].clone().addScaledVector(side, -wd / 2);
+    pos.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    if (i < N) idx.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2);
+  }
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  const end = frame[N];
+  const bowQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(end.side, end.t, end.n));
   return (
     <group>
-      {segs.map((s, i) => (
-        <mesh key={i} material={mats.satin} position={s.p} quaternion={s.q} scale={[0.016, s.l * 1.08, 0.0015]}>
-          <boxGeometry args={[1, 1, 1]} />
-        </mesh>
-      ))}
-      {/* the empty loop it was tied to the box with */}
-      <mesh material={mats.satin} position={end.clone().add(v3(0, -0.022, 0))} rotation={[0.3, w * 0.4, 0]}>
-        <torusGeometry args={[0.022, 0.003, 6, 24]} />
+      <mesh geometry={geo} material={mats.satin} frustumCulled={false} />
+      {/* the knot at the end it was tied to the box with: nothing in it now */}
+      <mesh material={mats.satin} position={end.c.clone().addScaledVector(end.t, 0.004)} quaternion={bowQ} scale={[0.014, 0.011, 0.008]}>
+        <sphereGeometry args={[1, 12, 10]} />
       </mesh>
-      {/* frosting */}
-      {[0.25, 0.48, 0.7, 0.93].map((u, i) => {
-        const p = pts[Math.round(u * N)];
+      {/* frosting smeared on it */}
+      {[0.28, 0.52, 0.74, 0.9].map((u, i) => {
+        const f = frame[Math.round(u * N)];
+        const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.side, f.t, f.n));
         return (
-          <mesh key={i} material={mats.frost} position={p.clone().add(v3(0.004 * (i % 2 ? 1 : -1), 0, 0.003))} scale={[0.013 + 0.004 * (i % 3), 0.01 + 0.004 * ((i + 1) % 2), 0.009]}>
+          <mesh key={i} material={mats.frost} position={f.c.clone().addScaledVector(f.n, (i % 2 ? 1 : -1) * 0.002).addScaledVector(f.side, 0.003 * (i - 1.5))} quaternion={q} scale={[0.011 + 0.003 * (i % 2), 0.016 + 0.006 * ((i + 1) % 2), 0.0035]}>
             <sphereGeometry args={[1, 12, 9]} />
           </mesh>
         );
@@ -518,10 +541,10 @@ export const People: React.FC<{ w: number; cam: THREE.Vector3 }> = ({ w, cam }) 
     out.push(<Figure key="pourer" who={POURER} outfit={OUTFITS.pourer} k={0.96} pose={pourerPose(w)} at={pourAt} yaw={faceToward(pourAt, v3(L.tower.at[0], 0, L.tower.at[2]))} t={w} hi={near(pourAt, 5)} />);
     out.push(<Figure key="baker" who={BAKER} outfit={OUTFITS.baker} pose={bakerPose(w)} at={bakeAt} yaw={faceToward(bakeAt, v3(L.cake.at[0], 0, L.cake.at[2]))} t={w} hi={near(bakeAt, 5)} />);
   } else {
-    (["baker", "bride", "groom", "grandma", "kid"] as const).forEach((who) => {
+    (["baker", "bride", "groom", "kid"] as const).forEach((who) => {
       if (!endShown(who, w)) return;
       const { pose, yaw, at } = endPose(who, w);
-      const person = who === "baker" ? BAKER : who === "bride" ? BRIDE : who === "groom" ? GROOM : who === "grandma" ? GRANDMA : KID_P;
+      const person = who === "baker" ? BAKER : who === "bride" ? BRIDE : who === "groom" ? GROOM : KID_P;
       // the gown narrower at the hem here, so it clears the table and the kid beside her
       const outfit = who === "bride" ? { ...OUTFITS.bride, hemR: 0.4 } : OUTFITS[who];
       out.push(<Figure key={`end${who}`} who={person} outfit={outfit} k={END_K[who]} pose={pose} at={at} yaw={yaw} t={w} hi />);

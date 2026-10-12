@@ -276,7 +276,8 @@ export const CakeBurst: React.FC<{ w: number }> = ({ w }) => {
   );
 };
 
-/** What's left round the drone in the cake: a torn rim of sponge and frosting on the bottom tier. */
+/** What's left round the drone in the cake: a torn rim of sponge and frosting on the bottom tier (none of it
+ * right on the lens, or between the lens and the dog on its chair). */
 const CakeCrater: React.FC = () => {
   const objs = useMemo(() => {
     const t0 = CAKE_TIERS[0];
@@ -284,15 +285,36 @@ const CakeCrater: React.FC = () => {
     const sponge = new THREE.MeshStandardMaterial({ color: "#F2D9A0", roughness: 0.95 });
     const cream = new THREE.MeshPhysicalMaterial({ color: "#FFF8EC", roughness: 0.38, clearcoat: 0.4, sheen: 0.5 });
     const top = t0.c.y + t0.h;
+    const lens = droneAtW(CUE_W.feedBack);
+    const toDog = new THREE.Vector3(L.dogEnd[0] - lens.x, 0, L.dogEnd[2] - lens.z).normalize();
     for (let i = 0; i < 26; i++) {
       const a = (i / 26) * Math.PI * 2 + hash(i) * 0.2;
       const r = t0.r * (0.55 + 0.35 * hash(i * 3.1));
       const s = 0.03 + 0.04 * hash(i * 5.7);
+      const at = new THREE.Vector3(t0.c.x + Math.cos(a) * r, top, t0.c.z + Math.sin(a) * r);
+      const rel = at.clone().sub(lens).setY(0);
+      if (rel.length() < 0.11 + s || rel.clone().normalize().dot(toDog) > Math.cos(0.75)) continue;
       const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), hash(i * 7.3) < 0.5 ? sponge : cream);
       m.position.set(t0.c.x + Math.cos(a) * r, top + s * 0.4, t0.c.z + Math.sin(a) * r);
       m.scale.set(s * 1.3, s * (0.6 + hash(i * 9.1) * 0.8), s * 1.3);
       m.rotation.set(hash(i) * 3, hash(i * 2) * 3, hash(i * 4) * 3);
       m.castShadow = true;
+      grp.add(m);
+    }
+    // and the smashed top it's lying in: dollops of cream, crumbs of sponge, a petal of a sugar rose, low
+    // enough not to get in the way of anything
+    const petal = new THREE.MeshPhysicalMaterial({ color: "#F6D9D6", roughness: 0.5, sheen: 0.6 });
+    for (let i = 0; i < 46; i++) {
+      const a = hash(i * 13.1) * Math.PI * 2;
+      const r = Math.sqrt(hash(i * 17.9)) * t0.r * 0.95;
+      const p = new THREE.Vector3(t0.c.x + Math.cos(a) * r, top, t0.c.z + Math.sin(a) * r);
+      if (p.clone().sub(lens).setY(0).length() < 0.05) continue;
+      const kind = i % 7 === 0 ? 2 : i % 3 === 0 ? 1 : 0;
+      const s = kind === 0 ? 0.008 + 0.014 * hash(i * 3.3) : kind === 1 ? 0.004 + 0.006 * hash(i * 3.7) : 0.012;
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, kind === 1 ? 0 : 1), kind === 0 ? cream : kind === 1 ? sponge : petal);
+      m.position.copy(p).add(new THREE.Vector3(0, s * 0.25, 0));
+      m.scale.set(s * (kind === 2 ? 1.4 : 1.2), s * (kind === 0 ? 0.45 : kind === 2 ? 0.12 : 0.8), s * (kind === 2 ? 0.9 : 1.2));
+      m.rotation.set(kind === 2 ? 0.2 : hash(i) * 3, hash(i * 2.3) * 6, kind === 2 ? 0.1 : hash(i * 4.1) * 3);
       grp.add(m);
     }
     return grp;

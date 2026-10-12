@@ -58,9 +58,11 @@ LAYOUT = {
     "cake": {"at": [24.0, 0.76, -7.6], "tiers": [[0.32, 0.2], [0.26, 0.18], [0.2, 0.17], [0.14, 0.16]]},
     "pourer": [24.55, 0.0, -5.55],
     "baker": [24.72, 0.0, -8.28],
-    "waiterOut": [16.4, 0.0, 2.45],
-    # where the dog sits at the end with the ring box, looking up at the camera in the cake
-    "dogEnd": [25.12, 0.0, -7.12],
+    "waiterOut": [16.6, 0.0, 2.75],
+    # where the dog sits at the end with the ring box: on a chair pulled up to the cake table (it's been at
+    # the cake), its paws on the cushion; the chair itself
+    "dogEnd": [25.04, 0.53, -7.5],
+    "dogChair": [25.1, 0.0, -7.5],
 }
 
 # who sits where: (row, side, seat) -> skipped seats are empty chairs
@@ -170,7 +172,7 @@ KEYS = [
     # whip round and dive at the tent
     (34.0, 2.8, 27.5, 3.4, 1.25, -0.95, 1),
     (35.4, 10.8, 9.5, 3.6, 1.45, -0.5, 1),
-    (36.4, 14.6, 2.4, 3.5, 1.55, -0.12, 1),
+    (36.4, 14.6, 2.4, 3.5, 1.42, -0.12, 1),
     (37.2, 18.2, 1.95, 3.0, 1.52, -0.06, 1),
     # in: between the tables, at the DJ, round his booth, under the chandelier, down the dance floor
     (38.2, 22.0, 1.85, 2.0, 1.78, -0.08, 1),
@@ -197,15 +199,15 @@ KEYS += [
 ]
 # the camera, lying in the cake, after the feed comes back: looking back out at everyone (south-ish, up)
 t_back = TW(55.5)
-# the dog (sitting by the cake table, looking up at the camera in the cake): its head is 0.12 m in front of
-# where it sits; the camera aims a little below it, at its chest and the ring box
+# the dog (sitting on the table, its head 0.12 m in front of where it sits, 0.62 m up): the camera aims a
+# little below its eyes, at the ring box in its mouth
 _dx = LAYOUT["dogEnd"][0] - 24.02
 _dz = LAYOUT["dogEnd"][2] + 7.42
 _d = math.hypot(_dx, _dz)
 _dx, _dz = _dx * (1 - 0.12 / _d), _dz * (1 - 0.12 / _d)
 DOG_YAW = math.atan2(_dx, -_dz)
-DOG_PITCH = math.atan2(0.45 - 1.12, math.hypot(_dx, _dz))
-END_YAW, END_PITCH, END_ROLL = PI * 0.97, 0.62, 0.15
+DOG_PITCH = math.atan2(LAYOUT["dogEnd"][1] + 0.56 - 1.12, math.hypot(_dx, _dz))
+END_YAW, END_PITCH, END_ROLL = PI * 0.96, 0.62, -0.15
 KEYS += [
     (t_back, 24.02, 1.12, -7.42, END_YAW, END_PITCH, 0),
     (TW(66.6), 24.02, 1.12, -7.42, END_YAW, END_PITCH - 0.02, 0),
@@ -374,7 +376,7 @@ for f in range(NF):
     fov = 74.0 + 6.0 * smooth(3, 10, float(np.linalg.norm(vel)))
     if v >= JUMP_AT:
         # lying in the cake: the wide lens, so everyone leaning in fits; then the zoom onto the dog
-        fov = 100.0 - 34.0 * smooth(67.8, 68.1, v)
+        fov = 100.0 - 36.0 * smooth(67.8, 68.1, v)
     q = quat_from_euler_yxz(pitch_c, yaw_c, roll)
     # the ring box: a damped pendulum hanging from the drone (until the ribbon snaps in the cake)
     anchor = p + np.array([0, -0.06, 0])
@@ -447,8 +449,9 @@ obst.append(("dj", "capsule", (np.array([29.35, 0, 8.4]), np.array([29.35, 1.5, 
 obst.append(("dj head", "sphere", (np.array([29.35, 1.68, 8.4]), 0.16)))
 obst.append(("pourer", "capsule", (np.array([24.55, 0, -5.55]), np.array([24.55, 1.4, -5.55]), 0.22)))
 obst.append(("pourer head", "sphere", (np.array([24.55, 1.56, -5.55]), 0.13)))
-obst.append(("waiter out", "capsule", (np.array([16.4, 0, 2.45]), np.array([16.4, 1.5, 2.45]), 0.3)))
-obst.append(("waiter tray", "sphere", (np.array([16.4, 1.75, 2.45]), 0.32)))
+_wx, _, _wz = LAYOUT["waiterOut"]
+obst.append(("waiter out", "capsule", (np.array([_wx, 0, _wz]), np.array([_wx, 1.5, _wz]), 0.3)))
+obst.append(("waiter tray", "sphere", (np.array([_wx, 1.75, _wz]), 0.32)))
 tent = LAYOUT["tent"]
 for side_x in (tent["x0"], tent["x1"]):
     for z in np.arange(tent["z0"], tent["z1"] + 0.01, (tent["z1"] - tent["z0"]) / 6):
@@ -566,8 +569,8 @@ CUES = {
     "baker": 56.7,
     "bride": 57.9,
     "groom": 59.1,
-    "grandma": 60.4,
-    "kid": 61.7,
+    "kid": 60.4,
+    "glare": 61.7,
     "dig": 63.2,
     "ribbon": 64.4,
     "point": 66.2,

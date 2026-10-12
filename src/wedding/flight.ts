@@ -38,6 +38,7 @@ export const L = FLIGHT.layout as unknown as {
   baker: V3;
   waiterOut: V3;
   dogEnd: V3;
+  dogChair: V3;
   chairs: [number, number][];
   guests: { row: number; side: number; seat: number; at: V3; nearest: [number, number] }[];
 };

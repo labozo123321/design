@@ -223,11 +223,22 @@ export const Dog: React.FC<{ at: THREE.Vector3; yaw: number; pose: DogPose; scal
             <sphereGeometry args={[1, 8, 6]} />
           </mesh>
         ))}
-        {pose.frosting ? (
-          <mesh material={frostMat} position={[0.006, 0.06, -0.218]} scale={[0.022, 0.012, 0.016]} rotation={[0.3, 0, 0.3]}>
-            <sphereGeometry args={[1, 12, 10]} />
-          </mesh>
-        ) : null}
+        {pose.frosting
+          ? // it's been at the cake: a dollop on the nose, smears on the muzzle and the chin, a bit on the head
+            (
+              [
+                [0.006, 0.06, -0.218, 0.022, 0.012, 0.016, 0.3, 0.3],
+                [-0.047, 0.026, -0.16, 0.008, 0.017, 0.026, 0.1, 0.15],
+                [0.03, 0.068, -0.15, 0.019, 0.008, 0.024, -0.1, 0.25],
+                [0.044, 0.02, -0.19, 0.008, 0.012, 0.016, 0.2, -0.2],
+                [-0.02, 0.146, -0.03, 0.022, 0.008, 0.02, -0.2, 0.15],
+              ] as const
+            ).map(([x, y, z, sx, sy, sz, rx, rz], i) => (
+              <mesh key={i} material={frostMat} position={[x, y, z]} scale={[sx, sy, sz]} rotation={[rx, 0, rz]}>
+                <sphereGeometry args={[1, 12, 10]} />
+              </mesh>
+            ))
+          : null}
         {/* the lower jaw, hinged at the back of the mouth; the mouth's dark inside; the tongue */}
         <group position={[0, 0.0, -0.08]} rotation={[jaw, 0, 0]}>
           <Blob p={[0, -0.012, -0.065]} s={[0.04, 0.02, 0.065]} c={PALE} seed={21} />

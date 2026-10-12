@@ -397,6 +397,30 @@ const skirtGeometry = (key: string, len: number, r0: number, r1: number, folds: 
   })());
 
 /* ------------------------------------------------------------------ */
+/* The bride's veil                                                      */
+/* ------------------------------------------------------------------ */
+
+const veilCache: Record<string, THREE.BufferGeometry> = {};
+/** Tulle from under her bun down her back to the waist, in the torso's frame (hips at the origin, her back
+ * toward +z): narrow at the top, wider below, curving round her back, with soft folds. */
+const veilGeometry = (k: number) =>
+  (veilCache[k] ??= (() => {
+    const g = new THREE.PlaneGeometry(1, 1, 16, 22);
+    const p = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < p.count; i++) {
+      const sx = p.getX(i) * 2; // -1..1 across
+      const u = 0.5 - p.getY(i); // 0 at the top .. 1 at the bottom
+      const w = (0.16 + 0.39 * u) * k;
+      const z = (0.08 + 0.12 * Math.sqrt(u)) * k - 0.06 * sx * sx * u * k + 0.008 * Math.sin(sx * 9 + u * 4) * u;
+      p.setXYZ(i, (sx * w) / 2, (0.77 - 0.65 * u) * k, z);
+    }
+    g.computeVertexNormals();
+    return g;
+  })());
+const veilMaterial = () =>
+  (matCache.veil ??= new THREE.MeshPhysicalMaterial({ color: "#FFFFFF", roughness: 0.6, sheen: 1, sheenColor: new THREE.Color("#FFFFFF"), transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }));
+
+/* ------------------------------------------------------------------ */
 /* Props                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -454,6 +478,41 @@ const PropMesh: React.FC<{ kind: Prop; k: number; t: number }> = ({ kind, k, t }
         </mesh>
       </group>
     );
+  if (kind === "tray") {
+    // a silver tray on the upturned palm (the hand's +z), three flutes of champagne on it
+    const silver = matCache.silver ?? (matCache.silver = new THREE.MeshStandardMaterial({ color: "#D9DBDF", metalness: 1, roughness: 0.22 }));
+    const glass = matCache.flute ?? (matCache.flute = new THREE.MeshPhysicalMaterial({ color: "#F4F6F8", roughness: 0.05, transparent: true, opacity: 0.35, depthWrite: false }));
+    const fizz = matCache.fizz ?? (matCache.fizz = new THREE.MeshStandardMaterial({ color: "#E8C878", roughness: 0.2, emissive: "#3A2A08", transparent: true, opacity: 0.85 }));
+    return (
+      <group position={[0, -0.07 * k, 0.018]} rotation={[Math.PI / 2, 0, 0]}>
+        <mesh material={silver} castShadow>
+          <cylinderGeometry args={[0.17, 0.165, 0.008, 40]} />
+        </mesh>
+        <mesh material={silver} position={[0, 0.006, 0]}>
+          <torusGeometry args={[0.168, 0.004, 6, 40]} />
+        </mesh>
+        {[0, 1, 2].map((i) => {
+          const a = (i / 3) * Math.PI * 2 + 0.4;
+          return (
+            <group key={i} position={[Math.cos(a) * 0.08, 0.004, Math.sin(a) * 0.08]}>
+              <mesh material={glass} position={[0, 0.05, 0]}>
+                <cylinderGeometry args={[0.003, 0.003, 0.1, 6]} />
+              </mesh>
+              <mesh material={glass} position={[0, 0.003, 0]}>
+                <cylinderGeometry args={[0.028, 0.03, 0.004, 16]} />
+              </mesh>
+              <mesh material={glass} position={[0, 0.145, 0]}>
+                <cylinderGeometry args={[0.027, 0.02, 0.1, 16, 1, true]} />
+              </mesh>
+              <mesh material={fizz} position={[0, 0.13, 0]}>
+                <cylinderGeometry args={[0.024, 0.019, 0.07, 14]} />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
   if (kind === "spatula")
     return (
       <group position={[0, -0.08 * k, 0]}>
@@ -640,6 +699,7 @@ export const Figure: React.FC<{
         <sphereGeometry args={[1, 20, 14]} />
       </mesh>
       {skirt}
+      {outfit.kind === "gown" ? <mesh geometry={veilGeometry(k)} material={veilMaterial()} position={hip} quaternion={torsoQ} renderOrder={2} /> : null}
       {/* torso */}
       <mesh geometry={lathe("wtorso", TORSO, 40)} material={torsoMat} position={hip} quaternion={torsoQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0))} scale={[k * (female ? 0.94 : 1), torsoLen / 0.58, k * 0.7]} castShadow receiveShadow />
       {/* the neck, and a shirt collar */}

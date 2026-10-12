@@ -4,7 +4,7 @@ import { useThree } from "@react-three/fiber";
 import { getInputProps } from "remotion";
 import { SkyDome, SkyEnv } from "./Sky";
 import { Lake, Lawn, Mountains, ShoreWall, Trees, Villa, Vines } from "./Land";
-import { Ceremony } from "./Ceremony";
+import { Ceremony, chairGeometry, cushionGeometry } from "./Ceremony";
 import { Tent } from "./Tent";
 import { Treats } from "./Treats";
 import { People } from "./People";
@@ -124,6 +124,24 @@ const WeddingDog: React.FC<{ w: number }> = ({ w }) => {
   );
 };
 
+/** The chair the dog's sitting on at the end, pulled up to the cake table, its back away from it. */
+const DogChair: React.FC = () => {
+  const parts = useMemo(() => {
+    const at = new THREE.Vector3(...L.dogChair);
+    const dir = at.clone().sub(new THREE.Vector3(L.cakeTable[0], 0, L.cakeTable[1])).setY(0).normalize();
+    const yaw = Math.atan2(dir.x, dir.z);
+    return { at, yaw, chair: chairGeometry(), cushion: cushionGeometry() };
+  }, []);
+  const gold = useMemo(() => new THREE.MeshStandardMaterial({ color: "#C8A458", roughness: 0.32, metalness: 0.85 }), []);
+  const cloth = useMemo(() => new THREE.MeshStandardMaterial({ color: "#F4F0E8", roughness: 0.95 }), []);
+  return (
+    <group position={parts.at} rotation={[0, parts.yaw, 0]}>
+      <mesh geometry={parts.chair} material={gold} castShadow receiveShadow />
+      <mesh geometry={parts.cushion} material={cloth} castShadow receiveShadow />
+    </group>
+  );
+};
+
 export const WeddingWorld: React.FC<{ frame: number }> = ({ frame }) => {
   const debug = (getInputProps() as { cam?: string }).cam ?? "";
   const c = debugCam(frame, debug) ?? camAt(frame);
@@ -156,12 +174,14 @@ export const WeddingWorld: React.FC<{ frame: number }> = ({ frame }) => {
       />
       <People w={w} cam={c.pos} />
       <WeddingDog w={w} />
+      <DogChair />
       <GrassPatch frame={frame} />
       <RingOnRibbon frame={frame} />
       <FlyingHat w={w} />
       <TowerBurst w={w} />
       <CakeBurst w={w} />
-      {debug ? null : <DroneParts frame={frame} c={c} />}
+      {/* the drone's own guards in the corners, until it's lying wrecked in the cake */}
+      {debug || w >= CUE_W.glitch ? null : <DroneParts frame={frame} c={c} />}
     </>
   );
 };
