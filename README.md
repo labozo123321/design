@@ -571,13 +571,14 @@ up, bored, gum all over her face. The camera pushes in on the two of you, you lo
        npx remotion still CoasterPhoto out/coaster/photo.png --scale=2 --gl=angle
        python3 scripts/coaster-photo.py out/coaster/photo.png   # public/coaster/photo.jpg, with the ride's badge
 
-Render in four chunks, muted (with software GL use `--gl=swangle --timeout=900000`), join them and lay
-the bed under them, mastered to -15 LUFS:
+Render in four chunks, muted (with software GL use `--gl=swangle --timeout=900000`; there a frame takes
+6-9 s per tab, so rendering to a JPEG sequence with `--sequence --image-format=jpeg` lets an interrupted
+run pick up where it stopped), join them and lay the bed under them, mastered to -15 LUFS:
 
     npx remotion render Coaster out/coaster/part-0.mp4 --frames=0-542 --muted --gl=angle
     npx remotion render Coaster out/coaster/part-1.mp4 --frames=543-1085 --muted --gl=angle
     npx remotion render Coaster out/coaster/part-2.mp4 --frames=1086-1628 --muted --gl=angle
     npx remotion render Coaster out/coaster/part-3.mp4 --frames=1629-2169 --muted --gl=angle
     ffmpeg -i out/coaster/part-0.mp4 -i out/coaster/part-1.mp4 -i out/coaster/part-2.mp4 -i out/coaster/part-3.mp4 -i out/coaster/bed.wav \
-      -filter_complex "[0:v][1:v][2:v][3:v]concat=n=4:v=1:a=0[v];[4:a]loudnorm=I=-15:TP=-1.5,alimiter=limit=0.6[a]" \
+      -filter_complex "[0:v][1:v][2:v][3:v]concat=n=4:v=1:a=0[v];[4:a]volume=5.2dB,alimiter=limit=0.6:attack=5:release=60:level=disabled[a]" \
       -map "[v]" -map "[a]" -c:v libx264 -crf 18 -c:a aac -b:a 256k coaster.mp4
