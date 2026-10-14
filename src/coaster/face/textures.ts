@@ -112,8 +112,8 @@ export const skinMaps = (sh: Shape, look: SkinLook) => {
       // the lips' border on the skin (the lips themselves are their own meshes)
       const lipW = sh.mouthW * 0.52;
       const lk = Math.min(1, Math.abs(x) / lipW);
-      const lipBand = front * (1 - lk * lk) * Math.exp(-(((y - sh.mouthY) / 0.0065) ** 2));
-      col.lerp(lip, Math.min(1, lipBand * 1.1));
+      const lipBand = front * (1 - lk * lk) * Math.exp(-(((y - sh.mouthY) / (sh.portrait ? 0.0048 : 0.0065)) ** 2));
+      col.lerp(lip, Math.min(1, lipBand * (sh.portrait ? 0.55 : 1.1)));
       // freckles over the nose and cheeks
       if (look.freckles > 0) {
         const fz = front * g2(x, y, 0, sh.noseY + 0.006, 0.05, 0.022);

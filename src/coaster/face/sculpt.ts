@@ -31,6 +31,18 @@ export type Shape = {
   cheek: number; // chubbiness
   brow: number; // brow ridge
   kid: boolean;
+  /** a squarer jaw: wider at its angles below the ears (0..1) */
+  jawSq?: number;
+  /** ear size (1: the riders') */
+  earK?: number;
+  /** lip thickness (1: the riders') */
+  lipK?: number;
+  /** eyes a little more open (radians on the lids) */
+  eyeOpen?: number;
+  /** how much the mouth's muzzle stands out (1: the riders') */
+  muzzle?: number;
+  /** made for close portraits: a lash line, fuller brows */
+  portrait?: boolean;
 };
 
 export const ADULT_M: Shape = {
@@ -116,6 +128,8 @@ export type Expr = {
   chew: number;
   /** tongue poked out between the lips (concentration, cheek): 0..1 */
   tongue?: number;
+  /** the lower jaw thrust forward, lips pressed (mewing): 0..1 */
+  jut?: number;
 };
 
 export const NEUTRAL: Expr = {
@@ -155,17 +169,28 @@ export const neutralPoint = (sh: Shape, dir: THREE.Vector3, out: THREE.Vector3) 
     x *= 1 + (sh.kid ? 0.05 : 0.02) * uy;
     y *= sh.kid ? 1.03 : 1.0;
   }
+  // portraits: a rounder-shouldered cranium (wide up top, not an egg)
+  if (sh.portrait && (uy > 0 || uz < 0)) {
+    const n = 2.5;
+    const rn = Math.pow(Math.pow(Math.abs(ux), n) + Math.pow(Math.abs(uy), n) + Math.pow(Math.abs(uz), n), 1 / n);
+    const k = 1 + (1 / rn - 1) * Math.max(smooth(0, 0.35, uy), 0.6 * smooth(0, -0.4, uz)) * 0.85;
+    x *= k;
+    y *= 1 + (k - 1) * 0.4;
+    z *= k;
+  }
   // the lower half: jaw narrows, more for a soft (kid's, woman's) jaw
   if (uy < 0) {
     const d = -uy;
     const narrow = sh.kid ? 0.16 * Math.pow(d, 1.9) : (0.2 + 0.12 * (1 - sh.jaw)) * Math.pow(d, 1.5);
     x *= 1 - narrow;
+    // a square jaw: wider at the angles (below and in front of the ears), not at the chin or the mouth
+    if (sh.jawSq) x *= 1 + sh.jawSq * 0.15 * Math.exp(-(((uy + 0.62) / 0.24) ** 2)) * (1 - smooth(0.35, 0.85, uz));
     y *= 1 + 0.06 * d;
     if (uz > 0) z *= 1 + 0.05 * d * sh.jaw;
   }
   // flatten the face plane
   const front = smooth(0.35, 0.8, uz);
-  if (z > 0) z = z - front * z * 0.13;
+  if (z > 0) z = z - front * z * (sh.portrait ? 0.09 : 0.13);
   // features, in face coordinates (x, y) on the front, as heights out of the face
   const fw = smooth(0.05, 0.55, uz);
   const ex = sh.eyeX;
@@ -187,7 +212,7 @@ export const neutralPoint = (sh: Shape, dir: THREE.Vector3, out: THREE.Vector3) 
   h -= 0.0032 * (g2(x, y, 0.0068 * nw, tipY - 0.0105, 0.0035, 0.0026) + g2(x, y, -0.0068 * nw, tipY - 0.0105, 0.0035, 0.0026));
   // philtrum and the muzzle round the mouth
   const my = sh.mouthY;
-  h += 0.0045 * g2(x, y, 0, (my + tipY) / 2 - 0.002, 0.024, 0.016);
+  h += 0.0045 * (sh.muzzle ?? 1) * g2(x, y, 0, (my + tipY) / 2 - 0.002, 0.024, 0.016);
   h -= 0.0012 * g2(x, y, 0, (my + tipY) / 2, 0.0035, 0.007);
   h += 0.0028 * sh.lipFull * g2(x, y, 0, my + 0.004, sh.mouthW * 0.42, 0.0045);
   h += 0.0032 * sh.lipFull * g2(x, y, 0, my - 0.0075, sh.mouthW * 0.36, 0.0055);
@@ -199,6 +224,24 @@ export const neutralPoint = (sh: Shape, dir: THREE.Vector3, out: THREE.Vector3) 
   h += 0.0075 * sh.cheek * (g2(x, y, 0.04, my + 0.012, 0.024, 0.022) + g2(x, y, -0.04, my + 0.012, 0.024, 0.022));
   // temples in a little
   h -= 0.003 * (g2(x, y, 0.066, ey + 0.022, 0.012, 0.025) + g2(x, y, -0.066, ey + 0.022, 0.012, 0.025));
+  if (sh.portrait) {
+    const ax = Math.abs(x);
+    // cheekbones out to the side below the eyes, the hollow under them
+    h += 0.0034 * g2(ax, y, 0.05, ey - 0.028, 0.02, 0.012);
+    h -= 0.0016 * (1 - 0.6 * sh.cheek) * g2(ax, y, 0.054, my + 0.004, 0.014, 0.016);
+    // the nasolabial fold: a soft crease from the nostril's wing out and down past the mouth's corner
+    const fx0 = 0.016 * nw;
+    const fy0 = tipY - 0.004;
+    const fx1 = sh.mouthW * 0.62;
+    const fy1 = my - 0.012;
+    const fdx = fx1 - fx0;
+    const fdy = fy1 - fy0;
+    const ft = Math.max(0, Math.min(1, ((ax - fx0) * fdx + (y - fy0) * fdy) / (fdx * fdx + fdy * fdy)));
+    const fd = Math.hypot(ax - (fx0 + fdx * ft), y - (fy0 + fdy * ft));
+    h -= 0.0011 * Math.exp(-((fd / 0.0026) ** 2)) * Math.sin(Math.PI * Math.min(1, ft * 1.1));
+    // the dip between the lower lip and the chin
+    h -= 0.0012 * g2(x, y, 0, my - 0.017, 0.012, 0.0035);
+  }
   z += h * fw;
   out.set(x, y, z);
   return out;
@@ -238,6 +281,15 @@ export const deform = (sh: Shape, e: Expr, p: THREE.Vector3) => {
     p.z = pv.z + dy * s + dz * c;
     // chewing grinds the jaw sideways a touch
     p.x += 0.0025 * e.chew * jawW;
+  }
+  // jut (mewing): the whole lower jaw forward and a little up, the chin out, more toward the chin
+  const jut = e.jut ?? 0;
+  if (jut > 0 && below > 0) {
+    const jw = below * smooth(-0.075, 0.03, p.z) * (0.55 + 0.45 * smooth(ms.y - 0.004, sh.chinY + 0.004, y));
+    p.z += 0.0115 * jut * jw;
+    p.y += 0.0018 * jut * jw;
+    // the lower lip rolls up against the upper
+    p.y += 0.0012 * jut * g2(x, y, 0, ms.y - 0.006, ms.W * 0.4, 0.004);
   }
   // smile: corners up and back, cheeks up; frown: corners down
   const corner = g2(Math.abs(x), y, ms.W * 0.5, ms.y, 0.012, 0.012) * front;
@@ -340,11 +392,11 @@ export const LID_T = 1.11; // the lid sphere's radius over the eyeball's
 
 export const eyeLids = (sh: Shape, e: Expr, side: number): EyeLids => {
   const lid = side > 0 ? e.lidL : e.lidR;
-  const openUp = (sh.kid ? 0.5 : 0.4) + 0.12 * Math.max(0, e.brow) + 0.3 * e.eyePitch;
+  const openUp = (sh.kid ? 0.5 : 0.4) + (sh.eyeOpen ?? 0) + 0.12 * Math.max(0, e.brow) + 0.3 * e.eyePitch;
   const shut = -0.22;
   const up = openUp + (shut - openUp) * lid - 0.22 * e.squint;
   const lo = Math.min(up - 0.02, -((sh.kid ? 0.46 : 0.42) - 0.2 * e.squint - 0.1 * Math.max(0, e.smile)) + 0.15 * e.eyePitch);
-  return { up, lo, half: sh.kid ? 1.02 : 1.06, tilt: sh.kid ? 0.05 : 0.07 };
+  return { up, lo, half: sh.kid ? 1.02 : sh.portrait ? 0.98 : 1.06, tilt: sh.kid ? 0.05 : 0.07 };
 };
 
 /** The lid edges at angle t round the eye (0 middle, +-half the corners). */
@@ -386,10 +438,17 @@ export const wrapEye = (sh: Shape, c: THREE.Vector3, side: number, l: EyeLids, p
   const above = a.el - ed.up;
   const below = ed.lo - a.el;
   // 1 inside the opening and on the lids near it, fading out over ~0.45 rad beyond the edges
-  const out = Math.max(above, below, tAbs - l.half);
+  // (portraits: a smooth max, so the corners don't crease into streaks)
+  const out = sh.portrait ? 0.1 * Math.log(Math.exp(above / 0.1) + Math.exp(below / 0.1) + Math.exp((tAbs - l.half) / 0.1)) : Math.max(above, below, tAbs - l.half);
   const w = 1 - Math.min(1, Math.max(0, out / 0.85));
   if (w <= 0) return p;
-  const ww = w * w * (3 - 2 * w);
+  let ww = w * w * (3 - 2 * w);
+  // (portraits: only the skin near the eye wraps onto the lids; further out the face keeps its own shape,
+  // or the projection shears the mesh into streaks fanning out from the eye)
+  if (sh.portrait) {
+    const k = Math.min(1, Math.max(0, (a.d - sh.eyeR * 1.3) / (sh.eyeR * 0.85)));
+    ww *= 1 - k * k * (3 - 2 * k);
+  }
   const rl = sh.eyeR * LID_T;
   const dir = new THREE.Vector3(p.x - c.x, p.y - c.y, p.z - c.z).normalize();
   const q = c.clone().addScaledVector(dir, rl);

@@ -15,7 +15,19 @@ import { hash } from "./flight";
  */
 
 export type Outfit = {
-  kind: "suit" | "dress" | "gown" | "kidsuit" | "waiter" | "chef" | "tee";
+  kind: "suit" | "dress" | "gown" | "kidsuit" | "waiter" | "chef" | "tee" | "polo" | "sweater" | "shirt" | "hoodie" | "vest" | "cardigan";
+  /** a sculpted torso (shoulders, chest) instead of the round one, for close portraits */
+  bust?: boolean;
+  /** a 3D collar: a shirt's points, a polo's, a crew neck's rib, a hood */
+  collar?: "shirt" | "polo" | "crew" | "hood";
+  /** a woman's proportions without a dress */
+  female?: boolean;
+  /** the shirt's pattern (the vest's shirt, a shirt) */
+  pattern?: "plaid" | "stripes";
+  /** top buttons undone: how far down the shirt is open (0..1) */
+  open?: number;
+  /** a thin chain at the neck */
+  chain?: string;
   main: string;
   trousers?: string;
   shirt?: string;
@@ -30,6 +42,8 @@ export type Outfit = {
   hemR?: number;
   shoe: string;
   heels?: boolean;
+  /** lift shoes: a platform this thick (m) under each shoe, the body raised by it */
+  lifts?: number;
   hat?: { kind: "wide" | "fascinator" | "toque"; color: string; band?: string };
   pocket?: string;
   boutonniere?: boolean;
@@ -56,9 +70,11 @@ export type Pose = {
   e: Expr;
   holdL?: Prop;
   holdR?: Prop;
-  /** knees bent (0..1), and the whole body raised (a hop) */
+  /** knees bent (0..1), and the whole body raised (a hop; seated, a higher seat) */
   crouch?: number;
   lift?: number;
+  /** seated: where the ankles are (body frame), else on the floor in front */
+  feet?: [THREE.Vector3, THREE.Vector3];
 };
 
 /* ------------------------------------------------------------------ */
@@ -92,6 +108,18 @@ const UPPER: [number, number][] = [
   [0.046, -0.1],
   [0.04, -0.22],
   [0.036, -0.29],
+  [0.0, -0.3],
+];
+/** The upper arm for portraits: the deltoid's round cap over the joint, then the arm (adult metres). */
+const UPPER_B: [number, number][] = [
+  [0.0, 0.042],
+  [0.03, 0.036],
+  [0.046, 0.02],
+  [0.052, -0.008],
+  [0.051, -0.05],
+  [0.045, -0.12],
+  [0.043, -0.19],
+  [0.037, -0.28],
   [0.0, -0.3],
 ];
 const FORE: [number, number][] = [
@@ -131,6 +159,380 @@ const TORSO: [number, number][] = [
   [0.055, 0.575],
   [0.0, 0.58],
 ];
+
+/** A sculpted torso for close portraits: the waist, the chest, the shoulders' top edge, and the trapezius
+ * sloping up to the neck (the arms' deltoids round the shoulders off). Same frame and UV layout as the lathe
+ * torso (u round from the back, v up the profile), but in true depth (no squash). */
+type Ring = { y: number; X: number; Zf: number; Zb: number; n: number };
+const BUST_TOP = 0.58;
+const bustRings = (female: boolean): Ring[] =>
+  (
+    [
+      // y, half-width, front depth, back depth, squareness
+      [-0.03, 0.15, 0.1, 0.098, 2.6],
+      [0.06, 0.152, 0.102, 0.1, 2.6],
+      [0.18, 0.145, 0.097, 0.095, 2.6],
+      [0.3, 0.157, female ? 0.112 : 0.11, 0.1, 2.7],
+      [0.38, 0.168, female ? 0.132 : 0.12, 0.105, 2.8],
+      [0.43, 0.178, female ? 0.124 : 0.117, 0.104, 2.9],
+      [0.46, 0.186, 0.108, 0.1, 3.0],
+      [0.478, 0.188, 0.098, 0.094, 2.9],
+      [0.49, 0.178, 0.088, 0.088, 2.7],
+      [0.5, 0.16, 0.082, 0.084, 2.5],
+      [0.512, 0.138, 0.076, 0.08, 2.4],
+      [0.524, 0.116, 0.071, 0.075, 2.3],
+      [0.536, 0.096, 0.066, 0.07, 2.2],
+      [0.548, 0.08, 0.062, 0.065, 2.1],
+      [0.56, 0.068, 0.058, 0.06, 2.05],
+      [0.572, 0.062, 0.056, 0.057, 2.0],
+      [BUST_TOP, 0.06, 0.055, 0.056, 2.0],
+    ] as [number, number, number, number, number][]
+  ).map(([y, X, Zf, Zb, n]) => ({ y, X, Zf, Zb, n }));
+
+const pw = (a: number, e: number) => Math.sign(a) * Math.pow(Math.abs(a), e);
+const ringPoint = (r: Ring, th: number, out: THREE.Vector3) => {
+  const sx = Math.sin(th);
+  const cz = Math.cos(th);
+  return out.set(r.X * pw(sx, 2 / r.n), r.y, (cz > 0 ? r.Zb : r.Zf) * pw(cz, 2 / r.n));
+};
+const ringAt = (rings: Ring[], y: number): Ring => {
+  if (y <= rings[0].y) return rings[0];
+  for (let j = 1; j < rings.length; j++) {
+    if (y <= rings[j].y) {
+      const a = rings[j - 1];
+      const b = rings[j];
+      const f = (y - a.y) / (b.y - a.y);
+      return { y, X: a.X + (b.X - a.X) * f, Zf: a.Zf + (b.Zf - a.Zf) * f, Zb: a.Zb + (b.Zb - a.Zb) * f, n: a.n + (b.n - a.n) * f };
+    }
+  }
+  return { ...rings[rings.length - 1], y };
+};
+
+/** The portrait neck (a lathe, k = 1, from the neck base): it flares into the shoulders and runs up into
+ * the head. */
+const NECK: [number, number][] = [
+  [0.0, -0.07],
+  [0.066, -0.06],
+  [0.062, -0.035],
+  [0.0575, -0.01],
+  [0.0545, 0.02],
+  [0.052, 0.05],
+  [0.05, 0.08],
+  [0.0, 0.095],
+];
+const neckR = (y: number) => {
+  if (y <= NECK[0][1]) return 0;
+  for (let j = 1; j < NECK.length; j++) {
+    if (y <= NECK[j][1]) {
+      const [ra, ya] = NECK[j - 1];
+      const [rb, yb] = NECK[j];
+      return ra + ((rb - ra) * (y - ya)) / (yb - ya);
+    }
+  }
+  return 0.05;
+};
+const NECK_Z = 0.004; // the neck's axis, a little behind the shoulders' centre
+const NECK_SQ = 0.95; // its depth over its width
+
+/** A point on the outside of the body (bust or neck, whichever is further out) at angle th round it (0: the
+ * middle of the back, pi: the front; +x is the body's right) and height y in the torso frame (k = 1), pushed
+ * out along the surface by off. */
+const bodySurface = (female: boolean, th: number, y: number, off: number, out = new THREE.Vector3()) => {
+  const rings = bustRings(female);
+  const b = ringPoint(ringAt(rings, Math.min(y, BUST_TOP)), th, new THREE.Vector3());
+  const rB = y <= BUST_TOP ? Math.hypot(b.x, b.z) : 0;
+  const nr = neckR(y - 0.575);
+  const n = new THREE.Vector3(Math.sin(th) * nr, y, Math.cos(th) * nr * NECK_SQ + NECK_Z);
+  const rN = Math.hypot(n.x, n.z);
+  const p = rB >= rN ? b : n;
+  // outward: radial in the ring's plane, tipped up where the surface slopes (the shoulders' top)
+  const dir = new THREE.Vector3(p.x, 0, p.z).normalize();
+  if (rB >= rN && y > 0.47) {
+    const up = ringPoint(ringAt(rings, Math.min(BUST_TOP, y + 0.006)), th, new THREE.Vector3());
+    const dn = ringPoint(ringAt(rings, y - 0.006), th, new THREE.Vector3());
+    const dr = Math.hypot(up.x, up.z) - Math.hypot(dn.x, dn.z);
+    dir.multiplyScalar(0.012).add(new THREE.Vector3(0, -dr, 0)).normalize();
+  }
+  return out.copy(p).addScaledVector(dir, off);
+};
+
+/** From height y0 at angle th, down the body's surface a distance len (along it): the point there. */
+const downBody = (female: boolean, th: number, y0: number, len: number, off: number) => {
+  let y = y0;
+  let prev = bodySurface(female, th, y, 0);
+  let dist = 0;
+  while (dist < len && y > -0.02) {
+    y -= 0.001;
+    const p = bodySurface(female, th, y, 0);
+    dist += p.distanceTo(prev);
+    prev = p;
+  }
+  return bodySurface(female, th, y, off);
+};
+
+const bustGeometry = (female: boolean) =>
+  (geoCache[`bust2${female}`] ??= (() => {
+    const SEG = 72;
+    const rings = bustRings(female);
+    // v from height, the lathe torso's profile points evenly spaced in v
+    const ys = TORSO.map(([, y]) => y);
+    const vOf = (y: number) => {
+      for (let j = 1; j < ys.length; j++) {
+        if (y <= ys[j] || j === ys.length - 1) {
+          const a = ys[j - 1];
+          const b = ys[j];
+          const f = b > a ? Math.min(1, Math.max(0, (y - a) / (b - a))) : 0;
+          return (j - 1 + f) / (ys.length - 1);
+        }
+      }
+      return 1;
+    };
+    // denser rings: interpolate between the profile's
+    const fine: Ring[] = [];
+    for (let j = 0; j < rings.length - 1; j++) {
+      const steps = rings[j + 1].y - rings[j].y > 0.05 ? 4 : 2;
+      for (let s = 0; s < steps; s++) fine.push(ringAt(rings, rings[j].y + ((rings[j + 1].y - rings[j].y) * s) / steps));
+    }
+    fine.push(rings[rings.length - 1]);
+    const pos: number[] = [];
+    const uv: number[] = [];
+    const idx: number[] = [];
+    const p = new THREE.Vector3();
+    fine.forEach((r) => {
+      for (let i = 0; i <= SEG; i++) {
+        ringPoint(r, (i / SEG) * Math.PI * 2, p);
+        pos.push(p.x, p.y, p.z);
+        uv.push(i / SEG, vOf(r.y));
+      }
+    });
+    const ring = SEG + 1;
+    for (let j = 0; j < fine.length - 1; j++) {
+      for (let i = 0; i < SEG; i++) {
+        const a = j * ring + i;
+        const b = a + ring;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+    // caps: the bottom and the top (inside the neck)
+    const bot = pos.length / 3;
+    pos.push(0, -0.03, 0);
+    uv.push(0.5, 0);
+    const top = pos.length / 3;
+    pos.push(0, BUST_TOP, 0);
+    uv.push(0.5, 1);
+    const last = (fine.length - 1) * ring;
+    for (let i = 0; i < SEG; i++) {
+      idx.push(bot, i + 1, i);
+      idx.push(top, last + i, last + i + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  })());
+
+/** A surface over the body from a grid of points (rows x cols), both sides shaded. */
+const gridGeometry = (pts: THREE.Vector3[][]) => {
+  const rows = pts.length;
+  const cols = pts[0].length;
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  for (let i = 0; i < rows; i++)
+    for (let j = 0; j < cols; j++) {
+      pos.push(pts[i][j].x, pts[i][j].y, pts[i][j].z);
+      uv.push(j / (cols - 1), i / (rows - 1));
+    }
+  for (let i = 0; i < rows - 1; i++)
+    for (let j = 0; j < cols - 1; j++) {
+      const a = i * cols + j;
+      idx.push(a, a + cols, a + 1, a + 1, a + cols, a + cols + 1);
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+};
+
+/** A tube along a closed or open line of points (k = 1). */
+const lineTube = (pts: THREE.Vector3[], r: number, closed: boolean, seg = 64, rad = 8) =>
+  new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed, "centripetal"), seg, r, rad, closed);
+
+/** The neckline's height round the body: lower at the front. */
+const necklineY = (th: number, front: number, back: number) => back + (front - back) * (0.5 - 0.5 * Math.cos(th));
+
+/** A shirt's or a polo's collar: the band round the neck, open at the front, and its two points folded down
+ * over it onto the shoulders and the chest. open (0..1) spreads them. */
+const shirtCollarGeometry = (female: boolean, polo: boolean, open: number) =>
+  (geoCache[`collar2${female}${polo}${open}`] ??= (() => {
+    const parts: THREE.BufferGeometry[] = [];
+    const gap = 0.16 + 0.32 * open; // half the opening at the front (radians from the front)
+    const bandH = polo ? 0.022 : 0.026;
+    const yb = (th: number) => necklineY(th, 0.543 - 0.012 * open, 0.566);
+    // the band: inside the points, from one side of the opening round the back to the other
+    {
+      const rows: THREE.Vector3[][] = [];
+      for (let i = 0; i <= 2; i++) {
+        const row: THREE.Vector3[] = [];
+        for (let j = 0; j <= 48; j++) {
+          const th = Math.PI + gap + (j / 48) * (Math.PI * 2 - 2 * gap);
+          row.push(bodySurface(female, th, yb(th) - 0.008 + (i / 2) * (bandH + 0.008), 0.003));
+        }
+        rows.push(row);
+      }
+      parts.push(gridGeometry(rows));
+    }
+    // the points: from the fold (the band's top) out and down onto the body, longest at the front tip
+    for (const side of [-1, 1]) {
+      const rows: THREE.Vector3[][] = [];
+      const NS = 22;
+      const NT = 7;
+      for (let i = 0; i <= NS; i++) {
+        const s = i / NS; // 0 the front tip .. 1 the middle of the back
+        const thF = Math.PI + side * (gap + (Math.PI - gap) * s);
+        const yTop = yb(thF) + bandH;
+        const fold = bodySurface(female, thF, yTop, 0.0055);
+        // the outer edge: a collar's width along the body from the fold (longest at the front, the point),
+        // spread out a little toward the shoulder
+        const width = (polo ? 0.036 : 0.04) + (polo ? 0.014 : 0.03) * Math.pow(1 - s, 1.6) * (1 - 0.3 * open);
+        const thO = thF + side * (0.1 + 0.25 * open) * (1 - s) * (1 - s) - side * (polo ? 0.0 : 0.06) * Math.pow(1 - s, 6);
+        const edge = downBody(female, thO, yTop, width, 0.0042 + 0.0035 * (1 - s) * open);
+        const roll = fold.clone().lerp(edge, 0.3).add(fold.clone().sub(new THREE.Vector3(0, fold.y, NECK_Z)).setY(0).normalize().multiplyScalar(0.007));
+        const row: THREE.Vector3[] = [];
+        for (let j = 0; j <= NT; j++) {
+          const t = j / NT;
+          // a quadratic from the fold over the roll to the edge
+          const a = fold.clone().multiplyScalar((1 - t) * (1 - t));
+          a.addScaledVector(roll, 2 * t * (1 - t)).addScaledVector(edge, t * t);
+          row.push(a);
+        }
+        rows.push(row);
+      }
+      parts.push(gridGeometry(rows));
+    }
+    return mergeGeos(parts);
+  })());
+
+const mergeGeos = (gs: THREE.BufferGeometry[]) => {
+  const pos: number[] = [];
+  const nor: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  let base = 0;
+  for (const g0 of gs) {
+    const g = g0.index ? g0 : g0;
+    const p = g.attributes.position as THREE.BufferAttribute;
+    const n = g.attributes.normal as THREE.BufferAttribute;
+    const u = g.attributes.uv as THREE.BufferAttribute | undefined;
+    for (let i = 0; i < p.count; i++) {
+      pos.push(p.getX(i), p.getY(i), p.getZ(i));
+      nor.push(n.getX(i), n.getY(i), n.getZ(i));
+      uv.push(u ? u.getX(i) : 0, u ? u.getY(i) : 0);
+    }
+    if (g.index) for (let i = 0; i < g.index.count; i++) idx.push(base + g.index.getX(i));
+    else for (let i = 0; i < p.count; i++) idx.push(base + i);
+    base += p.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  out.setIndex(idx);
+  return out;
+};
+
+/** A crew neck's ribbed band, a hood bunched at the back with its strings, a chain on the skin. */
+const crewGeometry = (female: boolean, front: number, back: number, r: number) =>
+  (geoCache[`crew${female}${front}${back}${r}`] ??= (() => {
+    const pts: THREE.Vector3[] = [];
+    for (let j = 0; j < 48; j++) {
+      const th = (j / 48) * Math.PI * 2;
+      pts.push(bodySurface(female, th, necklineY(th, front, back), r * 0.75));
+    }
+    return lineTube(pts, r, true, 96, 10);
+  })());
+
+const hoodGeometry = (female: boolean) =>
+  (geoCache[`hood${female}`] ??= (() => {
+    // the hood: a soft fold of cloth lying on the upper back, open round the neck
+    const rows: THREE.Vector3[][] = [];
+    const NS = 28;
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10; // 0 at the neckline .. 1 the hood's far edge down the back
+      const row: THREE.Vector3[] = [];
+      for (let j = 0; j <= NS; j++) {
+        const s = j / NS;
+        const th = -1.25 + 2.5 * s; // round the back, between the shoulders
+        const across = Math.sin(Math.PI * s);
+        const y0 = necklineY(th, 0.548, 0.566);
+        const y = y0 + 0.01 - t * (0.02 + 0.15 * across);
+        const lift = 0.005 + 0.032 * Math.sin(Math.PI * Math.min(1, t * 1.1)) * across * across + 0.003 * Math.sin(s * 23 + t * 5);
+        row.push(bodySurface(female, th, y, lift));
+      }
+      rows.push(row);
+    }
+    return gridGeometry(rows);
+  })());
+
+const chainGeometry = (female: boolean) =>
+  (geoCache[`chain${female}`] ??= (() => {
+    const pts: THREE.Vector3[] = [];
+    for (let j = 0; j < 40; j++) {
+      const th = (j / 40) * Math.PI * 2;
+      const f = 0.5 - 0.5 * Math.cos(th);
+      pts.push(bodySurface(female, th, 0.562 - 0.075 * Math.pow(f, 3), 0.0035));
+    }
+    return lineTube(pts, 0.0017, true, 160, 6);
+  })());
+
+const Collar: React.FC<{ o: Outfit; at: THREE.Vector3; q: THREE.Quaternion; k: number; female: boolean }> = ({ o, at, q, k, female }) => {
+  const kind = o.collar;
+  const scale: [number, number, number] = [k * (female ? 0.94 : 1), k, k];
+  const shirtCol = o.kind === "shirt" || o.kind === "polo" ? o.main : o.shirt ?? "#FFFFFF";
+  const flapMat = (matCache[`flap${shirtCol}`] ??= new THREE.MeshPhysicalMaterial({ color: shirtCol, roughness: 0.78, sheen: 0.25, sheenColor: new THREE.Color(shirtCol).lerp(new THREE.Color("#FFFFFF"), 0.4), side: THREE.DoubleSide }));
+  const out: React.ReactNode[] = [];
+  if (kind === "shirt" || kind === "polo") out.push(<mesh key="collar" geometry={shirtCollarGeometry(female, kind === "polo", o.open ?? 0)} material={flapMat} castShadow receiveShadow />);
+  if (o.kind === "sweater" || kind === "crew") {
+    const col = o.kind === "cardigan" ? o.shirt ?? "#FFFFFF" : o.main;
+    out.push(<mesh key="crew" geometry={crewGeometry(female, 0.545, 0.566, o.kind === "sweater" ? 0.006 : 0.0042)} material={cloth(col, 0.92)} castShadow />);
+  }
+  if (kind === "hood") {
+    out.push(<mesh key="hood" geometry={hoodGeometry(female)} material={(matCache[`hood${o.main}`] ??= new THREE.MeshPhysicalMaterial({ color: o.main, roughness: 0.92, sheen: 0.3, sheenColor: new THREE.Color(o.main).lerp(new THREE.Color("#FFFFFF"), 0.4), side: THREE.DoubleSide }))} castShadow receiveShadow />);
+    out.push(<mesh key="rim" geometry={crewGeometry(female, 0.548, 0.566, 0.009)} material={cloth(o.main, 0.92)} castShadow />);
+    // the drawstrings, from the neckline down the chest, with their tips
+    for (const side of [-1, 1]) {
+      const pts: THREE.Vector3[] = [];
+      for (let i = 0; i <= 6; i++) {
+        const y = 0.55 - (i / 6) * 0.15;
+        pts.push(bodySurface(female, Math.PI + side * (0.24 - 0.05 * (i / 6)), y, 0.009 + 0.004 * Math.sin((i / 6) * Math.PI)));
+      }
+      out.push(<mesh key={`str${side}`} geometry={(geoCache[`str${side}${female}`] ??= lineTube(pts, 0.0028, false, 24, 6))} material={cloth("#F2EEE6", 0.8)} />);
+      out.push(
+        <mesh key={`tip${side}`} position={pts[6]} material={(matCache.aglet ??= new THREE.MeshStandardMaterial({ color: "#C8CCD2", metalness: 1, roughness: 0.3 }))}>
+          <cylinderGeometry args={[0.003, 0.003, 0.02, 8]} />
+        </mesh>,
+      );
+    }
+  }
+  if (o.chain) out.push(<mesh key="chain" geometry={chainGeometry(female)} material={(matCache[`chain${o.chain}`] ??= new THREE.MeshStandardMaterial({ color: o.chain, metalness: 1, roughness: 0.22 }))} />);
+  if (o.tie === "tie" && kind === "shirt") {
+    // the tie's knot under the collar's points
+    out.push(
+      <mesh key="knot" position={bodySurface(female, Math.PI, 0.553, 0.012)} rotation={[0.25, 0, 0]} material={cloth(o.accent ?? "#B8323A", 0.6, 0.3)} scale={[0.017, 0.022, 0.011]}>
+        <sphereGeometry args={[1, 16, 12]} />
+      </mesh>,
+    );
+  }
+  return (
+    <group position={at} quaternion={q} scale={scale}>
+      {out}
+    </group>
+  );
+};
 
 const ik = (S: THREE.Vector3, T: THREE.Vector3, a: number, b: number, pole: THREE.Vector3) => {
   const d0 = T.clone().sub(S);
@@ -176,6 +578,30 @@ const torsoTexture = (o: Outfit, tone: string) => {
   // fabric base with a faint weave
   g.fillStyle = o.kind === "chef" ? "#F6F4EE" : o.kind === "waiter" ? o.shirt ?? "#FFFFFF" : o.main;
   g.fillRect(0, 0, W, H);
+  // a woven pattern over the base: plaid (the photographer's shirt), stripes
+  const paintPattern = (col: string, x0: number, x1: number) => {
+    if (o.pattern === "plaid") {
+      for (let i = 0; i < 40; i++) {
+        g.fillStyle = i % 4 === 0 ? "rgba(30,30,40,0.28)" : i % 4 === 2 ? "rgba(255,255,255,0.14)" : "rgba(120,30,30,0.12)";
+        g.fillRect(x0, (i * H) / 40, x1 - x0, H / 80);
+        g.fillRect(x0 + ((i * (x1 - x0)) / 40) % (x1 - x0), 0, (x1 - x0) / 80, H);
+      }
+    } else if (o.pattern === "stripes") {
+      for (let i = 0; i < 64; i++) {
+        g.fillStyle = "rgba(255,255,255,0.35)";
+        g.fillRect(x0, (i * H) / 64, x1 - x0, H / 160);
+      }
+    }
+    void col;
+  };
+  if (o.kind === "sweater" || o.kind === "cardigan" || o.kind === "hoodie") {
+    // knit: fine vertical ribs
+    for (let i = 0; i < 256; i++) {
+      g.fillStyle = `rgba(0,0,0,${0.05 + 0.03 * (i % 2)})`;
+      g.fillRect((i * W) / 256, 0, 1, H);
+    }
+  }
+  if (o.kind === "shirt" || o.kind === "polo") paintPattern(o.main, 0, W);
   for (let i = 0; i < 2600; i++) {
     g.fillStyle = `rgba(${hash(i) > 0.5 ? "255,255,255" : "0,0,0"},${0.025 + hash(i * 3.1) * 0.03})`;
     g.fillRect(hash(i * 7.7) * W, hash(i * 1.3) * H, 1 + hash(i * 5.1) * 3, 1);
@@ -352,6 +778,133 @@ const torsoTexture = (o: Outfit, tone: string) => {
       ],
       tone,
     );
+  } else if (o.kind === "polo") {
+    // the placket: a band down from the collar with two buttons, open at the top
+    g.fillStyle = "rgba(0,0,0,0.18)";
+    g.fillRect(X(front - 0.018), Y(1.0), 2, H * 0.17);
+    g.fillRect(X(front + 0.018), Y(1.0), 2, H * 0.17);
+    g.fillRect(X(front - 0.018), Y(0.83), X(0.036), 2);
+    tri(
+      [
+        [front - 0.014, 1.0],
+        [front + 0.014, 1.0],
+        [front + 0.01, 0.94],
+        [front - 0.01, 0.94],
+      ],
+      tone,
+    );
+    g.fillStyle = "rgba(240,240,240,0.9)";
+    for (const v of [0.9, 0.86]) {
+      g.beginPath();
+      g.arc(X(front), Y(v), 4, 0, Math.PI * 2);
+      g.fill();
+    }
+  } else if (o.kind === "shirt") {
+    // a button-up: the placket's edge and buttons all the way down; open at the top for some
+    const openTo = 1.0 - 0.12 * (o.open ?? 0);
+    if ((o.open ?? 0) > 0) {
+      tri(
+        [
+          [front - 0.03 * (o.open ?? 0), 1.0],
+          [front + 0.03 * (o.open ?? 0), 1.0],
+          [front, openTo],
+        ],
+        tone,
+      );
+    }
+    g.fillStyle = "rgba(0,0,0,0.2)";
+    g.fillRect(X(front + 0.012), Y(openTo), 2, H * openTo);
+    g.fillStyle = "rgba(250,250,250,0.95)";
+    for (let v = openTo - 0.04; v > 0.05; v -= 0.11) {
+      g.beginPath();
+      g.arc(X(front + 0.004), Y(v), 4, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = "rgba(0,0,0,0.25)";
+      g.lineWidth = 1;
+      g.stroke();
+    }
+  } else if (o.kind === "sweater") {
+    // the crew neck's rib and the shirt's collar showing inside it
+    g.fillStyle = "rgba(0,0,0,0.16)";
+    g.fillRect(0, Y(1.0), W, H * 0.045);
+    tri(
+      [
+        [front - 0.03, 1.0],
+        [front + 0.03, 1.0],
+        [front, 0.965],
+      ],
+      o.shirt ?? "#FFFFFF",
+    );
+    // the hem's rib
+    g.fillStyle = "rgba(0,0,0,0.14)";
+    g.fillRect(0, Y(0.08), W, H * 0.08);
+  } else if (o.kind === "hoodie") {
+    // the kangaroo pocket, the drawstrings
+    g.strokeStyle = "rgba(0,0,0,0.3)";
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(X(front - 0.14), Y(0.08));
+    g.lineTo(X(front - 0.1), Y(0.36));
+    g.lineTo(X(front + 0.1), Y(0.36));
+    g.lineTo(X(front + 0.14), Y(0.08));
+    g.stroke();
+    g.fillStyle = "rgba(240,240,240,0.9)";
+    g.fillRect(X(front - 0.03), Y(0.99), 3, H * 0.2);
+    g.fillRect(X(front + 0.03), Y(0.99), 3, H * 0.22);
+    g.fillStyle = "rgba(0,0,0,0.16)";
+    g.fillRect(0, Y(0.08), W, H * 0.08);
+  } else if (o.kind === "vest" || o.kind === "cardigan") {
+    // a shirt (or top) down the middle of the front; the vest's or cardigan's panels either side
+    const shirtW = o.kind === "vest" ? 0.06 : 0.05;
+    g.fillStyle = o.shirt ?? "#D8D0C0";
+    g.fillRect(X(front - shirtW), 0, X(shirtW * 2), H);
+    if (o.pattern) {
+      // the plaid shows only on the shirt
+      paintPattern(o.shirt ?? "#D8D0C0", X(front - shirtW), X(front + shirtW));
+    }
+    tri(
+      [
+        [front - shirtW - 0.03, 1.0],
+        [front - shirtW, 0.35],
+        [front - shirtW + 0.004, 1.0],
+      ],
+      o.shirt ?? "#D8D0C0",
+    );
+    tri(
+      [
+        [front + shirtW + 0.03, 1.0],
+        [front + shirtW, 0.35],
+        [front + shirtW - 0.004, 1.0],
+      ],
+      o.shirt ?? "#D8D0C0",
+    );
+    g.fillStyle = "rgba(0,0,0,0.3)";
+    g.fillRect(X(front - shirtW), 0, 2, H);
+    g.fillRect(X(front + shirtW), 0, 2, H);
+    if (o.kind === "vest") {
+      // the photographer's pockets: flapped boxes on the chest and lower down
+      for (const [du, v, w, h] of [
+        [-0.13, 0.74, 0.07, 0.12],
+        [0.13, 0.74, 0.07, 0.12],
+        [-0.12, 0.38, 0.09, 0.16],
+        [0.12, 0.38, 0.09, 0.16],
+      ] as const) {
+        g.fillStyle = "rgba(0,0,0,0.12)";
+        g.fillRect(X(front + du - w / 2), Y(v), X(w), H * h);
+        g.strokeStyle = "rgba(0,0,0,0.35)";
+        g.lineWidth = 2;
+        g.strokeRect(X(front + du - w / 2), Y(v), X(w), H * h);
+        g.fillStyle = "rgba(0,0,0,0.18)";
+        g.fillRect(X(front + du - w / 2), Y(v), X(w), H * 0.03);
+      }
+    } else {
+      g.fillStyle = "rgba(255,255,255,0.85)";
+      for (let v = 0.9; v > 0.1; v -= 0.12) {
+        g.beginPath();
+        g.arc(X(front - shirtW - 0.008), Y(v), 4, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -552,13 +1105,15 @@ export const Figure: React.FC<{
   headExtra?: React.ReactNode;
 }> = ({ who, outfit, k = 1, eyeLift, pose, at, yaw, t, hi = false, children, noHat, chains, headExtra }) => {
   const sit = !!pose.sit;
-  const female = outfit.kind === "dress" || outfit.kind === "gown";
+  const female = outfit.kind === "dress" || outfit.kind === "gown" || !!outfit.female;
   const tone = who.skin.tone;
   const sk = skin(tone);
   const legMat = female && outfit.kind !== "gown" ? sk : cloth(outfit.trousers ?? outfit.main, 0.8);
   const crouch = pose.crouch ?? 0;
   // the body's joints (standing values for k = 1, scaled)
-  const hipY = sit ? 0.56 : (0.93 - 0.55 * crouch) * k + (pose.lift ?? 0);
+  const lifts = outfit.lifts ?? 0;
+  const hipY = sit ? 0.56 + (pose.lift ?? 0) : (0.93 - 0.55 * crouch) * k + (pose.lift ?? 0) + lifts;
+  const bust = !!outfit.bust;
   const torsoLen = 0.58 * k;
   // the torso: pitched, rolled, twisted about the hips
   const torsoQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-(pose.lean ?? 0) + (sit ? -0.06 : 0), pose.twist ?? 0, -(pose.roll ?? 0), "YXZ"));
@@ -569,7 +1124,8 @@ export const Figure: React.FC<{
   const shoulderC = hip.clone().addScaledVector(up, 0.5 * k);
   const neckBase = hip.clone().addScaledVector(up, 0.575 * k);
   // the head sits on the neck: a short visible neck, then the chin; its origin is at eye level
-  const headP = neckBase.clone().addScaledVector(up, 0.05 * k - who.shape.chinY + (eyeLift ?? 0));
+  // (a portrait's neck is real length: the chin just above the collar)
+  const headP = neckBase.clone().addScaledVector(up, (bust ? -0.008 : 0.05) * k - who.shape.chinY + (eyeLift ?? 0));
   // where the head looks
   let hy = pose.headYaw ?? 0;
   let hp = pose.headPitch ?? 0;
@@ -587,13 +1143,24 @@ export const Figure: React.FC<{
   // the eyes do a little of the looking too
   expr.eyeYaw = expr.eyeYaw || Math.max(-0.3, Math.min(0.3, (hy - (pose.twist ?? 0)) * 0.15));
   const torsoMat = torsoMaterial(outfit, tone);
-  const sleeveMat = outfit.sleeves === "none" || (female && outfit.sleeves !== "long" && outfit.sleeves !== "short") ? sk : outfit.kind === "waiter" ? cloth(outfit.shirt ?? "#FFFFFF", 0.8) : outfit.kind === "chef" ? cloth("#F6F4EE", 0.85) : cloth(outfit.main, 0.8);
+  const sleeveMat =
+    outfit.sleeves === "none" || (female && outfit.sleeves !== "long" && outfit.sleeves !== "short")
+      ? sk
+      : outfit.kind === "waiter" || outfit.kind === "vest"
+        ? cloth(outfit.shirt ?? "#FFFFFF", 0.8)
+        : outfit.kind === "chef"
+          ? cloth("#F6F4EE", 0.85)
+          : cloth(outfit.main, 0.8);
   const shortSleeve = outfit.sleeves === "short";
   // ---- arms
   const arm = (side: number) => {
-    const S = shoulderC.clone().addScaledVector(bodyX, side * 0.19 * k).addScaledVector(up, -0.02 * k);
+    const S = bust
+      ? shoulderC.clone().addScaledVector(bodyX, side * 0.168 * k).addScaledVector(up, -0.056 * k)
+      : shoulderC.clone().addScaledVector(bodyX, side * 0.19 * k).addScaledVector(up, -0.02 * k);
     const def: Arm = sit
-      ? { at: new THREE.Vector3(side * 0.15 * k, hipY + 0.06, -0.3 * k), hand: RELAX, palm: new THREE.Vector3(0, -1, 0) }
+      ? bust
+        ? { at: new THREE.Vector3(side * 0.12 * k, hipY + 0.04, -0.3 * k), hand: RELAX, palm: new THREE.Vector3(0, -1, 0), pole: new THREE.Vector3(side * 0.3, -1, 0.5) }
+        : { at: new THREE.Vector3(side * 0.15 * k, hipY + 0.06, -0.3 * k), hand: RELAX, palm: new THREE.Vector3(0, -1, 0) }
       : { at: S.clone().add(new THREE.Vector3(side * 0.07 * k, -0.55 * k, -0.04 * k)), hand: RELAX };
     const a = (side < 0 ? pose.armL : pose.armR) ?? def;
     const la = 0.3 * k;
@@ -610,11 +1177,22 @@ export const Figure: React.FC<{
     const longSleeve = sleeveMat !== sk && !shortSleeve;
     return (
       <group key={side}>
-        <mesh position={S.clone().addScaledVector(bodyX, -side * 0.012 * k)} material={sleeveMat === sk ? sk : sleeveMat} scale={[0.05 * k, 0.046 * k, 0.05 * k]}>
-          <sphereGeometry args={[1, 14, 10]} />
-        </mesh>
-        <Limb a={S} b={E} geo={lathe("wu", UPPER)} len={0.3} mat={longSleeve ? sleeveMat : sk} k={k} />
-        {shortSleeve ? <Limb a={S} b={S.clone().lerp(E, 0.45)} geo={lathe("wsl", UPPER.map(([r, y]) => [r * 1.22, y * 0.45] as [number, number]))} len={0.135} mat={sleeveMat} k={k} /> : null}
+        {bust ? null : (
+          <mesh position={S.clone().addScaledVector(bodyX, -side * 0.012 * k)} material={sleeveMat === sk ? sk : sleeveMat} scale={[0.05 * k, 0.046 * k, 0.05 * k]}>
+            <sphereGeometry args={[1, 14, 10]} />
+          </mesh>
+        )}
+        <Limb a={S} b={E} geo={bust ? lathe("wub", UPPER_B, 32) : lathe("wu", UPPER)} len={0.3} mat={longSleeve ? sleeveMat : sk} k={k} />
+        {shortSleeve ? (
+          <Limb
+            a={S}
+            b={S.clone().lerp(E, 0.45)}
+            geo={bust ? lathe("wslb", UPPER_B.map(([r, y]) => [r * 1.14, y * 0.45 + (y > 0 ? 0.004 : 0)] as [number, number]), 32) : lathe("wsl", UPPER.map(([r, y]) => [r * 1.22, y * 0.45] as [number, number]))}
+            len={0.135}
+            mat={sleeveMat}
+            k={k}
+          />
+        ) : null}
         <mesh position={E} material={longSleeve ? sleeveMat : sk} scale={0.04 * k}>
           <sphereGeometry args={[1, 12, 8]} />
         </mesh>
@@ -634,8 +1212,8 @@ export const Figure: React.FC<{
   const legs = [-1, 1].map((side) => {
     if (sit) {
       const H = new THREE.Vector3(side * 0.095 * k, hipY - 0.02, 0.04);
-      const K = new THREE.Vector3(side * 0.11 * k, 0.5, -0.38 * k);
-      const A = new THREE.Vector3(side * 0.115 * k, 0.09, -0.42 * k);
+      const K = new THREE.Vector3(side * 0.11 * k, hipY - 0.06, -0.38 * k);
+      const A = pose.feet ? pose.feet[side < 0 ? 0 : 1].clone() : new THREE.Vector3(side * 0.115 * k, Math.max(0.09, K.y - 0.41), -0.42 * k);
       return (
         <group key={side}>
           <Limb a={H} b={K} geo={lathe("wth", THIGH)} len={0.45} mat={female ? cloth(outfit.main, 0.8, 0.4) : legMat} k={k} thick={female ? 1.08 : 1} />
@@ -649,7 +1227,7 @@ export const Figure: React.FC<{
     }
     const spread = 0.1 * k;
     const H = new THREE.Vector3(side * 0.095 * k, hipY - 0.02, 0);
-    const A = new THREE.Vector3(side * (spread + 0.01), 0.09 * k, -0.01);
+    const A = pose.feet ? pose.feet[side < 0 ? 0 : 1].clone() : new THREE.Vector3(side * (spread + 0.01), 0.09 * k + lifts, -0.01);
     const kneeOut = new THREE.Vector3(side * 0.02, 0, -1);
     const { E: K } = ik(H, A, 0.45 * k, 0.43 * k, kneeOut);
     return (
@@ -701,12 +1279,21 @@ export const Figure: React.FC<{
       {skirt}
       {outfit.kind === "gown" ? <mesh geometry={veilGeometry(k)} material={veilMaterial()} position={hip} quaternion={torsoQ} renderOrder={2} /> : null}
       {/* torso */}
-      <mesh geometry={lathe("wtorso", TORSO, 40)} material={torsoMat} position={hip} quaternion={torsoQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0))} scale={[k * (female ? 0.94 : 1), torsoLen / 0.58, k * 0.7]} castShadow receiveShadow />
+      {outfit.bust ? (
+        <mesh geometry={bustGeometry(female)} material={torsoMat} position={hip} quaternion={torsoQ} scale={[k * (female ? 0.94 : 1), torsoLen / 0.58, k]} castShadow receiveShadow />
+      ) : (
+        <mesh geometry={lathe("wtorso", TORSO, 40)} material={torsoMat} position={hip} quaternion={torsoQ.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0))} scale={[k * (female ? 0.94 : 1), torsoLen / 0.58, k * 0.7]} castShadow receiveShadow />
+      )}
+      {bust ? <Collar o={outfit} at={hip} q={torsoQ} k={k} female={female} /> : null}
       {/* the neck, and a shirt collar */}
-      <mesh material={sk} position={neckBase.clone().addScaledVector(up, 0.05 * k)} quaternion={torsoQ} scale={[0.048 * k, 0.12 * k, 0.05 * k]}>
-        <cylinderGeometry args={[0.95, 1.05, 1, 16]} />
-      </mesh>
-      {outfit.kind === "suit" || outfit.kind === "kidsuit" || outfit.kind === "waiter" ? (
+      {bust ? (
+        <mesh geometry={lathe("wneck", NECK, 32)} material={sk} position={neckBase.clone().addScaledVector(bodyZ, NECK_Z * k)} quaternion={torsoQ} scale={[k, k, k * NECK_SQ]} castShadow receiveShadow />
+      ) : (
+        <mesh material={sk} position={neckBase.clone().addScaledVector(up, 0.05 * k)} quaternion={torsoQ} scale={[0.048 * k, 0.12 * k, 0.05 * k]}>
+          <cylinderGeometry args={[0.95, 1.05, 1, 16]} />
+        </mesh>
+      )}
+      {!bust && (outfit.kind === "suit" || outfit.kind === "kidsuit" || outfit.kind === "waiter") ? (
         <mesh material={cloth(outfit.shirt ?? "#FFFFFF", 0.7)} position={neckBase.clone().addScaledVector(up, 0.012 * k)} quaternion={torsoQ} scale={[0.062 * k, 0.04 * k, 0.064 * k]}>
           <cylinderGeometry args={[1, 1.12, 1, 18, 1, true]} />
         </mesh>
@@ -760,6 +1347,12 @@ const Shoe: React.FC<{ at: THREE.Vector3; side: number; k: number; o: Outfit }> 
           <sphereGeometry args={[1, 16, 6]} />
         </mesh>
       )}
+      {o.lifts ? (
+        // the lifts: a thick platform sole (not subtle)
+        <mesh material={leather("#24201C")} position={[0, -0.088 - (o.lifts / k) / 2, -0.062]} scale={[1, o.lifts / k / 0.06, 1]} castShadow>
+          <boxGeometry args={[0.1, 0.06, 0.27]} />
+        </mesh>
+      ) : null}
     </group>
   );
 };
