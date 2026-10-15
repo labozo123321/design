@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
@@ -33,14 +32,22 @@ const DEPTH_FN = /* glsl */ `
   float viewDist(float d) { return pow(uFar + 1.0, d) - 1.0; }
 `;
 
+/** Depth of field in two steps: the scatter-as-gather blur at half resolution (40 taps over a golden-angle
+ * disc), which also says how blurred each place is; then at full resolution the sharp picture wherever
+ * nothing's blurred, the half-res blur wherever something is (so the in-focus face keeps every pixel). */
 class DofPass extends Pass {
   quad: FullScreenQuad;
+  mix: FullScreenQuad;
+  half: THREE.WebGLRenderTarget;
+  depth: THREE.Texture | null = null;
   uniforms: Record<string, THREE.IUniform>;
-  constructor() {
+  constructor(w: number, h: number) {
     super();
+    this.half = new THREE.WebGLRenderTarget(Math.ceil(w / 2), Math.ceil(h / 2), { type: THREE.HalfFloatType });
     this.uniforms = {
       tDiffuse: { value: null },
       tDepth: { value: null },
+      tHalf: { value: this.half.texture },
       uFar: { value: 200 },
       uFocus: { value: 2.6 },
       uAperture: { value: 0.0 },
@@ -49,6 +56,8 @@ class DofPass extends Pass {
     };
     this.quad = new FullScreenQuad(
       new THREE.ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
         uniforms: this.uniforms,
         vertexShader: VERT,
         fragmentShader: /* glsl */ `
@@ -68,7 +77,6 @@ class DofPass extends Pass {
           }
           void main() {
             vec4 c0 = texture2D(tDiffuse, vUv);
-            if (uAperture <= 0.0) { gl_FragColor = c0; return; }
             float d0 = viewDist(texture2D(tDepth, vUv).x);
             float r0 = abs(coc(d0));
             // scatter as gather: every sample whose own blur disc reaches this pixel adds to it
@@ -89,16 +97,99 @@ class DofPass extends Pass {
               acc += sc * m;
               wsum += m;
             }
-            gl_FragColor = vec4(acc / wsum, c0.a);
+            // alpha: how much of this place is blur (its own, or something in front spreading over it)
+            gl_FragColor = vec4(acc / wsum, max(1.0 - 1.0 / wsum, smoothstep(0.0008, 0.003, r0)));
+          }`,
+      }),
+    );
+    this.mix = new FullScreenQuad(
+      new THREE.ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
+        uniforms: this.uniforms,
+        vertexShader: VERT,
+        fragmentShader: /* glsl */ `
+          uniform sampler2D tDiffuse;
+          uniform sampler2D tHalf;
+          varying vec2 vUv;
+          void main() {
+            vec4 c0 = texture2D(tDiffuse, vUv);
+            vec4 b = texture2D(tHalf, vUv);
+            gl_FragColor = vec4(mix(c0.rgb, b.rgb, smoothstep(0.03, 0.4, b.a)), c0.a);
           }`,
       }),
     );
   }
   render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
     this.uniforms.tDiffuse.value = readBuffer.texture;
-    this.uniforms.tDepth.value = readBuffer.depthTexture;
-    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.uniforms.tDepth.value = this.depth;
+    renderer.setRenderTarget(this.half);
     this.quad.render(renderer);
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.mix.render(renderer);
+  }
+}
+
+/** FXAA (the compact console version), on the finished sRGB picture: edges smoothed along their direction. */
+const FXAA = {
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null }, resolution: { value: new THREE.Vector2(1 / 1080, 1 / 1920) } },
+  vertexShader: VERT,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform vec2 resolution;
+    varying vec2 vUv;
+    void main() {
+      #ifdef PASSTHROUGH
+      gl_FragColor = vec4(texture2D(tDiffuse, vUv).rgb, 1.0);
+      return;
+      #endif
+      vec3 nw = texture2D(tDiffuse, vUv + vec2(-1.0, -1.0) * resolution).rgb;
+      vec3 ne = texture2D(tDiffuse, vUv + vec2(1.0, -1.0) * resolution).rgb;
+      vec3 sw = texture2D(tDiffuse, vUv + vec2(-1.0, 1.0) * resolution).rgb;
+      vec3 se = texture2D(tDiffuse, vUv + vec2(1.0, 1.0) * resolution).rgb;
+      vec3 m = texture2D(tDiffuse, vUv).rgb;
+      vec3 L = vec3(0.299, 0.587, 0.114);
+      float lnw = dot(nw, L), lne = dot(ne, L), lsw = dot(sw, L), lse = dot(se, L), lm = dot(m, L);
+      lnw /= 1.0 + lnw; lne /= 1.0 + lne; lsw /= 1.0 + lsw; lse /= 1.0 + lse; lm /= 1.0 + lm;
+      float lmin = min(lm, min(min(lnw, lne), min(lsw, lse)));
+      float lmax = max(lm, max(max(lnw, lne), max(lsw, lse)));
+      vec2 dir = vec2(-((lnw + lne) - (lsw + lse)), (lnw + lsw) - (lne + lse));
+      float reduce = max((lnw + lne + lsw + lse) * (0.25 / 8.0), 1.0 / 128.0);
+      float rcp = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+      dir = clamp(dir * rcp, vec2(-8.0), vec2(8.0)) * resolution;
+      vec3 a = 0.5 * (texture2D(tDiffuse, vUv + dir * (1.0 / 3.0 - 0.5)).rgb + texture2D(tDiffuse, vUv + dir * (2.0 / 3.0 - 0.5)).rgb);
+      vec3 b = a * 0.5 + 0.25 * (texture2D(tDiffuse, vUv - dir * 0.5).rgb + texture2D(tDiffuse, vUv + dir * 0.5).rgb);
+      float lb = dot(b, L);
+      lb /= 1.0 + lb;
+      gl_FragColor = vec4((lb < lmin || lb > lmax) ? a : b, 1.0);
+    }`,
+};
+
+/** The scene into its own target (colour and depth), then its colour copied into the chain's buffer. */
+class ScenePass extends Pass {
+  copy: FullScreenQuad;
+  constructor(
+    public scene: THREE.Scene,
+    public camera: THREE.Camera,
+    public rt: THREE.WebGLRenderTarget,
+  ) {
+    super();
+    this.copy = new FullScreenQuad(
+      new THREE.ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
+        uniforms: { tDiffuse: { value: rt.texture } },
+        vertexShader: VERT,
+        fragmentShader: "uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }",
+      }),
+    );
+  }
+  render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget) {
+    renderer.setRenderTarget(this.rt);
+    renderer.clear();
+    renderer.render(this.scene, this.camera);
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.copy.render(renderer);
   }
 }
 
@@ -121,6 +212,8 @@ class MotionBlurPass extends Pass {
     };
     this.quad = new FullScreenQuad(
       new THREE.ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
         uniforms: this.uniforms,
         vertexShader: VERT,
         fragmentShader: /* glsl */ `
@@ -217,13 +310,23 @@ const GradeShader = {
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     vec3 tap(vec2 uv) { return texture2D(tDiffuse, clamp(uv, vec2(0.0005), vec2(0.9995))).rgb; }
     void main() {
-      // the printed photo sits inside a white border: map the picture into the inner rectangle
-      float inset = 0.055 * uPrint;
-      vec2 border = vec2(inset * 1.0 / uAspect * uAspect, inset);
-      vec2 uv0 = vUv;
-      vec2 inner = (vUv - border) / (1.0 - 2.0 * border);
+      // the printed photo: the frame shrinks a little into a card with a white border (deeper at the bottom),
+      // tipped a touch, over a dark table; the picture inside is the frame's middle (cropped, not squashed)
+      float sc = 1.0 - 0.09 * uPrint;
+      float ang = -0.03 * uPrint;
+      vec2 sq = (vUv - 0.5) * vec2(uAspect, 1.0);
+      sq = mat2(cos(ang), sin(ang), -sin(ang), cos(ang)) * sq / sc;
+      vec2 card = sq / vec2(uAspect, 1.0) + 0.5;
+      bool onCard = all(greaterThanEqual(card, vec2(0.0))) && all(lessThanEqual(card, vec2(1.0)));
+      float bx = 0.05 * uPrint;
+      vec2 bLo = vec2(bx, bx * uAspect * 2.6);
+      vec2 bHi = vec2(bx, bx * uAspect);
+      vec2 inner = (card - bLo) / (1.0 - bLo - bHi);
       bool inPhoto = all(greaterThanEqual(inner, vec2(0.0))) && all(lessThanEqual(inner, vec2(1.0)));
-      vec2 uv = uPrint > 0.0 ? inner : uv0;
+      float innerAsp = (1.0 - 2.0 * bx) * uAspect / (1.0 - bLo.y - bHi.y);
+      vec2 crop = innerAsp > uAspect ? vec2(1.0, uAspect / innerAsp) : vec2(innerAsp / uAspect, 1.0);
+      vec2 uv0 = vUv;
+      vec2 uv = uPrint > 0.0 ? 0.5 + (inner - 0.5) * crop : uv0;
       // the edit's zoom kicks and shake
       uv = 0.5 + (uv - 0.5) / uZoom + uShake;
       vec2 c = uv - 0.5;
@@ -244,9 +347,10 @@ const GradeShader = {
       if (uEdit > 0.0) {
         float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
         vec3 steel = vec3(l) * vec3(0.88, 0.97, 1.12);
-        vec3 e = mix(col, steel, 0.86);
-        e = pow(max(e, 0.0) / 0.2, vec3(1.45)) * 0.2;
-        e = max(e - 0.012, 0.0) * 1.05;
+        // shadows lifted (a dark face keeps its features), the highlights held (a pale one doesn't go to
+        // white), then the hard contrast round the middle
+        vec3 e = pow(max(mix(col, steel, 0.8), 0.0), vec3(0.82)) * 0.95;
+        e = pow(e / 0.18, vec3(1.25)) * 0.18;
         col = mix(col, e, uEdit);
       }
       // the printed photo: a touch warmer and softer, blacks lifted like paper
@@ -260,10 +364,16 @@ const GradeShader = {
       col += g * (uGrain + 0.07 * uEdit) * (0.4 + col);
       // the flash: everything blown toward white for a moment
       col = col * (1.0 + 3.0 * uFlash) + uFlash * 0.9;
-      // outside the print: the white border (with a faint paper texture)
+      // the card's white border (a faint paper texture), and the dark table round it with the card's shadow
       if (uPrint > 0.0 && !inPhoto) {
         vec3 paper = vec3(0.97, 0.965, 0.95) * (0.97 + 0.03 * hash(floor(gl_FragCoord.xy * 0.5)));
-        col = paper * (1.0 + 2.0 * uFlash);
+        if (onCard) col = paper * (1.0 + 2.0 * uFlash);
+        else {
+          vec2 d = max(max(-card, card - 1.0), 0.0) * vec2(uAspect, 1.0);
+          float shadow = smoothstep(0.0, 0.05, length(d - vec2(0.0, 0.008)));
+          vec3 table = mix(tap(vUv) * 0.2, vec3(0.04, 0.036, 0.036), 0.5);
+          col = mix(col, table * (0.35 + 0.65 * shadow), uPrint);
+        }
       }
       // the edit's letterbox bars
       float bar = 0.11 * uLetter;
@@ -300,10 +410,14 @@ export const LooksPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom
     const size = gl.getDrawingBufferSize(new THREE.Vector2());
     const depth = new THREE.DepthTexture(size.x, size.y);
     depth.type = THREE.UnsignedIntType;
-    const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4, depthTexture: depth });
+    const perf0 = (globalThis as { __perf?: Record<string, boolean> }).__perf ?? {};
+    // (no multisampling: in software GL it costs as much as the rest put together; FXAA at the end instead)
+    const sceneRT = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: perf0.msaa ? 4 : 0, depthTexture: depth });
+    const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, depthBuffer: false });
     const composer = new EffectComposer(gl, target);
-    composer.addPass(new RenderPass(scene, camera));
-    const dof = new DofPass();
+    composer.addPass(new ScenePass(scene, camera, sceneRT));
+    const dof = new DofPass(size.x, size.y);
+    dof.depth = depth;
     dof.uniforms.uAspect.value = size.x / size.y;
     composer.addPass(dof);
     const mb = new MotionBlurPass();
@@ -315,6 +429,8 @@ export const LooksPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom
     const grade = new (class extends Pass {
       quad = new FullScreenQuad(
         new THREE.ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
           uniforms: THREE.UniformsUtils.clone(GradeShader.uniforms),
           vertexShader: GradeShader.vertexShader,
           fragmentShader: GradeShader.fragmentShader,
@@ -331,6 +447,22 @@ export const LooksPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom
     })();
     grade.uniforms.uAspect.value = size.x / size.y;
     composer.addPass(grade);
+    // FXAA on the graded HDR picture (its edge test on a compressed luminance), then tone mapping and sRGB
+    const fxaa = new (class extends Pass {
+      quad = new FullScreenQuad(new THREE.ShaderMaterial({
+        depthTest: false,
+        depthWrite: false, uniforms: THREE.UniformsUtils.clone(FXAA.uniforms), vertexShader: FXAA.vertexShader, fragmentShader: FXAA.fragmentShader, defines: perf0.passthrough ? { PASSTHROUGH: "" } : {} }));
+      get uniforms() {
+        return (this.quad.material as THREE.ShaderMaterial).uniforms;
+      }
+      render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+        this.uniforms.tDiffuse.value = readBuffer.texture;
+        renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+        this.quad.render(renderer);
+      }
+    })();
+    fxaa.uniforms.resolution.value.set(1 / size.x, 1 / size.y);
+    if (!perf0.noFxaa) composer.addPass(fxaa);
     composer.addPass(new OutputPass());
     return { composer, dof, mb, bloomPass, grade, depth };
   }, [gl, scene, camera]);
@@ -348,12 +480,14 @@ export const LooksPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom
   u.uPrevViewProj.value.multiplyMatrices(prevCam.projectionMatrix, prevCam.matrixWorldInverse);
   u.uShutter.value = 0.4 * blur;
   u.uFar.value = camera.far;
-  post.mb.enabled = blur > 0.001;
+  const pf = (globalThis as { __perf?: Record<string, boolean> }).__perf ?? {};
+  post.mb.enabled = blur > 0.001 && !pf.noMB;
   post.dof.uniforms.uFar.value = camera.far;
   post.dof.uniforms.uFocus.value = lens.focus;
   post.dof.uniforms.uAperture.value = lens.aperture;
-  post.dof.enabled = lens.aperture > 0;
+  post.dof.enabled = lens.aperture > 0 && !pf.noDof;
   post.bloomPass.strength = bloom;
+  post.bloomPass.enabled = !pf.noBloom;
   const g = post.grade.uniforms;
   g.uTime.value = grade.time;
   g.uEdit.value = grade.edit;
@@ -369,6 +503,12 @@ export const LooksPost: React.FC<{ prev: Pose; blur: number; grade: Grade; bloom
   g.uWarm.value = grade.warm ?? 0;
   g.uGrain.value = grade.grain ?? 0.012;
   useFrame(() => {
+    const perf = (globalThis as { __perf?: Record<string, boolean> }).__perf;
+    if (perf?.noPost) {
+      gl.setRenderTarget(null);
+      gl.render(scene, camera);
+      return;
+    }
     camera.updateMatrixWorld();
     u.uCamWorld.value.copy(camera.matrixWorld);
     u.uP.value.set(camera.projectionMatrix.elements[0], camera.projectionMatrix.elements[5]);

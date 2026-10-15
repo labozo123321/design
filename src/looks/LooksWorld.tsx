@@ -27,7 +27,7 @@ const Rig: React.FC<{ c: Pose; near?: number }> = ({ c, near = 0.03 }) => {
 /** The softboxes' light: a big soft key from the left (an area light for its softness, a spot in it for the
  * shadows under the nose and the chin), a fill from the right, a hair light from behind on a boom; the
  * strobes on the flash. */
-const StudioLights: React.FC<{ flash: number; modelling?: number; subject?: THREE.Vector3 }> = ({ flash, modelling = 1, subject = FACE }) => {
+const StudioLights: React.FC<{ flash: number; modelling?: number; subject?: THREE.Vector3; edit?: number }> = ({ flash, modelling = 1, subject = FACE, edit = 0 }) => {
   const lights = useMemo(
     () =>
       SOFTBOX.map((s, i) => {
@@ -42,7 +42,7 @@ const StudioLights: React.FC<{ flash: number; modelling?: number; subject?: THRE
   const spots = useMemo(() => {
     const key = new THREE.SpotLight("#FFF1E2", 1, 0, 0.42, 0.9, 0);
     key.position.copy(SOFTBOX[0].at);
-    key.castShadow = !(globalThis as { __noKeyShadow?: boolean }).__noKeyShadow;
+    key.castShadow = !(globalThis as { __noKeyShadow?: boolean }).__noKeyShadow && !(globalThis as { __perf?: Record<string, boolean> }).__perf?.noShadow;
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.camera.near = 0.6;
     key.shadow.camera.far = 6;
@@ -58,8 +58,9 @@ const StudioLights: React.FC<{ flash: number; modelling?: number; subject?: THRE
   lights.forEach((l) => {
     l.intensity = l.userData.base * (modelling + 3.2 * flash);
   });
-  spots.forEach((l) => {
-    l.intensity = l.userData.base * (modelling + 3.2 * flash);
+  spots.forEach((l, i) => {
+    l.intensity = l.userData.base * (modelling + 3.2 * flash) * (i === 1 ? 1 + 2.8 * edit : 1 + 0.35 * edit);
+    if (i === 1) l.color.set("#FFE9D2").lerp(new THREE.Color("#BFD8FF"), edit);
     l.target.position.copy(subject);
     l.target.updateMatrixWorld();
   });
@@ -84,7 +85,7 @@ const GymLights: React.FC = () => {
     const l = new THREE.DirectionalLight("#F2F4FF", 1.25);
     l.position.set(1.5, 14, 4);
     l.target.position.set(0, 0, 2);
-    l.castShadow = true;
+    l.castShadow = !(globalThis as { __perf?: Record<string, boolean> }).__perf?.noShadow;
     l.shadow.mapSize.set(2048, 2048);
     const cam = l.shadow.camera as THREE.OrthographicCamera;
     cam.left = -10;
@@ -115,7 +116,7 @@ const GymLights: React.FC = () => {
   );
 };
 
-export const LooksWorld: React.FC<{ cam: Pose; flash: number; children?: React.ReactNode; near?: number; stoolTilt?: number; stoolAt?: THREE.Vector3; subject?: THREE.Vector3 }> = ({
+export const LooksWorld: React.FC<{ cam: Pose; flash: number; children?: React.ReactNode; near?: number; stoolTilt?: number; stoolAt?: THREE.Vector3; subject?: THREE.Vector3; edit?: number }> = ({
   cam,
   flash,
   children,
@@ -123,13 +124,14 @@ export const LooksWorld: React.FC<{ cam: Pose; flash: number; children?: React.R
   stoolTilt,
   stoolAt,
   subject,
+  edit = 0,
 }) => {
   return (
     <>
       <Rig c={cam} near={near} />
       <color attach="background" args={["#000000"]} />
       <GymLights />
-      <StudioLights flash={flash} subject={subject} />
+      <StudioLights flash={flash} subject={subject} edit={edit} />
       <Gym flash={flash} stoolTilt={stoolTilt} stoolAt={stoolAt} />
       {children}
     </>

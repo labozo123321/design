@@ -16,6 +16,9 @@ export const CUE = TL.cues as Record<string, number>;
 export const CUE_W = TL.cuesW as Record<string, number>;
 export const KIDS = TL.kids as string[];
 export const EDIT_SPEED = TL.editSpeed;
+/** The sigma edits [start, flash] in video seconds, and the phonk's tempo in them. */
+export const EDITS = TL.edits as [number, number][];
+export const BPM = TL.bpm as number;
 
 const at = (frame: number) => FRAMES[Math.max(0, Math.min(NFRAMES - 1, Math.round(frame)))];
 /** World time at a frame. */

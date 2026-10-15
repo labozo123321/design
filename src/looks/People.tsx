@@ -44,7 +44,7 @@ export const KidFigure: React.FC<{ kid: Kid; pose: Pose; at: THREE.Vector3; yaw:
     <>
       {kid.glasses && !extras.noGlasses ? <Glasses sh={sh} kind={kid.glasses} color={kid.glassesColor ?? "#222"} /> : null}
       {extras.sunglasses ? <Glasses sh={sh} kind="sun" color="#141416" /> : null}
-      {kid.cut ? <CardHair sh={sh} cut={kid.cut} color={kid.cutColor ?? kid.who.hair.color} params={{ wind: extras.wind, flip: extras.flip, lift: extras.lift, t }} /> : null}
+      {kid.cut && !(globalThis as { __perf?: Record<string, boolean> }).__perf?.noHair ? <CardHair sh={sh} cut={kid.cut} color={kid.cutColor ?? kid.who.hair.color} params={{ wind: extras.wind, flip: extras.flip, lift: extras.lift, t }} /> : null}
       {kid.moustache ? <Moustache sh={sh} color={kid.moustache} /> : null}
       {extras.gum ? <Gum sh={sh} jaw={pose.e?.jaw ?? 0} /> : null}
       <EyeGlow sh={sh} k={extras.glow ?? 0} />

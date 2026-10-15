@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { neutralPoint, type Shape } from "../coaster/face/sculpt";
 import { hairMask } from "../coaster/face/Head";
@@ -224,7 +224,36 @@ const grow = (sh: Shape, r: Root, g: Grow) => {
 /* Cards: ribbons along strands, with the strand's direction for the highlight                    */
 /* ------------------------------------------------------------------ */
 
-type Card = { pts: THREE.Vector3[]; w: number; shade: number; variant: number; flat?: THREE.Vector3[] };
+type Card = { pts: THREE.Vector3[]; w: number; shade: number; variant: number; flat?: THREE.Vector3[]; seed?: number };
+
+/** The flow in the wind and in the flip, bent from its still strands (cheap: no regrowing). */
+const flowMove = (sh: Shape, base: Card[], wind: number, flip: number, t: number): Card[] => {
+  const crown = V(0, sh.eyeY + sh.h * 0.92, -0.035);
+  const flipA = 1.5 * Math.PI * smooth(0, 1, flip);
+  const axis = V(1, 0, 0);
+  return base.map((c) => {
+    const n = c.pts.length;
+    const pts = c.pts.map((p0, j) => {
+      const s = j / (n - 1);
+      const q = p0.clone();
+      if (wind > 0) {
+        // the tips stream back and up, fluttering
+        q.x += 0.005 * wind * Math.sin(t * 31 + (c.seed ?? 0) + s * 6) * s;
+        q.y += 0.012 * wind * s * s;
+        q.z -= 0.03 * wind * s * s;
+      }
+      if (flip > 0) {
+        // each point swings round the crown (over the top), the roots staying put; the ends hang over the face
+        const rel = q.sub(crown);
+        q.copy(crown).add(rel.applyAxisAngle(axis, flipA * smooth(0, 0.35, s)));
+        q.y -= 0.035 * smooth(0.5, 1, flip) * s * s;
+        q.z += 0.012 * smooth(0.5, 1, flip) * s;
+      }
+      return j === 0 ? q : pushOut(sh, q, 0.004 + 0.012 * s);
+    });
+    return { ...c, pts, flat: pts.map((p) => p.clone().normalize()) };
+  });
+};
 
 const buildCards = (sh: Shape, cards: Card[], geo: THREE.BufferGeometry) => {
   const pos: number[] = [];
@@ -560,10 +589,7 @@ export const cutCards = (sh: Shape, cut: Cut, hp: HairParams): Built => {
     return { cards };
   }
   if (cut === "flow") {
-    const flip = hp.flip ?? 0;
-    const crown = V(0, ey + sh.h * 0.92, -0.035);
     const roots = scalpRoots(sh, 5200, (p) => p.y > ey - 0.02 - 0.05 * smooth(0.0, -0.06, p.z));
-    const qf = new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), 2.55 * smooth(0, 1, flip));
     for (const r of roots) {
       const front = smooth(-0.02, 0.05, r.p.z);
       const sx = r.p.x >= 0 ? 1 : -1;
@@ -591,25 +617,7 @@ export const cutCards = (sh: Shape, cut: Cut, hp: HairParams): Built => {
         const k = smooth(0.7, 1, s);
         return p.clone().addScaledVector(out, 0.012 * k).add(V(0, 0.008 * k, 0));
       });
-      // the wind: the tips stream back and flutter
-      if (wind > 0)
-        pts = pts.map((p, j) => {
-          const s = j / (pts.length - 1);
-          return p.clone().add(V(0.004 * wind * Math.sin(t * 31 + r.id + s * 6) * s, 0.006 * wind * s * s, -0.022 * wind * s * s));
-        });
-      // the flip: everything swings forward about the crown and falls over the face
-      if (flip > 0) {
-        pts = pts.map((p, j) => {
-          const s = j / (pts.length - 1);
-          const rel = p.clone().sub(crown);
-          const sw = rel.clone().applyQuaternion(qf);
-          const q = crown.clone().add(rel.lerp(sw, Math.min(1, 0.2 + 1.4 * s)));
-          // the ends hang
-          q.y -= 0.04 * smooth(0.3, 1, flip) * s * s;
-          return pushOut(sh, q, 0.004 + 0.01 * s);
-        });
-      }
-      cards.push({ pts, w: 0.0062 + 0.003 * hash(r.id * 2.3), shade: shade(r.id), variant: r.id % 4 });
+      cards.push({ pts, w: 0.0062 + 0.003 * hash(r.id * 2.3), shade: shade(r.id), variant: r.id % 4, seed: r.id });
     }
     return { cards };
   }
@@ -709,7 +717,7 @@ export const cutCards = (sh: Shape, cut: Cut, hp: HairParams): Built => {
       const pts: THREE.Vector3[] = [];
       const M = 14;
       const li = lift * (0.8 + 0.4 * hash(i * 1.3));
-      const q = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), li);
+      const q = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), -li);
       for (let j = 0; j <= M; j++) {
         const s = j / M;
         const ang = 0.22 + s * 2.55;
@@ -732,12 +740,34 @@ export const cutCards = (sh: Shape, cut: Cut, hp: HairParams): Built => {
 };
 
 /** The haircut, in head space. Static cuts are built once; the flow and the comb-over every frame they move. */
+const builtCache = new WeakMap<Shape, Map<string, { built: Built; geo: THREE.BufferGeometry; tubeGeo: THREE.BufferGeometry | null }>>();
+const stillCut = (sh: Shape, cut: Cut) => {
+  let m = builtCache.get(sh);
+  if (!m) builtCache.set(sh, (m = new Map()));
+  let e = m.get(cut);
+  if (!e) {
+    const built = cutCards(sh, cut, {});
+    e = { built, geo: buildCards(sh, built.cards, new THREE.BufferGeometry()), tubeGeo: built.tubes ? buildTubes(built.tubes, new THREE.BufferGeometry()) : null };
+    m.set(cut, e);
+  }
+  return e;
+};
+
 export const CardHair: React.FC<{ sh: Shape; cut: Cut; color: string; params?: HairParams; tie?: string }> = ({ sh, cut, color, params = {}, tie = "#E46A9A" }) => {
-  const moving = (cut === "flow" && ((params.wind ?? 0) > 0 || (params.flip ?? 0) > 0)) || (cut === "combover" && (params.lift ?? 0) > 0);
-  const key = moving ? `${params.wind}|${params.flip}|${params.lift}|${params.t}` : "static";
-  const built = useMemo(() => cutCards(sh, cut, params), [sh, cut, key]);
-  const geo = useMemo(() => buildCards(sh, built.cards, new THREE.BufferGeometry()), [built, sh]);
-  const tubeGeo = useMemo(() => (built.tubes ? buildTubes(built.tubes, new THREE.BufferGeometry()) : null), [built]);
+  const still = stillCut(sh, cut);
+  const flowMoving = cut === "flow" && ((params.wind ?? 0) > 0.001 || (params.flip ?? 0) > 0.001);
+  const combMoving = cut === "combover" && (params.lift ?? 0) > 0.001;
+  const key = flowMoving || combMoving ? `${params.wind}|${params.flip}|${params.lift}|${params.t}` : "still";
+  const moved = useMemo(() => {
+    if (flowMoving) return buildCards(sh, flowMove(sh, still.built.cards, params.wind ?? 0, params.flip ?? 0, params.t ?? 0), new THREE.BufferGeometry());
+    if (combMoving) return buildCards(sh, cutCards(sh, cut, params).cards, new THREE.BufferGeometry());
+    return null;
+  }, [sh, cut, key]);
+  // (a bent frame's geometry is thrown away when the next one replaces it)
+  useEffect(() => () => moved?.dispose(), [moved]);
+  const built = still.built;
+  const geo = moved ?? still.geo;
+  const tubeGeo = still.tubeGeo;
   const tieAt = cut === "pony" ? V(0, sh.eyeY + 0.05, -sh.d * 1.07 - 0.012) : V(0, sh.eyeY + 0.085, -sh.d * 0.98 - 0.022);
   return (
     <group>

@@ -23,7 +23,7 @@ const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 export const TRIPOD = V3(0, 1.37, 2.6);
 /** Seated, the body turned a little toward the key light; walking in from the line and out the other side. */
 const STOOL_YAW = -(Math.PI + 0.42);
-const ENTRY = V3(-1.35, 0, 0.42);
+const ENTRY = V3(-0.98, 0, 0.36);
 const EXIT = V3(1.9, 0, 0.6);
 const FEET_SEAT: [THREE.Vector3, THREE.Vector3] = [V3(-0.11, 0.25, -0.17), V3(0.11, 0.25, -0.17)];
 
@@ -42,6 +42,8 @@ export type Act = {
   children?: React.ReactNode;
   /** things in head space */
   head?: React.ReactNode;
+  /** a stable name for the figure (so it isn't rebuilt when others come and go) */
+  role?: string;
 };
 
 /** Facing the direction of travel (dx, dz). */
@@ -51,8 +53,8 @@ const yawToward = (dx: number, dz: number) => Math.atan2(-dx, -dz);
 const walk = (k: number, phase: number, amt: number, lifts = 0, swagger = 0) => {
   const feet = [-1, 1].map((side) => {
     const ph = phase + (side > 0 ? Math.PI : 0);
-    const z = -0.17 * k * Math.sin(ph) * amt;
-    const up = 0.055 * k * Math.max(0, Math.cos(ph)) * amt;
+    const z = -0.26 * k * Math.sin(ph) * amt;
+    const up = 0.07 * k * Math.max(0, Math.cos(ph)) * amt;
     return V3(side * (0.1 + 0.03 * swagger) * k, 0.09 * k + lifts + up, -0.01 + z);
   }) as [THREE.Vector3, THREE.Vector3];
   const hipY = 0.93 * k + lifts;
@@ -99,7 +101,7 @@ const hero = (kid: Kid, b: { in: number; sit: number; up: number }, tw: number, 
     const e = 1 - (1 - u) * (1 - u) * 0.6 - 0.4 * (1 - u); // most of the way at a steady pace, easing in at the end
     const at = ENTRY.clone().lerp(V3(0, 0, 0), e);
     const dist = ENTRY.length() * e;
-    const w = walk(k, (dist / (0.62 * k)) * Math.PI * 2, Math.min(1, (1 - u) * 6), lifts, sw);
+    const w = walk(k, (dist / (1.2 * k)) * Math.PI * 2, Math.min(1, (1 - u) * 6), lifts, sw);
     return {
       kid,
       at,
@@ -117,7 +119,9 @@ const hero = (kid: Kid, b: { in: number; sit: number; up: number }, tw: number, 
     const turnOut = smooth(b.up + 0.05, b.up + 0.32, tw);
     const yaw = lerp(lerp(yawToward(-ENTRY.x, -ENTRY.z), STOOL_YAW, turnIn), yawToward(EXIT.x, EXIT.z), turnOut);
     const p = perf(tw);
-    const e = { ...NEUTRAL, ...p.e };
+    const relax = 1 - smooth(b.up - 0.12, b.up + 0.25, tw);
+    const e = { ...NEUTRAL } as Expr;
+    for (const [key, val] of Object.entries(p.e ?? {})) (e as Record<string, number>)[key] = (val as number) * relax;
     if (sitK < 0.55) {
       // standing, bending to sit (or rising)
       const cSw = (0.93 - (0.56 + SEAT_LIFT) / k) / 0.55;
@@ -161,13 +165,13 @@ const hero = (kid: Kid, b: { in: number; sit: number; up: number }, tw: number, 
   const total = EXIT.length();
   if (d > total + 0.4) return null;
   const at = EXIT.clone().multiplyScalar(Math.min(1, d / total));
-  const w = walk(k, (d / (0.62 * k)) * Math.PI * 2, Math.min(1, d * 4), lifts, sw);
+  const w = walk(k, (d / (1.2 * k)) * Math.PI * 2, Math.min(1, d * 4), lifts, sw);
   const p = perf(tw);
   return {
     kid,
     at,
     yaw: yawToward(EXIT.x, EXIT.z),
-    pose: { e: { ...NEUTRAL, ...p.e }, feet: w.feet, armL: w.arms[0], armR: w.arms[1], lift: w.bob, roll: w.roll, lean: 0.04 },
+    pose: { e: { ...NEUTRAL, ...(kid.key === "gum" ? { jaw: p.e?.jaw ?? 0, chew: p.e?.chew ?? 0 } : {}) }, feet: w.feet, armL: w.arms[0], armR: w.arms[1], lift: w.bob, roll: w.roll, lean: 0.04 },
     extras: p.extras,
     children: p.children,
     head: p.head,
@@ -230,7 +234,7 @@ const gum = (tw: number) =>
 const glass = (tw: number) =>
   hero(GLASS, beats("glass"), tw, (t) => {
     const a = smooth(cw("glass", "pose") - 0.1, cw("glass", "pose") + 0.3, t);
-    const glare = smooth(cw("glass", "flash") - 0.03, cw("glass", "flash"), t) * (1 - smooth(cw("glass", "up"), cw("glass", "up") + 0.4, t));
+    const glare = smooth(cw("glass", "flash") - 0.03, cw("glass", "flash"), t) * (1 - smooth(cw("glass", "flash") + 0.005, cw("glass", "up"), t));
     return {
       e: { smile: 0.14 * a, squint: 0.22 * a, brow: -0.15 * a, lidL: 0.12 * a, lidR: 0.12 * a },
       look: TRIPOD.clone().add(V3(0.32 * a, 0.12 * a, 0)),
@@ -280,7 +284,7 @@ const height = (tw: number): Act | null => {
     if (leave > 0) {
       const d = leave * 1.6;
       if (d > 2.2) return null;
-      const w = walk(k, (d / (0.62 * k)) * Math.PI * 2, Math.min(1, d * 4), lifts);
+      const w = walk(k, (d / (1.2 * k)) * Math.PI * 2, Math.min(1, d * 4), lifts);
       return {
         kid,
         at: at.clone().add(V3(d * 0.95, 0, d * 0.25)),
@@ -352,7 +356,7 @@ export const stoolTiltAt = (tw: number) => {
 
 /** The mogger: in slow motion, sunglasses on, his friend's leaf blower in his hair; the glasses come off; the
  * flip, just as the blower dies. */
-const BLOWER_AT = V3(-0.66, 0, 0.14);
+const BLOWER_AT = V3(-1.25, 0, -0.32);
 const mogger = (tw: number): Act | null => {
   const tGl = cw("mogger", "glasses");
   const tFlip = cw("mogger", "flip");
@@ -435,7 +439,7 @@ const friend = (tw: number): Act | null => {
     // in behind the mogger, then aiming at his hair from beside the stool
     const arrive = smooth(tIn, tSit - 0.2, tw);
     const leave = Math.max(0, tw - (tUp + 0.35));
-    const from = ENTRY.clone().add(V3(-0.55, 0, -0.1)).lerp(BLOWER_AT, arrive).add(V3(leave * 1.4, 0, leave * 0.2));
+    const from = ENTRY.clone().add(V3(-0.65, 0, -0.55)).lerp(BLOWER_AT, arrive).add(V3(leave * 1.4, 0, leave * 0.2));
     if (leave * 1.4 > 3) return null;
     const moving = arrive > 0 && arrive < 1 ? 1 : leave > 0 ? 1 : 0;
     const yaw = leave > 0 ? yawToward(1, 0.15) : yawToward(0.9, -0.2) * (1 - arrive) + yawToward(0.85, -0.25) * arrive;
@@ -565,8 +569,8 @@ const waiting = (tw: number, f: number): Act[] => {
   const hip = 0.93 * tk;
   out.push({
     kid: TEACHER,
-    at: V3(-1.45, 0, 1.75),
-    yaw: yawToward(0.35, -1),
+    at: V3(-1.75, 0, 1.25),
+    yaw: yawToward(0.45, -1),
     hi: false,
     pose: {
       e: { ...NEUTRAL, smile: 0.15, brow: 0.1 },
@@ -616,9 +620,9 @@ const audience = (tw: number): Act[] => {
 /** Everyone in the picture at world time tw (cam: where the camera is, for the photographer's hands). */
 export const castAt = (tw: number, f: number, cam: THREE.Vector3): Act[] => {
   const acts: (Act | null)[] = [mewer(tw), hunter(tw), gum(tw), glass(tw), normal(tw), height(tw), mogger(tw), friend(tw), photog(tw, cam)];
-  const out = acts.filter((a): a is Act => !!a);
-  if (tw < CUE_W.introEnd + 1.2) out.push(...waiting(tw, f));
-  out.push(...audience(tw));
+  const out = acts.filter((a): a is Act => !!a).map((a) => ({ ...a, role: "hero" }));
+  if (tw < CUE_W.introEnd + 1.2) out.push(...waiting(tw, f).map((a) => ({ ...a, role: "line" })));
+  out.push(...audience(tw).map((a) => ({ ...a, role: "aud" })));
   return out;
 };
 

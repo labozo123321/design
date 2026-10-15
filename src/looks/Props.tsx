@@ -99,10 +99,10 @@ export const Clipboard: React.FC = () => {
 /** The flash blowing out off a face of glass skin: a hot white bloom in front of it. */
 export const FaceGlare: React.FC<{ k: number }> = ({ k }) => {
   if (k <= 0.01) return null;
-  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#FFFFFF").multiplyScalar(2.5 + 9 * k), transparent: true, opacity: Math.min(1, k * 1.2), depthWrite: false });
+  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#FFFFFF").multiplyScalar(1.15 + 1.6 * k), transparent: true, opacity: Math.min(0.92, k * 0.95), depthWrite: false });
   return (
     <group>
-      <mesh material={mat} scale={[0.05 + 0.03 * k, 0.065 + 0.03 * k, 0.012]} position={[0.004, -0.012, 0.085]}>
+      <mesh material={mat} scale={[0.03, 0.04, 0.008]} position={[0.004, -0.004, 0.09]}>
         <sphereGeometry args={[1, 24, 16]} />
       </mesh>
       {/* the hot spots: forehead, the nose, the cheekbones */}
@@ -112,7 +112,7 @@ export const FaceGlare: React.FC<{ k: number }> = ({ k }) => {
         [0.035, -0.022, 0.09, 0.016],
         [-0.035, -0.022, 0.09, 0.016],
       ].map(([x, y, z, r], i) => (
-        <mesh key={i} material={mat} position={[x, y, z]} scale={r * (1 + k)}>
+        <mesh key={i} material={mat} position={[x, y, z]} scale={r * 0.55}>
           <sphereGeometry args={[1, 14, 10]} />
         </mesh>
       ))}
