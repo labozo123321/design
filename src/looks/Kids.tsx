@@ -277,9 +277,7 @@ const height = (tw: number): Act | null => {
   const climb = smooth(tStand, tStand + 0.5, tw);
   const wob = smooth(tWob, tWob + 0.08, tw);
   const wt = tw - tWob;
-  const stoolTilt = 0.15 * Math.sin(2 * Math.PI * 2.3 * wt) * wob;
   const panic = smooth(tWob, tWob + 0.1, tw);
-  const fall = smooth(tFall, tFall + 0.45, tw);
   if (tw >= tFall + 0.5 && tw < tPop) return null;
   if (tw >= tPop) {
     // popped back up beside the stool: thumbs up; then off
@@ -327,7 +325,7 @@ const height = (tw: number): Act | null => {
     kid,
     at: V3(0, STOOL_H * climb, 0),
     yaw: STOOL_YAW + 0.25 * climb,
-    tip: stoolTilt * 1.6 + (0.18 * Math.sin(2 * Math.PI * 2.3 * wt + 0.6) * wob) + 1.55 * fall * fall,
+    tip: heightTipAt(tw),
     pose: {
       e: {
         ...NEUTRAL,
@@ -347,6 +345,33 @@ const height = (tw: number): Act | null => {
     },
     extras: {},
   };
+};
+
+/** The height-maxer's tip over (radians, toward his right) at world time tw. */
+export const heightTipAt = (tw: number) => {
+  const tWob = cw("height", "wobble");
+  const tFall = cw("height", "fall");
+  if (tw < tWob) return 0;
+  const wob = smooth(tWob, tWob + 0.08, tw);
+  const wt = tw - tWob;
+  const fall = smooth(tFall, tFall + 0.45, tw);
+  return 0.15 * Math.sin(2 * Math.PI * 2.3 * wt) * wob * 1.6 + 0.18 * Math.sin(2 * Math.PI * 2.3 * wt + 0.6) * wob + 1.55 * fall * fall;
+};
+
+/** The height-maxer's eyes (world), up on the stool and wobbling (null before he stands or once he's down). */
+export const heightEyesAt = (tw: number) => {
+  const tStand = cw("height", "stand");
+  if (tw < tStand || tw > cw("height", "fall") + 0.5) return null;
+  const k = HEIGHT.k;
+  const climb = smooth(tStand, tStand + 0.5, tw);
+  const eyeUp = (0.93 * k + (HEIGHT.outfit.lifts ?? 0)) + 0.567 * k - HEIGHT.who.shape.chinY;
+  const tip = heightTipAt(tw);
+  const yaw = STOOL_YAW + 0.25 * climb;
+  // up from his feet, tipped toward his right (the body's +x), turned with him
+  const local = V3(Math.sin(tip) * eyeUp, Math.cos(tip) * eyeUp, 0);
+  const p = local.applyAxisAngle(V3(0, 1, 0), yaw).add(V3(0, STOOL_H, 0));
+  const seatY = 0.56 + SEAT_LIFT + 0.567 * k - HEIGHT.who.shape.chinY;
+  return V3(p.x * climb, seatY + (p.y - seatY) * climb, p.z * climb);
 };
 
 /** The height-maxer's stool, tipping in the wobble (the Gym draws it at this tilt). */
@@ -497,7 +522,7 @@ export const blowAt = (tw: number) => smooth(cw("photog", "blow") - 0.02, cw("ph
 
 /** The photographer, in the selfie: arms out to the camera (our POV) held in front of his face. */
 export const PHOTOG_AT = V3(0, 0, 3.2);
-const photog = (tw: number, cam: THREE.Vector3): Act | null => {
+const photog = (tw: number, cam: THREE.Vector3, camQ: THREE.Quaternion): Act | null => {
   const t1 = cw("photog", "turn0");
   if (tw < t1) return null;
   const tLook = cw("photog", "look");
@@ -510,7 +535,14 @@ const photog = (tw: number, cam: THREE.Vector3): Act | null => {
   const throat = Math.max(0, Math.sin(Math.min(1, Math.max(0, (tw - tThroat) / 0.35)) * Math.PI));
   // the camera's in his hands: both hands at its sides, wherever it is
   const rel = cam.clone().sub(PHOTOG_AT);
-  const hands = (side: number): Arm => ({ at: rel.clone().add(V3(side * 0.085, -0.03, 0.06)), hand: mixHand(RELAX, GRIP, 0.75), palm: V3(-side, 0.2, 0), pole: V3(side, -0.8, 0.2) });
+  const right = V3(1, 0, 0).applyQuaternion(camQ);
+  // each hand stays on its own side of him; while the camera's turned side-on they slip under it (out of the
+  // lens's way), behind the lens either way
+  const sideOn = 1 - Math.abs(right.x);
+  const hands = (side: number): Arm => {
+    const at = rel.clone().add(V3(side * 0.085 * (1 - sideOn), -0.03 - 0.06 * sideOn, 0.06));
+    return { at, hand: mixHand(RELAX, GRIP, 0.75), palm: V3(-side, 0.2, 0), pole: V3(side, -0.8, 0.2) };
+  };
   return {
     kid: PHOTOG,
     at: PHOTOG_AT,
@@ -623,8 +655,8 @@ const audience = (tw: number): Act[] => {
 };
 
 /** Everyone in the picture at world time tw (cam: where the camera is, for the photographer's hands). */
-export const castAt = (tw: number, f: number, cam: THREE.Vector3): Act[] => {
-  const acts: (Act | null)[] = [mewer(tw), hunter(tw), gum(tw), glass(tw), normal(tw), height(tw), mogger(tw), friend(tw), photog(tw, cam)];
+export const castAt = (tw: number, f: number, cam: THREE.Vector3, camQ = new THREE.Quaternion()): Act[] => {
+  const acts: (Act | null)[] = [mewer(tw), hunter(tw), gum(tw), glass(tw), normal(tw), height(tw), mogger(tw), friend(tw), photog(tw, cam, camQ)];
   const out = acts.filter((a): a is Act => !!a).map((a) => ({ ...a, role: "hero" }));
   if (tw < CUE_W.introEnd + 1.2) out.push(...waiting(tw, f).map((a) => ({ ...a, role: "line" })));
   out.push(...audience(tw).map((a) => ({ ...a, role: "aud" })));

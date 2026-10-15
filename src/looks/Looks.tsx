@@ -110,7 +110,7 @@ export const Looks: React.FC = () => {
   const shot = shotAt(frame);
   const prev = shotAt(Math.max(0, frame - 1));
   const cam = props.cam ? debugCam(props.cam) : shot.pose;
-  const acts = yearbook || props.perf?.noCast ? [] : castAt(tw, frame, shot.pose.pos);
+  const acts = yearbook || props.perf?.noCast ? [] : castAt(tw, frame, shot.pose.pos, shot.pose.quat);
   const strobe = strobeAt(v);
   const white = whiteAt(v);
   const print = printAt(v);
@@ -130,7 +130,7 @@ export const Looks: React.FC = () => {
           camera={{ fov: 21, near: 0.03, far: 200, position: [0, 1.4, 2.6] }}
           gl={{ antialias: false, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}
         >
-          <LooksWorld cam={cam} flash={strobe} stoolTilt={stoolTiltAt(tw)} subject={shot.face ?? undefined} near={0.03} edit={edit}>
+          <LooksWorld cam={cam} flash={strobe} stoolTilt={stoolTiltAt(tw)} subject={shot.light ?? shot.face ?? undefined} near={0.03} edit={edit}>
             {acts.map((a, i) => (
               <ActFigure key={`${a.role}-${a.kid.key}-${i > 30 ? i : ""}`} act={a} t={tw} />
             ))}
