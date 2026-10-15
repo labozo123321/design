@@ -23,7 +23,12 @@ const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 export const TRIPOD = V3(0, 1.37, 2.6);
 /** Seated, the body turned a little toward the key light; walking in from the line and out the other side. */
 const STOOL_YAW = -(Math.PI + 0.42);
-const ENTRY = V3(-0.98, 0, 0.36);
+export const ENTRY = V3(-0.98, 0, 0.36);
+/** How far along his walk in a kid is (0 at the line's end, 1 at the stool), at world time tw. */
+export const walkInK = (tIn: number, tArrive: number, tw: number) => {
+  const u = Math.min(1, Math.max(0, (tw - tIn) / (tArrive - tIn)));
+  return 1 - (1 - u) * (1 - u) * 0.6 - 0.4 * (1 - u);
+};
 const EXIT = V3(1.9, 0, 0.6);
 const FEET_SEAT: [THREE.Vector3, THREE.Vector3] = [V3(-0.11, 0.25, -0.17), V3(0.11, 0.25, -0.17)];
 
@@ -98,7 +103,7 @@ const hero = (kid: Kid, b: { in: number; sit: number; up: number }, tw: number, 
   // ---- walking in
   if (tw < tArrive) {
     const u = (tw - b.in) / (tArrive - b.in);
-    const e = 1 - (1 - u) * (1 - u) * 0.6 - 0.4 * (1 - u); // most of the way at a steady pace, easing in at the end
+    const e = walkInK(b.in, tArrive, tw); // most of the way at a steady pace, easing in at the end
     const at = ENTRY.clone().lerp(V3(0, 0, 0), e);
     const dist = ENTRY.length() * e;
     const w = walk(k, (dist / (1.2 * k)) * Math.PI * 2, Math.min(1, (1 - u) * 6), lifts, sw);

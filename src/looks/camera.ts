@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { CUE, CUE_W, FPS, editAt, smooth, vnoise, wAt } from "./timeline";
 import { GLASS, GUM, HEIGHT, HUNTER, MEWER, MOGGER, NORMAL, PHOTOG, type Kid } from "./cast";
 import { SEAT_LIFT } from "./People";
-import { PHOTOG_AT, TRIPOD } from "./Kids";
+import { ENTRY, PHOTOG_AT, TRIPOD, walkInK } from "./Kids";
 import type { Pose } from "./LooksPost";
 
 /**
@@ -117,9 +117,10 @@ export const shotAt = (f: number): Shot => {
     let eye = V3(0, eyeY, 0);
     let wide = 0;
     if (key === "mogger" && v < sit + 0.3) {
-      // tracking him in, low, in slow motion
-      const walkK = smooth(cue("mogger", "in"), sit - 0.4, v);
-      eye = V3(lerp(-1.1, 0, walkK), 1.62 + (eyeY - 1.62) * smooth(sit - 0.5, sit + 0.2, v), lerp(0.36, 0, walkK));
+      // tracking him in, low, in slow motion: right on him as he walks
+      const walkK = walkInK(CUE_W["mogger.in"], CUE_W["mogger.sit"] - 0.35, tw);
+      const standEye = 0.93 * MOGGER.k + 0.567 * MOGGER.k - MOGGER.who.shape.chinY;
+      eye = V3(ENTRY.x * (1 - walkK), standEye + (eyeY - standEye) * smooth(sit - 0.5, sit + 0.2, v), ENTRY.z * (1 - walkK));
       wide = 1 - smooth(sit - 0.2, sit + 0.3, v);
     }
     const ec = editCam(eye, te, side, wide);
