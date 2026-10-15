@@ -650,3 +650,64 @@ the bed under it, mastered to -15 LUFS:
 
 (`out/wedding/seq/` holds the frames renamed to `f0000.jpeg`...: Remotion pads the names to the length
 of each range's last frame.)
+
+## Looks (first person, the school photographer in the looksmaxing era)
+
+"POV: you're the school photographer in the looksmaxing era". A 70 s first-person video with no voice
+and no words but the title (and a yearbook's): picture day in the school gym, seen through the camera on
+its tripod. One kid after another walks in from the line, sits on the stool, the focus locks on his face,
+the photographer's hand gestures "chin up" in front of the lens, and the kid does "the face" — and every
+time, in his head, it's a sigma edit: the picture drains to a cold black and white, slows to 0.38x,
+letterboxes, kicks and shakes on the beat of a drift-phonk drop while the camera turns into a music-video
+camera (low, pushing in, tilted). Then the FLASH, and the photo as it actually came out, held as a print:
+the mewer's jaw jutting like a bulldog's, hunter eyes shut, the gum kid caught mid-chew, glass skin a
+white glare, the one normal kid's perfect smile (no edit for her), the height-maxer up on the stool in
+lift shoes caught mid-wobble (then over he goes, and up again with a thumbs-up), and the mogger, who
+walks in in slow motion with his friend's leaf blower in his hair, takes off his sunglasses, flips his
+hair — and it lands over his face as the blower dies. Then the photographer lifts the camera off the
+tripod, whips it round to his own face, checks nobody's looking, does the face — and the friend with the
+leaf blower gets his comb-over. The yearbook: all of them, a "no photo" silhouette for the friend, and a
+slow zoom onto the photographer's own.
+
+1. **Timeline:** `python3 scripts/generate-looks-timeline.py` writes `src/looks/timeline.json`: every
+   beat of every kid in video seconds and in world seconds (world time slows to 0.38x in each edit and
+   stops while a photo is held), and per frame the world time, the edit amount and the hold.
+2. **Sound:** `python3 scripts/generate-looks-audio.py` builds `public/looks/bed.mp3` (and
+   `out/looks/bed.wav` for mastering), all synthesised: the gym (its tone, chatter down the far end,
+   sneakers, a ball, a whistle); a cheesy picture-day ukulele and glockenspiel bed that tape-stops into
+   every edit and picks up where it stopped; the edits' drift phonk (a distorted 808, the cowbell riff,
+   hats, claps, a dark pad; it warbles when the height-maxer wobbles), cut dead by each flash: the strobe's
+   pop, the shutter, the flash whining as it recharges; footsteps (lift shoes clunk), the stool, the lens
+   zooming, the focus beeps, the gum's chewing slowed down in the edit, the leaf blower (slowed with the
+   world, then sputtering out), and each photo's sting: a sad trombone, one cricket, a squelch, a glint,
+   a warm ding, the stool crashing over and a slide whistle, a record scratch.
+3. **Picture:** `src/looks/`:
+   - `Gym.tsx` (the maple court, cinderblock walls in the school colours, pads, trusses and lamps,
+     bleachers, hoops, the mottled backdrop, the posing stool with its footrest, softboxes, the laptop
+     table) and `LooksWorld.tsx` (the softboxes as area lights with a shadow-casting spot in the key,
+     a hair light that turns cold and hard in the edits, the strobes on the flash);
+   - the people: the wedding's `Figure.tsx` with a portrait bust (sloped shoulders, a real neck, collars,
+     hoods and chains draped on the body) and the coaster's sculpted heads made for close-ups (rounder
+     crania, square jaws, bigger ears, lips with a cupid's bow, a lash line, the lid's shadow on the eye,
+     glass skin, braces, a jaw that juts); `Hair.tsx` grows real haircuts from hair cards over the scalp
+     (a textured crop, twists, curtains, a bowl cut, the flow that blows back and flips, a ponytail, a bun
+     with a pencil, the comb-over that lifts into a fin) lit with a strand highlight; `cast.ts` is who
+     they are, `Kids.tsx` what each of them does and when, `Props.tsx` the leaf blower, the sunglasses,
+     the clipboard and the glare;
+   - `camera.ts` is the camera's direction; `LooksPost.tsx` the lens (half-resolution depth of field,
+     motion blur, bloom, FXAA) and the grade (the edit, the flash, the print on a dark table);
+     `Overlay.tsx` the title, the viewfinder and the yearbook page (its photos are stills of the holds,
+     `public/looks/photo-*.jpg`).
+
+The render under software GL (`--gl=swangle`) takes about 3 s a frame: bundle once, render a resumable
+JPEG sequence in batches, then lay the bed under it, mastered to -15 LUFS:
+
+    npx remotion bundle --out-dir=out/looks/bundle
+    npx remotion render out/looks/bundle Looks out/looks/frames --sequence --image-format=jpeg \
+      --jpeg-quality=95 --frames=0-524 --gl=swangle --timeout=900000 --concurrency=1   # and so on to 2099
+    ffmpeg -framerate 30 -i out/looks/seq/f%04d.jpeg -i out/looks/bed.wav \
+      -af "acompressor=threshold=-26dB:ratio=2.2:attack=25:release=350:knee=6,volume=9.8dB,alimiter=limit=0.89:attack=5:release=60:level=disabled" \
+      -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -b:a 256k looks.mp4
+
+To refresh the yearbook's photos after a change, render the holds with `{"still": 1}` (no print, no
+flash, no viewfinder) and crop them to 4:5.

@@ -59,7 +59,7 @@ const StudioLights: React.FC<{ flash: number; modelling?: number; subject?: THRE
     l.intensity = l.userData.base * (modelling + 3.2 * flash);
   });
   spots.forEach((l, i) => {
-    l.intensity = l.userData.base * (modelling + 3.2 * flash) * (i === 1 ? 1 + 2.8 * edit : 1 + 0.35 * edit);
+    l.intensity = l.userData.base * (modelling + 3.2 * flash) * (i === 1 ? 1 + 1.6 * edit : 1 + 0.12 * edit);
     if (i === 1) l.color.set("#FFE9D2").lerp(new THREE.Color("#BFD8FF"), edit);
     l.target.position.copy(subject);
     l.target.updateMatrixWorld();

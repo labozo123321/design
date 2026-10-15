@@ -244,8 +244,8 @@ const flowMove = (sh: Shape, base: Card[], wind: number, flip: number, t: number
       }
       if (flip > 0) {
         // each point swings round the crown (over the top), the roots staying put; the ends hang over the face
-        const rel = q.sub(crown);
-        q.copy(crown).add(rel.applyAxisAngle(axis, flipA * smooth(0, 0.35, s)));
+        const rel = q.clone().sub(crown).applyAxisAngle(axis, flipA * smooth(0, 0.35, s));
+        q.copy(crown).add(rel);
         q.y -= 0.035 * smooth(0.5, 1, flip) * s * s;
         q.z += 0.012 * smooth(0.5, 1, flip) * s;
       }
@@ -716,19 +716,29 @@ export const cutCards = (sh: Shape, cut: Cut, hp: HairParams): Built => {
       toSkin(sh, root, 0.002);
       const pts: THREE.Vector3[] = [];
       const M = 14;
-      const li = lift * (0.8 + 0.4 * hash(i * 1.3));
-      const q = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), -li);
+      // the back strands lift furthest, the front ones least: from the front they open like a fan
+      const li = Math.min(1.5, lift * (0.22 + 0.78 * (i / 51)) * (0.9 + 0.2 * hash(i * 1.3)));
+      const up = smooth(0, 1, Math.min(1, lift / 1.2));
+      // where a lifted strand points: off the part, up, nodding forward
+      const dir = V(-Math.cos(li), Math.sin(li), 0.15 + 0.25 * Math.sin(li)).normalize();
+      let len = 0;
+      let prevLy: THREE.Vector3 | null = null;
       for (let j = 0; j <= M; j++) {
         const s = j / M;
         const ang = 0.22 + s * 2.55;
         let p = V(Math.cos(ang) * sh.w, ey + 0.01 + Math.sin(ang) * sh.h * 0.93, z * (1 - 0.12 * Math.sin(Math.PI * s)));
         // laid flat on the bald top (a little loft where it crosses the crown)
         toSkin(sh, p, 0.0024 + 0.0018 * Math.sin(Math.PI * s));
-        // lifted about the part, waving as it goes
+        if (prevLy) len += p.distanceTo(prevLy);
+        prevLy = p.clone();
+        // lifted: straightened out of the part into a fin, sagging at the tips, fluttering
         if (li > 0) {
-          p = root.clone().add(p.clone().sub(root).applyQuaternion(q));
-          p.y += 0.006 * Math.sin(t * 23 + s * 6 + i) * s * Math.min(1, li);
-          p.z += 0.004 * Math.sin(t * 17 + s * 4 + i * 2) * s * Math.min(1, li);
+          const fin = root.clone().addScaledVector(dir, len);
+          fin.y -= 0.02 * s * s * (1 - 0.5 * up);
+          fin.x += 0.006 * Math.sin(t * 23 + s * 6 + i) * s;
+          fin.z += 0.008 * Math.sin(t * 17 + s * 4 + i * 2) * s;
+          p = p.lerp(fin, up);
+          pushOut(sh, p, 0.003);
         }
         pts.push(p);
       }

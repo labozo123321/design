@@ -746,22 +746,22 @@ def yearbook_sfx():
 
 def music():
     m = bus()
-    m += bed() * 0.8
+    m += bed() * 1.3
     for k in KIDS + ["photog"]:
         e0 = C.get(f"{k}.edit0")
         if e0 is None:
             continue
         riff = {"mewer": "a", "hunter": "b", "gum": "c", "glass": "a", "height": "b", "mogger": "c", "photog": "a"}[k]
         warble = C["height.wobble"] if k == "height" else None
-        m += phonk(e0, C[f"{k}.flash"], riff, big=k in ("mogger", "photog"), warble=warble) * (1.05 if k == "photog" else 0.9)
-    m += ending() * 0.9
+        m += phonk(e0, C[f"{k}.flash"], riff, big=k in ("mogger", "photog"), warble=warble) * (0.85 if k == "photog" else 0.72)
+    m += ending() * 1.35
     return m
 
 
 def mix():
     out = bus()
     out += music()
-    out += gym() * 0.55
+    out += gym() * 0.7
     out += kids() * 1.0
     out += stings() * 1.0
     out += chews(CW["gum.sit"], CW["gum.flash"] + 0.01, CW["gum.flash"])

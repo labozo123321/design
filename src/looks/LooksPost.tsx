@@ -349,8 +349,10 @@ const GradeShader = {
         vec3 steel = vec3(l) * vec3(0.88, 0.97, 1.12);
         // shadows lifted (a dark face keeps its features), the highlights held (a pale one doesn't go to
         // white), then the hard contrast round the middle
-        vec3 e = pow(max(mix(col, steel, 0.8), 0.0), vec3(0.82)) * 0.95;
+        vec3 e = pow(max(mix(col, steel, 0.8), 0.0), vec3(0.85)) * 0.85;
         e = pow(e / 0.18, vec3(1.25)) * 0.18;
+        // a soft shoulder: lit pale skin stays skin, not paper
+        e = e / (1.0 + e * 0.6) * 1.35;
         col = mix(col, e, uEdit);
       }
       // the printed photo: a touch warmer and softer, blacks lifted like paper
