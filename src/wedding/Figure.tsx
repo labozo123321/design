@@ -1240,7 +1240,8 @@ export const Figure: React.FC<{
     const H = new THREE.Vector3(side * 0.095 * k, hipY - 0.02, 0);
     const A = pose.feet ? pose.feet[side < 0 ? 0 : 1].clone() : new THREE.Vector3(side * (spread + 0.01), 0.09 * k + lifts, -0.01);
     const kneeOut = new THREE.Vector3(side * 0.02, 0, -1);
-    const { E: K } = ik(H, A, 0.45 * k, 0.43 * k, kneeOut);
+    // (portrait people: legs that reach the floor nearly straight, not crouching)
+    const { E: K } = bust ? ik(H, A, 0.425 * k, 0.41 * k, kneeOut) : ik(H, A, 0.45 * k, 0.43 * k, kneeOut);
     return (
       <group key={side}>
         <Limb a={H} b={K} geo={lathe("wth", THIGH)} len={0.45} mat={legMat} k={k} />
