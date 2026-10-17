@@ -115,33 +115,129 @@ const replayPose = (w: number, v: number): Pose => {
 };
 
 // --------------------------------------------------------------------------------- the bullet time
-const bulletPose = (v: number): Pose => {
+/** A monotone curve through (x, y) knots, flat at both ends (Fritsch-Carlson). */
+const easeThrough = (xs: number[], ys: number[]) => {
+  const n = xs.length;
+  const h = xs.slice(1).map((x, i) => x - xs[i]);
+  const d = ys.slice(1).map((y, i) => (y - ys[i]) / h[i]);
+  const m = xs.map((_, i) => {
+    if (i === 0 || i === n - 1 || d[i - 1] * d[i] <= 0) return 0;
+    const w1 = 2 * h[i] + h[i - 1];
+    const w2 = h[i] + 2 * h[i - 1];
+    return (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]);
+  });
+  return (x: number) => {
+    let i = 0;
+    while (i < n - 2 && x > xs[i + 1]) i++;
+    const t = clamp((x - xs[i]) / h[i]);
+    const t2 = t * t;
+    const t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h[i] * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h[i] * m[i + 1];
+  };
+};
+const wrapDeg = (a: number) => ((((a + 180) % 360) + 360) % 360) - 180;
+const R2D = THREE.MathUtils.radToDeg;
+
+/** Out of his window (the driver's side, the car's left: upside down, that's up and away from the Semi),
+ * round the car's left side above the lineup with the crowd behind it, and back in through the same window.
+ * The picture turns to the car on the way out, and rolls: upright for the orbit, then on round the same way
+ * the car is rolling, so it's the car's barrel roll carried on, one whole turn, when he's back behind his eyes. */
+const BULLET = {
+  R: 10.0, // the orbit's radius, its height above the car, its sweep (round the car's left side, front to back)
+  H: 3.0,
+  a0: deg(-55),
+  a1: deg(55),
+  drop: 0.15, // looking at a point this far below the car: the Semi in the picture too
+  fov: 48,
+  uOut: 0.3, // the share of the time out of the window and round to the orbit; back in from uIn
+  uIn: 0.7,
+};
+type BulletPath = {
+  curve: THREE.CatmullRomCurve3;
+  S: number;
+  sAt: (u: number) => number;
+  at: THREE.Vector3;
+  eye: THREE.Euler;
+  yawStart: number;
+  yawEnd: number;
+};
+let bulletCache: BulletPath | null = null;
+const bulletPath = (): BulletPath => {
+  if (bulletCache) return bulletCache;
   const seg = SEGS.find((s) => s.name === "bullet")!;
-  const u = clamp((v - seg.v0) / (seg.v1 - seg.v0));
   const w = seg.w0;
   const st = carAt(w);
   const eye = seated(w);
-  const com = st.pos.clone().add(V3(0, 1, 0).applyQuaternion(st.quat).multiplyScalar(0.48));
-  // the orbit: a circle round the car a little above it, looking down past it at the lineup
-  const R = 9.6;
-  const a0 = Math.atan2(eye.pos.z - com.z, eye.pos.x - com.x);
-  const a1 = a0 + deg(160);
-  const orbitAt = (a: number) => com.clone().add(V3(Math.cos(a) * R, 3.4 + 1.0 * Math.sin((a - a0) * 1.2), Math.sin(a) * R));
-  // out through the canopy, round, and back in
-  const out = smoother(u / 0.26);
-  const round = smoother((u - 0.2) / 0.58);
-  const back = smoother((u - 0.8) / 0.2);
-  let pos: THREE.Vector3;
-  if (u < 0.2) pos = eye.pos.clone().lerp(orbitAt(a0), out);
-  else if (u < 0.8) pos = orbitAt(lerp(a0, a1, round));
-  else pos = orbitAt(a1).lerp(eye.pos, back);
-  if (u >= 0.2 && u < 0.26) pos = pos.clone().lerp(eye.pos.clone().lerp(orbitAt(a0), out), 1 - (u - 0.2) / 0.06);
-  const orbit = look(pos, com.clone().add(V3(0, -1.6, 0)), 42);
-  let quat: THREE.Quaternion;
-  if (u < 0.22) quat = eye.quat.clone().slerp(orbit.quat, smoother(u / 0.22));
-  else if (u < 0.82) quat = orbit.quat;
-  else quat = orbit.quat.clone().slerp(eye.quat, smoother((u - 0.82) / 0.18));
-  const fov = u < 0.26 ? lerp(POV_FOV, 40, out) : u > 0.8 ? lerp(40, POV_FOV, back) : 40;
+  const local = (x: number, y: number, z: number) => V3(x, y, z).applyQuaternion(st.quat).add(st.pos);
+  const up = V3(0, 1, 0).applyQuaternion(st.quat);
+  const com = st.pos.clone().addScaledVector(up, 0.48);
+  const { R, H, a0, a1 } = BULLET;
+  const orbit = (a: number) => com.clone().add(V3(Math.cos(a) * R, H, Math.sin(a) * R));
+  const win = local(-1.35, 1.0, 0.1); // just outside his side glass
+  const ring = [0, 0.25, 0.5, 0.75, 1].map((k) => orbit(lerp(a0, a1, k)));
+  const pts = [eye.pos, win, local(-3.4, 1.6, -1.8), ...ring, local(-3.4, 1.6, 2.0), win, eye.pos];
+  const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
+  const per = 200;
+  curve.arcLengthDivisions = per * (pts.length - 1);
+  const lengths = curve.getLengths();
+  const S = lengths[lengths.length - 1];
+  const sOut = lengths[per * 3]; // where the orbit starts, and ends
+  const sIn = lengths[per * 7];
+  const sAt = easeThrough([0, BULLET.uOut, BULLET.uIn, 1], [0, sOut, sIn, S]);
+  const at = com.clone().add(V3(0, -BULLET.drop, 0));
+  const yawOf = (p: THREE.Vector3) => new THREE.Euler().setFromQuaternion(look(p, at, BULLET.fov).quat, "YXZ").y;
+  bulletCache = {
+    curve,
+    S,
+    sAt,
+    at,
+    eye: new THREE.Euler().setFromQuaternion(eye.quat, "YXZ"),
+    yawStart: R2D(yawOf(ring[0])),
+    yawEnd: R2D(yawOf(ring[4])),
+  };
+  return bulletCache;
+};
+
+const bulletPose = (v: number): Pose => {
+  const seg = SEGS.find((s) => s.name === "bullet")!;
+  const u = clamp((v - seg.v0) / (seg.v1 - seg.v0));
+  const B = bulletPath();
+  const pos = B.curve.getPointAt(clamp(B.sAt(u) / B.S));
+  const t = new THREE.Euler().setFromQuaternion(look(pos, B.at, BULLET.fov).quat, "YXZ");
+  const ty = R2D(t.y);
+  const tp = R2D(t.x);
+  const tr = R2D(t.z);
+  const ey = R2D(B.eye.y);
+  const ep = R2D(B.eye.x);
+  const er = R2D(B.eye.z);
+  let yaw: number;
+  let pitch: number;
+  let roll: number;
+  let fov: number;
+  if (u <= BULLET.uOut) {
+    // turning to the car the way it is (the long way round, past it), rolling upright the way the car rolls
+    const k = smoother(u / BULLET.uOut);
+    const yt = B.yawStart + wrapDeg(ty - B.yawStart);
+    const yawTo = ey + (((yt - ey) % 360) + 360) % 360;
+    yaw = lerp(ey, yawTo, k);
+    pitch = lerp(ep, tp, k);
+    roll = lerp(er, er + ((((tr - er) % 360) + 360) % 360), k);
+    fov = lerp(POV_FOV, BULLET.fov, k);
+  } else if (u >= BULLET.uIn) {
+    // back to his view, the roll carrying on round
+    const k = smoother((u - BULLET.uIn) / (1 - BULLET.uIn));
+    const yt = B.yawEnd + wrapDeg(ty - B.yawEnd);
+    yaw = lerp(yt, yt + wrapDeg(ey - yt), k);
+    pitch = lerp(tp, ep, k);
+    roll = lerp(tr, tr + ((((er - tr) % 360) + 360) % 360), k);
+    fov = lerp(BULLET.fov, POV_FOV, k);
+  } else {
+    yaw = ty;
+    pitch = tp;
+    roll = tr;
+    fov = BULLET.fov;
+  }
+  const quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(deg(pitch), deg(yaw), deg(roll), "YXZ"));
   return { pos, quat, fov };
 };
 

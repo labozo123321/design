@@ -154,9 +154,34 @@ const SmoothCar: React.FC<{ sp: Spec; paint: THREE.Material; lights?: React.Reac
   );
 };
 
+/** Diamond tread plate (a bump map). */
+const diamondTex = () =>
+  canvasTex(
+    "diamondPlate",
+    256,
+    256,
+    (g) => {
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, 256, 256);
+      g.fillStyle = "#fff";
+      for (let y = 0; y < 8; y++)
+        for (let x = 0; x < 8; x++) {
+          const cx = x * 32 + 16;
+          const cy = y * 32 + 16;
+          g.save();
+          g.translate(cx, cy);
+          g.rotate((x + y) % 2 ? Math.PI / 4 : -Math.PI / 4);
+          g.fillRect(-11, -2.5, 22, 5);
+          g.restore();
+        }
+    },
+    [3, 1],
+    false,
+  );
+
 export const darkGlass = () => mat("darkGlass", () => new THREE.MeshPhysicalMaterial({ color: "#0A0C10", metalness: 0.3, roughness: 0.04, clearcoat: 1, envMapIntensity: 1.4 }));
-const carPaint = (key: string, color: string, metallic = 0.5) =>
-  mat(`carPaint-${key}`, () => new THREE.MeshPhysicalMaterial({ color, metalness: metallic, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.2 }));
+const carPaint = (key: string, color: string, metallic = 0.5, coatRough = 0.06, rough = 0.32) =>
+  mat(`carPaint-${key}`, () => new THREE.MeshPhysicalMaterial({ color, metalness: metallic, roughness: rough, clearcoat: 1, clearcoatRoughness: coatRough, envMapIntensity: 1.2 }));
 
 const CarWheel: React.FC<{ at: [number, number, number]; r: number; side: number }> = ({ at, r, side }) => {
   const g = useMemo(() => {
@@ -617,7 +642,34 @@ export const Semi: React.FC<{ k?: number }> = ({ k = 1 }) => {
       back: capEnd(secs[n - 1], false),
     };
   }, []);
-  const white = carPaint("semi", "#E8EBEE", 0.15);
+  // (a softer clear coat than the cars': its big flat roof would mirror the follow spot straight at the
+  // camera going round it in the bullet time)
+  const white = carPaint("semi", "#E8EBEE", 0.15, 0.32, 0.46);
+  const hoses = useMemo(
+    () =>
+      // the trailer lines coiled from the back of the cab: air (red, blue) and the electrical (black)
+      [-0.32, 0, 0.32].map((x, i) => {
+        const pts: THREE.Vector3[] = [];
+        const a = new THREE.Vector3(x, 2.0 - 0.06 * i, -0.8);
+        const b = new THREE.Vector3(x * 0.6, 1.2, -0.05);
+        for (let k = 0; k <= 240; k++) {
+          const t = k / 240;
+          const c = a.clone().lerp(b, t);
+          c.y -= Math.sin(Math.PI * t) * 0.18; // sagging a little
+          const ph = t * Math.PI * 2 * 7;
+          pts.push(c.add(new THREE.Vector3(Math.cos(ph) * 0.07, Math.sin(ph) * 0.07 * 0.8, Math.sin(ph) * 0.04)));
+        }
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 480, 0.012, 6, false);
+      }),
+    [],
+  );
+  const hoseMat = [
+    mat("semiHoseR", () => new THREE.MeshStandardMaterial({ color: "#B81C24", roughness: 0.45 })),
+    mat("semiHoseB", () => new THREE.MeshStandardMaterial({ color: "#1E46B4", roughness: 0.45 })),
+    mat("semiHoseK", () => new THREE.MeshStandardMaterial({ color: "#1A1B1E", roughness: 0.5 })),
+  ];
+  const deck = mat("semiDeck", () => new THREE.MeshStandardMaterial({ color: "#3A3D42", roughness: 0.55, metalness: 0.6, bumpMap: diamondTex(), bumpScale: 0.6 }));
+  const fifth = mat("semiFifth", () => new THREE.MeshStandardMaterial({ color: "#1C1D20", roughness: 0.38, metalness: 0.5 }));
   return (
     <group>
       <mesh geometry={g.lower} material={white} castShadow />
@@ -626,13 +678,48 @@ export const Semi: React.FC<{ k?: number }> = ({ k = 1 }) => {
       <mesh geometry={g.nose} material={white} />
       <mesh geometry={g.front} material={white} />
       <mesh geometry={g.back} material={white} />
-      {/* the chassis behind the cab: rails, the fifth wheel, side fairings over the drive wheels */}
+      {/* the cab extenders off its back edges, closing the gap to a trailer */}
+      {[-1, 1].map((sd) => (
+        <mesh key={sd} material={white} position={[sd * 1.22, 2.25, -0.6]} scale={[0.04, 2.3, 0.5]} castShadow>
+          <boxGeometry args={[1, 1, 1]} />
+        </mesh>
+      ))}
+      {/* on the back of the cab: the red marker lamps along the top, the lines' bracket */}
+      {[-0.22, 0, 0.22, -1.05, 1.05].map((x, i) => (
+        <Bar key={i} name="semiMarkR" at={[x, 3.72, -0.84]} size={[0.1, 0.05, 0.03]} color="#FF2A1A" k={3.5 * k} />
+      ))}
+      <mesh material={fifth} position={[0, 2.02, -0.83]} scale={[0.95, 0.12, 0.05]}>
+        <boxGeometry args={[1, 1, 1]} />
+      </mesh>
+      {hoses.map((h, i) => (
+        <mesh key={i} geometry={h} material={hoseMat[i]} />
+      ))}
+      {/* the chassis behind the cab: rails, the catwalk, the fifth wheel, side fairings over the drive wheels */}
       <mesh material={M.black()} position={[0, 0.85, 0.9]} scale={[1.1, 0.3, 4.6]} castShadow>
         <boxGeometry args={[1, 1, 1]} />
       </mesh>
-      <mesh material={M.steel()} position={[0, 1.06, 1.6]} scale={[0.9, 0.08, 0.9]}>
-        <cylinderGeometry args={[0.5, 0.5, 1, 20]} />
+      <mesh material={deck} position={[0, 1.02, -0.5]} scale={[1.9, 0.05, 0.62]}>
+        <boxGeometry args={[1, 1, 1]} />
       </mesh>
+      <mesh material={fifth} position={[0, 1.06, 1.6]} scale={[1.0, 0.08, 1.0]}>
+        <cylinderGeometry args={[0.5, 0.5, 1, 28]} />
+      </mesh>
+      <mesh material={M.black()} position={[0, 1.105, 1.85]} scale={[0.14, 0.02, 0.5]}>
+        <boxGeometry args={[1, 1, 1]} />
+      </mesh>
+      {/* mud flaps, and the tail lamps at the end of the rails */}
+      {[-1, 1].map((sd) => (
+        <React.Fragment key={sd}>
+          <mesh material={M.tyre()} position={[sd * 1.0, 0.55, 3.15]} scale={[0.5, 0.6, 0.02]}>
+            <boxGeometry args={[1, 1, 1]} />
+          </mesh>
+          <Bar name="semiTail" at={[sd * 0.5, 0.86, 3.21]} size={[0.16, 0.07, 0.02]} color="#FF2A1A" k={4 * k} />
+        </React.Fragment>
+      ))}
+      {/* the clearance lamps along the roof's leading edge */}
+      {[-0.6, -0.3, 0, 0.3, 0.6].map((x, i) => (
+        <Bar key={`a${i}`} name="semiAmber" at={[x, 3.965, -2.3]} size={[0.09, 0.04, 0.05]} color="#FFA030" k={4 * k} />
+      ))}
       {[-1, 1].map((s) => (
         <mesh key={s} material={white} position={[s * 1.25, 1.0, 0.35]} scale={[0.05, 0.8, 2.6]} castShadow>
           <boxGeometry args={[1, 1, 1]} />

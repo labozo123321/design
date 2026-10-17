@@ -680,10 +680,18 @@ def video_world():
     place(b, reverse_cymbal(0.6) * 0.4, bt["v0"] - 0.6)
     place(b, pad_chord([62, 69, 74, 77, 81], sec + 0.8, 3000, 0.05, 0.8) * 0.18, bt["v0"])
     place(b, stereo(ga.sub_boom(2.5, 60, 28)) * 0.7, bt["v0"])
-    tt = t_axis(sec)
-    sweep = vfilter(noise(sec), 300 + 2500 * np.sin(np.pi * tt / sec) ** 2, "low", 256) * np.sin(np.pi * tt / sec) * 0.35
-    pan = np.linspace(-0.9, 0.9, len(tt))
-    place(b, np.stack([sweep * np.sqrt((1 - pan) / 2), sweep * np.sqrt((1 + pan) / 2)], axis=1), bt["v0"])
+    # the camera's moves: whipped out of his window and round to the car (a whoosh across, left to right),
+    # the slow orbit (air going by), whipped back in on the roll (right to left, rising into the kick)
+    def whoosh(dur, peak, f0, f1, pan0, pan1, gain):
+        tt = t_axis(dur)
+        env = np.exp(-(((tt - peak) / (0.2 * dur)) ** 2))
+        x = vfilter(noise(dur), f0 + (f1 - f0) * env, "low", 256) * env * gain
+        pan = np.linspace(pan0, pan1, len(tt))
+        return np.stack([x * np.sqrt((1 - pan) / 2), x * np.sqrt((1 + pan) / 2)], axis=1)
+
+    place(b, whoosh(1.1, 0.5, 250, 3400, -0.75, 0.75, 0.5), bt["v0"] - 0.02)
+    place(b, whoosh(sec * 0.5, sec * 0.25, 300, 900, 0.4, -0.4, 0.16), bt["v0"] + sec * 0.25)
+    place(b, whoosh(1.1, 0.68, 300, 4200, 0.75, -0.75, 0.52), bt["v1"] - 1.1)
     place(b, stereo(kick(0.4, 200, 50, 0.1)) * 0.5, bt["v1"])
     # ---- the show: the CO2 cannons and the cold sparks
     shots = [CW["touch1"] - 0.05, CW["lift2"] + 0.1, CW["stop2"] - 0.4, CW["stop2"] + 2.6]

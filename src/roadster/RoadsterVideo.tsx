@@ -6,6 +6,7 @@ import { useThree } from "@react-three/fiber";
 import { DURATION } from "./timeline";
 import { carAt } from "./path";
 import { Roadster } from "./Roadster";
+import { M } from "./materials";
 import { Cockpit, EYE } from "./Cockpit";
 import { shotAt } from "./camera";
 import { Barrier, FLOODS, FarSite, FloodTower, LineupPlatform, Pad, Ramp, Sky } from "./Venue";
@@ -18,7 +19,7 @@ import { LINEUP, LANES } from "./path";
 import { WalkerArm } from "./Walker";
 import { RoadsterPost } from "./Post";
 import { Overlay } from "./Overlay";
-import { CUE_W, segAt, wAt, smooth } from "./timeline";
+import { CUE, CUE_W, segAt, wAt, smooth } from "./timeline";
 import { PCUE } from "./path";
 import { NightEnv } from "./Env";
 
@@ -52,7 +53,10 @@ const followAt = (w: number, st: { pos: THREE.Vector3 }) => {
 
 /** Once the car's stopped with its canopy up the spot eases off it (it would glare in the cockpit); it comes
  * back full on the man with the controller. */
-const followK = (w: number) => 1 - 0.65 * smooth(PCUE.stop2, PCUE.stop2 + 1.2, w) * (1 - smooth(PCUE.creep0 + 2.45, PCUE.creep0 + 2.6, w));
+/** Climbing in, right over the sill: the follow spot's highlight on the paint's flat facets would flash. */
+const climbK = (w: number) => smooth(PCUE.walk1 - 0.4, PCUE.walk1, w) * (1 - smooth(PCUE.seated + 0.2, PCUE.seated + 0.8, w));
+const followK = (w: number) =>
+  (1 - 0.65 * smooth(PCUE.stop2, PCUE.stop2 + 1.2, w) * (1 - smooth(PCUE.creep0 + 2.45, PCUE.creep0 + 2.6, w))) * (1 - 0.9 * climbK(w));
 
 const carM = (st: { pos: THREE.Vector3; quat: THREE.Quaternion }) => new THREE.Matrix4().compose(st.pos, st.quat, new THREE.Vector3(1, 1, 1));
 
@@ -158,6 +162,11 @@ const Scene: React.FC<{ frame: number; cam?: string; hide?: string[] }> = ({ fra
             : null;
   const pose = debug ?? shot.pose;
   const seated = w >= PCUE.seated || shot.seg !== "pov1";
+  // (and the clear coat a little softer while he's over it)
+  M.paint().clearcoatRoughness = 0.1 + 0.22 * climbK(w);
+  // in the bullet time the follow spot eases off: going round the car, the Semi's roof under it mirrors it
+  const v = frame / 30;
+  const frozen = smooth(CUE.bullet0, CUE.bullet0 + 0.3, v) * (1 - smooth(CUE.bullet1 - 0.3, CUE.bullet1, v));
   // a cut: no motion blur across it
   const cut = frame === 0 || segAt(frame - 1) !== segAt(frame) || Math.abs(wAt(frame - 1) - w) > 0.5;
   // the launch's punch
@@ -168,7 +177,7 @@ const Scene: React.FC<{ frame: number; cam?: string; hide?: string[] }> = ({ fra
       <color attach="background" args={["#000000"]} />
       <NightEnv />
       <Sky />
-      {hide.includes("lights") ? <hemisphereLight args={["#3A4870", "#101012", 1.1]} /> : <SiteLights car={st} follow={followAt(w, st)} followK={followK(w)} cheer={cheerAt(w)} />}
+      {hide.includes("lights") ? <hemisphereLight args={["#3A4870", "#101012", 1.1]} /> : <SiteLights car={st} follow={followAt(w, st)} followK={followK(w) * (1 - 0.7 * frozen)} cheer={cheerAt(w)} />}
       <Pad />
       <Ramp />
       <LineupPlatform />
