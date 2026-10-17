@@ -71,16 +71,18 @@ const nailMat = (tone: string) => {
   return matCache[k];
 };
 
-const Finger: React.FC<{ f: (typeof FINGERS)[number]; curl: number; splay: number; tone: string; nail: boolean }> = ({
+const Finger: React.FC<{ f: (typeof FINGERS)[number]; curl: number; splay: number; tone: string; nail: boolean; mat?: THREE.Material; fat?: number }> = ({
   f,
   curl,
   splay,
   tone,
   nail,
+  mat,
+  fat = 1,
 }) => {
-  const m = skinMat(tone);
+  const m = mat ?? skinMat(tone);
   const [l0, l1, l2] = f.len;
-  const r = f.r;
+  const r = f.r * fat;
   // joints: the big knuckle bends the most, the tip the least
   const c0 = curl * 0.95;
   const c1 = curl * 1.15;
@@ -110,11 +112,12 @@ const Finger: React.FC<{ f: (typeof FINGERS)[number]; curl: number; splay: numbe
   );
 };
 
-export const Hand: React.FC<{ pose: HandPose; tone: string; side?: number; scale?: number }> = ({
+export const Hand: React.FC<{ pose: HandPose; tone: string; side?: number; scale?: number; /** a glove instead of skin */ mat?: THREE.Material }> = ({
   pose,
   tone,
   side = 1,
   scale = 1,
+  mat,
 }) => {
   const palm = useMemo(() => {
     const g = new RoundedBoxGeometry(0.082, PALM_L, 0.03, 4, 0.012);
@@ -131,12 +134,13 @@ export const Hand: React.FC<{ pose: HandPose; tone: string; side?: number; scale
     g.computeVertexNormals();
     return g;
   }, []);
-  const m = skinMat(tone);
+  const m = mat ?? skinMat(tone);
+  const fat = mat ? 1.12 : 1;
   return (
     <group scale={[side * scale, scale, scale]}>
-      <mesh geometry={palm} material={m} castShadow />
+      <mesh geometry={palm} material={m} castShadow scale={mat ? [1.04, 1, 1.15] : 1} />
       {FINGERS.map((f, i) => (
-        <Finger key={i} f={f} curl={pose.curl[i]} splay={(i - 1.5) * -0.08 * pose.spread} tone={tone} nail />
+        <Finger key={i} f={f} curl={pose.curl[i]} splay={(i - 1.5) * -0.08 * pose.spread} tone={tone} nail={!mat} mat={mat} fat={fat} />
       ))}
       {/* thumb: from the heel of the palm, out to the side and forward, two bones */}
       <group position={[0.032, -0.022, 0.006]} rotation={[0.35 + 0.5 * (1 - pose.thumbOut), -0.5, 0.45 + 0.6 * pose.thumbOut]}>
@@ -148,7 +152,7 @@ export const Hand: React.FC<{ pose: HandPose; tone: string; side?: number; scale
             <mesh geometry={cap(0.0095, 0.013)} material={m} position={[0, -0.011, 0]} />
             <mesh
               geometry={sph()}
-              material={nailMat(tone)}
+              material={mat ?? nailMat(tone)}
               position={[0, -0.015, -0.0066]}
               scale={[0.0078, 0.0085, 0.0026]}
             />
