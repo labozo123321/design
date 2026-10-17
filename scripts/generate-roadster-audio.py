@@ -741,7 +741,7 @@ def mix():
     deep = np.where(t < C["launch1"], 0, deep)
     # in the replay the score comes through the phone: band-limited, a bit crushed
     rep = (seg_s == 1)
-    mus_v = mus_v * (1 - 0.85 * deep)[:, None]
+    mus_v = mus_v * (1 - deep)[:, None]
     phone = st_filter(mus_v, lambda x: bp(x, 250, 5000)) * 2.2
     mus_v = np.where(rep[:, None], phone, mus_v)
     # the music stops when the yoke turns by itself
@@ -772,6 +772,8 @@ def mix():
     # ---- video-time sounds
     out += video_world() * 1.0
     out = out[:N]
+    # no DC (a frozen clock holds a sample)
+    out = st_filter(out, lambda x: hp(x, 22))
     out[-int(0.6 * SR):] *= np.linspace(1, 0, int(0.6 * SR))[:, None] ** 2
     out[: int(0.25 * SR)] *= np.linspace(0, 1, int(0.25 * SR))[:, None]
     return out

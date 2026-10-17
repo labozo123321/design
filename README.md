@@ -711,3 +711,46 @@ JPEG sequence in batches, then lay the bed under it, mastered to -15 LUFS:
 
 To refresh the yearbook's photos after a change, render the holds with `{"still": 1}` (no print, no
 flash, no viewfinder) and crop them to 4:5.
+
+## Roadster (first person, driving the new Tesla Roadster at its demo)
+
+"POV: you're driving the new Tesla Roadster at its demo". A 67 s first-person video with no voice and no
+words but the title, after the real unveil (15 October 2026, at the SpaceX test site outside Waco, at
+night): you walk up to the car with a coffee (white wedge, gold-visor canopy up), climb in, the canopy
+comes down, the screens wake, the coffee goes in the cupholder, Track Mode squats the car and puts the
+wing up, the starter counts you down on her fingers; 0-60 mph in 0.81 s on the rear cold-gas thrusters;
+up the inverted ramp (the fans suck it on), over the top upside down, and in slow motion the half roll on
+the side thrusters, with your coffee rising out of its cup and floating while the world turns round
+(your hand hovers by it, ready); the thrusters brake the fall into a cloud of their own vapour and the
+coffee drops back in. The same from a phone in the crowd. Then the lineup (a Model Y, a Model 3, the
+Semi, a Cybertruck with one cracked window, a Cybercab): the thrusters lift you over it with a barrel
+roll above the Semi; time stops and the camera steps out of the canopy, round the car upside down, and
+back in; the landing, a sideways slide to a stop in front of the crowd, CO2 cannons and cold sparks, the
+canopy up, a wave... and the yoke turns by itself. You look round: the follow spot swings onto the man at
+the folding table with a game controller. Snap zoom. He grins, thumbs up. So do you.
+
+1. **Path and timeline:** `python3 scripts/generate-roadster-path.py` simulates the two runs (the launch,
+   the ramp's curves with the motor and the fans, the release, the roll and the thrusters' braking down
+   to a soft landing; the jump's lift, the barrel roll, the landing and the slide) and writes
+   `src/roadster/path.json` (60 Hz: pose, speed, the specific force felt, the thrusters, fans, wings,
+   canopy, the driver's head on a spring pushed by the g's and where he looks, the coffee's surface and
+   its float) and `src/roadster/timeline.json` (per frame the segment and the world time: real time,
+   slow motion over the top and into the jump, the replay, the bullet time).
+2. **Sound:** `python3 scripts/generate-roadster-audio.py` builds `public/roadster/bed.mp3` (and
+   `out/roadster/bed.wav`): a dark synth score (D minor, 120 bpm) on a music clock that follows the
+   world through the stunts (it sinks into the slow motion, freezes in the bullet time and spins back up
+   into each landing), the car in world time (motors, tyres, wind, the fans, the thrusters' roar, the
+   landings, the slide, the coffee's bloop and plop), and the night in video time (the crowd muffled
+   while the canopy's down, footsteps, the screens' chime, the phone's audio for the replay, the CO2
+   cannons, the sparks, the follow spot's clunk and a "dun!" on the snap zoom).
+3. **Picture:** `src/roadster/`: `Roadster.tsx` (the car in flat facets, the canopy on its hinge, wheels,
+   lights, wing, nozzles, fans), `Cockpit.tsx` (the tub, dash, screens drawn per frame, the yoke, seats,
+   the driver's arms and gloves, the cup and its coffee), `Teslas.tsx` (the lineup), `Venue.tsx` (the
+   pad, the ramp on its truss, the platform, floodlight towers, the barrier, the far test stands and the
+   stars), `People.tsx` (the instanced crowd, the starter, the crew, the front row, the operator),
+   `Effects.tsx` (the thrusters' gas, the haze, CO2 jets, sparks), `Beams.tsx` (moving heads, searchlights,
+   lasers), `Lights.tsx`, `camera.ts`, `Post.tsx` (motion blur that knows what's riding with the car,
+   bloom, the launch's punch, the phone's look) and `Overlay.tsx`.
+
+The render under software GL takes 3-4 s a frame: bundle once, render the JPEG sequence in batches, lay
+the bed under it (mastered to about -15 LUFS) as for Looks.
