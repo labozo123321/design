@@ -643,7 +643,7 @@ LOOK = [
     (CUES["roll1b"] + 0.5, -4, -12), (CUES["touch1"], 0, -6), (CUES["touch1"] + 1.5, 0, -4),
     (30.0, 0, -4),
     # run 2: the crowd, the hand over the cup, eyes front
-    (T_R2, 52, 2), (T_COVER - 0.35, 46, 1), (T_COVER - 0.05, -12, -16), (T_COVER + 0.6, -12, -16), (T_COVER + 1.0, 0, -3),
+    (T_R2, 30, 3), (T_COVER - 0.35, 24, 2), (T_COVER - 0.05, -12, -16), (T_COVER + 0.6, -12, -16), (T_COVER + 1.0, 0, -3),
     (T_L2 + 1.0, 0, -2), (CUES["lift2"], 0, 0),
     # upside down over the Semi: up through the canopy at it
     (CUES["roll2a"], 0, 4), (CUES["apex2"] - 0.2, 6, 30), (CUES["apex2"] + 0.3, 6, 30), (CUES["roll2b"], 0, 0),

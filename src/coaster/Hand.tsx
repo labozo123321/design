@@ -135,7 +135,7 @@ export const Hand: React.FC<{ pose: HandPose; tone: string; side?: number; scale
     return g;
   }, []);
   const m = mat ?? skinMat(tone);
-  const fat = mat ? 1.12 : 1;
+  const fat = mat ? 1.2 : 1;
   return (
     <group scale={[side * scale, scale, scale]}>
       <mesh geometry={palm} material={m} castShadow scale={mat ? [1.04, 1, 1.15] : 1} />

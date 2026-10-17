@@ -13,7 +13,7 @@ import { SiteLights } from "./Lights";
 import { LineupCar } from "./Teslas";
 import { CO2, CO2_SHOTS, Haze, Sparks, ThrusterGas } from "./Effects";
 import { Beams, Lasers } from "./Beams";
-import { Crew, Crowd, FrontRow, OPERATOR_AT, Operator, Starter } from "./People";
+import { Crew, Crowd, FrontRow, OPERATOR_AT, Operator, Starter, cheerAt } from "./People";
 import { LINEUP, LANES } from "./path";
 import { WalkerArm } from "./Walker";
 import { RoadsterPost } from "./Post";
@@ -168,7 +168,7 @@ const Scene: React.FC<{ frame: number; cam?: string; hide?: string[] }> = ({ fra
       <color attach="background" args={["#000000"]} />
       <NightEnv />
       <Sky />
-      {hide.includes("lights") ? <hemisphereLight args={["#3A4870", "#101012", 1.1]} /> : <SiteLights car={st} follow={followAt(w, st)} followK={followK(w)} />}
+      {hide.includes("lights") ? <hemisphereLight args={["#3A4870", "#101012", 1.1]} /> : <SiteLights car={st} follow={followAt(w, st)} followK={followK(w)} cheer={cheerAt(w)} />}
       <Pad />
       <Ramp />
       <LineupPlatform />

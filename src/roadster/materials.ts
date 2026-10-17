@@ -81,6 +81,35 @@ export const suedeTex = () =>
     [4, 4],
   );
 
+/** A soft bumpy normal map (orange peel). */
+const peelTex = () => {
+  const key = "peel";
+  return canvasTex(
+    key,
+    256,
+    256,
+    (g, w, h) => {
+      const r = rand(77);
+      g.fillStyle = "rgb(128,128,255)";
+      g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 3500; i++) {
+        const x = r() * w;
+        const y = r() * h;
+        const rad = 2 + r() * 5;
+        const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+        const dx = Math.round(128 + (r() - 0.5) * 60);
+        const dy = Math.round(128 + (r() - 0.5) * 60);
+        grd.addColorStop(0, `rgba(${dx},${dy},255,0.6)`);
+        grd.addColorStop(1, "rgba(128,128,255,0)");
+        g.fillStyle = grd;
+        g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+      }
+    },
+    [6, 6],
+    false,
+  );
+};
+
 export const M = {
   paint: () =>
     mat(
@@ -90,11 +119,14 @@ export const M = {
           color: "#D5D9DC",
           roughness: 0.3,
           metalness: 0.0,
-          clearcoat: 0.6,
-          clearcoatRoughness: 0.16,
+          clearcoat: 0.8,
+          clearcoatRoughness: 0.1,
           sheen: 0.25,
           sheenColor: new THREE.Color("#DCE6F0"),
-          envMapIntensity: 1.1,
+          envMapIntensity: 1.5,
+          // a faint orange peel in the clear coat breaks the facets' reflections up a little
+          clearcoatNormalMap: peelTex(),
+          clearcoatNormalScale: new THREE.Vector2(0.06, 0.06),
         }),
     ),
   /** the canopy from outside: a gold visor */
@@ -122,6 +154,10 @@ export const M = {
   black: () => mat("black", () => new THREE.MeshStandardMaterial({ color: "#0C0D0F", roughness: 0.5, metalness: 0.1 })),
   gloss: () => mat("gloss", () => new THREE.MeshPhysicalMaterial({ color: "#07080A", roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 })),
   carbon: () => mat("carbon", () => new THREE.MeshPhysicalMaterial({ map: carbonTex(), roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08, metalness: 0.2 })),
+  /** satin carbon for the cockpit (a mirror finish in there throws the spotlights straight into your eyes) */
+  carbonIn: () => mat("carbonIn", () => new THREE.MeshPhysicalMaterial({ map: carbonTex(), roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.45, metalness: 0.1 })),
+  /** dark satin plastic for the cockpit */
+  satin: () => mat("satin", () => new THREE.MeshStandardMaterial({ color: "#0E0F12", roughness: 0.6, metalness: 0.05 })),
   well: () => mat("well", () => new THREE.MeshStandardMaterial({ color: "#060607", roughness: 0.9 })),
   tyre: () => mat("tyre", () => new THREE.MeshStandardMaterial({ color: "#141415", roughness: 0.82 })),
   titanium: () => mat("titanium", () => new THREE.MeshPhysicalMaterial({ color: "#7C818A", metalness: 0.85, roughness: 0.42, clearcoat: 0.2 })),

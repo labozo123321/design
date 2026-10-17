@@ -17,7 +17,7 @@ const spot = (color: string, angle: number, penumbra: number) => {
   return l;
 };
 
-export const SiteLights: React.FC<{ car: CarState; k?: number; follow?: THREE.Vector3; followK?: number; shadows?: boolean }> = ({ car, k = 1, follow, followK = 1, shadows = true }) => {
+export const SiteLights: React.FC<{ car: CarState; k?: number; follow?: THREE.Vector3; followK?: number; shadows?: boolean; cheer?: number }> = ({ car, k = 1, follow, followK = 1, shadows = true, cheer = 0 }) => {
   const L = useMemo(() => {
     const floods = [0, 1, 3, 4].map((i) => {
       const l = spot("#FFF1DE", 0.62, 0.75);
@@ -46,10 +46,15 @@ export const SiteLights: React.FC<{ car: CarState; k?: number; follow?: THREE.Ve
     ramp2.position.set(RAMP.x - 8, 0.5, RAMP.entryZ - 2);
     ramp2.target.position.set(RAMP.x, 12, RAMP.entryZ - 12);
     ramp2.userData.base = 5.0;
+    // the audience blinders: a wide warm wash from the pad onto the crowd's faces
+    const blind = spot("#FFE2BE", 0.95, 0.7);
+    blind.position.set(-9, 7, -62);
+    blind.target.position.set(-31, 1.2, -62);
+    blind.userData.base = 3.5;
     const red = new THREE.PointLight("#FF2A1A", 1, 22, 1.4);
     red.position.set(LANES.b, 1.6, -45);
     red.userData.base = 4;
-    return { floods, fol, head, ramp, ramp2, red };
+    return { floods, fol, head, ramp, ramp2, red, blind };
   }, []);
   // the follow spot tracks the car (or whatever it's told to)
   const tgt = follow ?? car.pos.clone().add(V3(0, 0.6, 0));
@@ -66,8 +71,9 @@ export const SiteLights: React.FC<{ car: CarState; k?: number; follow?: THREE.Ve
   L.head.target.position.copy(ahead);
   L.head.intensity = L.head.userData.base * k;
   for (const l of [...L.floods, L.ramp, L.ramp2]) l.intensity = l.userData.base * k;
+  L.blind.intensity = L.blind.userData.base * k * (1 + 1.2 * cheer);
   L.red.intensity = L.red.userData.base * k;
-  const all = [...L.floods, L.fol, L.head, L.ramp, L.ramp2];
+  const all = [...L.floods, L.fol, L.head, L.ramp, L.ramp2, L.blind];
   return (
     <>
       <hemisphereLight args={["#3A4870", "#101012", 1.1 * k]} />

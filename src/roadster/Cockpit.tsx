@@ -35,11 +35,13 @@ const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const suit = () => mat("suit", () => new THREE.MeshPhysicalMaterial({ color: "#2B2E34", roughness: 0.78, sheen: 0.7, sheenColor: new THREE.Color("#8E98A8") }));
 const suitStripe = () => mat("suitStripe", () => new THREE.MeshStandardMaterial({ color: "#E9ECEF", roughness: 0.6 }));
 const goldTrim = () => mat("goldTrim", () => new THREE.MeshPhysicalMaterial({ color: "#C9A24A", metalness: 0.7, roughness: 0.32, clearcoat: 0.6 }));
-export const glove = () => mat("glove", () => new THREE.MeshPhysicalMaterial({ color: "#232429", roughness: 0.6, sheen: 0.35, sheenColor: new THREE.Color("#5A6270") }));
+export const glove = () => mat("glove", () => new THREE.MeshPhysicalMaterial({ color: "#34363D", roughness: 0.62, sheen: 0.3, sheenColor: new THREE.Color("#6A7280") }));
 const paper = () => mat("cup", () => new THREE.MeshStandardMaterial({ color: "#F4F1EA", roughness: 0.85 }));
 const sleeve = () => mat("cupSleeve", () => new THREE.MeshStandardMaterial({ color: "#8E6A45", roughness: 0.95 }));
 export const coffee = () =>
   mat("coffee", () => new THREE.MeshPhysicalMaterial({ color: "#3A1D0C", roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.8, sheen: 0.4, sheenColor: new THREE.Color("#8A4A20") }));
+/** Dark satin metal for the cockpit's small parts (bright metal in there catches the spots and glares). */
+const satinMetal = () => mat("satinMetal", () => new THREE.MeshStandardMaterial({ color: "#3A3D44", metalness: 0.5, roughness: 0.62 }));
 const ambient = (k: number) => M.light("ambient", "#9FC8FF", 1.1 * k);
 
 // --------------------------------------------------------------------------------------- the screens
@@ -316,13 +318,13 @@ const Seat: React.FC<{ x: number; harness?: boolean }> = ({ x, harness }) => {
     <group position={[x, 0.2, 0.3]}>
       <mesh geometry={g.cushion} material={M.suede()} position={[0, 0.06, -0.12]} />
       {[-1, 1].map((s) => (
-        <mesh key={s} geometry={g.thighB} material={M.carbon()} position={[s * 0.22, 0.1, -0.12]} />
+        <mesh key={s} geometry={g.thighB} material={M.carbonIn()} position={[s * 0.22, 0.1, -0.12]} />
       ))}
       <group position={[0, 0.08, 0.14]} rotation={[-0.3, 0, 0]}>
         <mesh geometry={g.back} material={M.suede()} position={[0, 0.36, 0]} />
-        <mesh geometry={g.shell} material={M.carbon()} position={[0, 0.38, 0.05]} />
+        <mesh geometry={g.shell} material={M.carbonIn()} position={[0, 0.38, 0.05]} />
         {[-1, 1].map((s) => (
-          <mesh key={s} geometry={g.bolster} material={M.carbon()} position={[s * 0.235, 0.28, -0.03]} rotation={[0, -s * 0.35, 0]} />
+          <mesh key={s} geometry={g.bolster} material={M.carbonIn()} position={[s * 0.235, 0.28, -0.03]} rotation={[0, -s * 0.35, 0]} />
         ))}
         {/* the gold stripe and the harness slots */}
         <mesh material={goldTrim()} position={[0, 0.36, -0.037]} scale={[0.012, 0.6, 0.004]}>
@@ -356,15 +358,15 @@ const Yoke: React.FC<{ turn: number }> = ({ turn }) => {
   }, []);
   return (
     <group position={YOKE_C} rotation={[YOKE_TILT, 0, 0]}>
-      <mesh geometry={g.col} material={M.gloss()} position={[0, 0, -0.12]} />
+      <mesh geometry={g.col} material={M.satin()} position={[0, 0, -0.12]} />
       <group rotation={[0, 0, turn]}>
-        <mesh geometry={g.hub} material={M.gloss()} />
-        <mesh geometry={g.bar} material={M.carbon()} position={[0, -0.008, 0]} />
+        <mesh geometry={g.hub} material={M.satin()} />
+        <mesh geometry={g.bar} material={M.carbonIn()} position={[0, -0.008, 0]} />
         {[-1, 1].map((s) => (
           <group key={s} position={[s * 0.165, 0.014, 0]} rotation={[0, 0, -s * 0.16]}>
             <mesh geometry={g.grip} material={M.suede()} />
-            <mesh geometry={g.paddle} material={M.titanium()} position={[-s * 0.028, 0.045, -0.032]} />
-            <mesh geometry={g.wheel} material={M.titanium()} position={[-s * 0.03, 0.03, 0.02]} />
+            <mesh geometry={g.paddle} material={satinMetal()} position={[-s * 0.028, 0.045, -0.032]} />
+            <mesh geometry={g.wheel} material={satinMetal()} position={[-s * 0.03, 0.03, 0.02]} />
           </group>
         ))}
         <mesh material={M.light("yokeBtn", "#FF3B30", 0.9)} position={[0.028, 0.008, 0.0155]} rotation={[Math.PI / 2, 0, 0]}>
@@ -417,7 +419,7 @@ export const Cup: React.FC<{ tilt: [number, number]; float: number; t: number; s
   // the floating blob: wobbling, with a few droplets drifting round it
   const blobY = CUP_H + float - 0.012;
   const wob = (k: number, f: number) => 1 + k * Math.sin(t * f);
-  const blobR = 0.036 * Math.cbrt(out);
+  const blobR = 0.046 * Math.cbrt(out);
   // the landing's splash: a crown of drops thrown up and out, falling back under the thrusters' g
   const crown: THREE.Vector3[] = [];
   if (splash > 0 && splash < 0.4) {
@@ -546,7 +548,7 @@ export const handGoals = (w: number, turn: number) => {
   const huh: HandGoal = { at: EYE.clone().add(V3(0.16, -0.4, -0.36)), fingers: V3(-0.2, 0, -1), palm: V3(0, 1, 0), pose: OPEN };
   const huhL: HandGoal = { at: EYE.clone().add(V3(-0.2, -0.42, -0.34)), fingers: V3(0.2, 0, -1), palm: V3(0, 1, 0), pose: OPEN };
   const yawT = THREE.MathUtils.degToRad(30);
-  const thumb: HandGoal = { at: EYE.clone().add(V3(0.04, -0.2, -0.42).applyAxisAngle(V3(0, 1, 0), yawT)), fingers: V3(-1, 0, -0.25).applyAxisAngle(V3(0, 1, 0), yawT), palm: V3(0, 0, 1).applyAxisAngle(V3(0, 1, 0), yawT), pose: THUMBS_UP };
+  const thumb: HandGoal = { at: EYE.clone().add(V3(0.07, -0.13, -0.42).applyAxisAngle(V3(0, 1, 0), yawT)), fingers: V3(-1, 0, -0.25).applyAxisAngle(V3(0, 1, 0), yawT), palm: V3(0, 0, 1).applyAxisAngle(V3(0, 1, 0), yawT), pose: THUMBS_UP };
   const T = CUE_W;
   const stop2 = PCUE.stop2;
   const creep0 = PCUE.creep0;
@@ -688,7 +690,7 @@ export const Cockpit: React.FC<{ st: CarState; w: number; driver?: boolean; scre
       </mesh>
       <pointLight position={[CUP_AT.x, CUP_AT.y + 0.05, CUP_AT.z + 0.07]} color="#9FC8FF" intensity={0.05 * boot} distance={0.6} decay={2} />
       {/* the tub */}
-      <mesh material={M.carbon()} position={[0, 0.165, -0.24]} scale={[1.62, 0.02, 1.58]}>
+      <mesh material={M.carbonIn()} position={[0, 0.165, -0.24]} scale={[1.62, 0.02, 1.58]}>
         <boxGeometry args={[1, 1, 1]} />
       </mesh>
       <mesh geometry={doorL.geo} material={M.suede()} />
@@ -696,12 +698,12 @@ export const Cockpit: React.FC<{ st: CarState; w: number; driver?: boolean; scre
       {lineGeos.map((g, i) => (
         <mesh key={i} geometry={g} material={ambient(amb)} />
       ))}
-      <mesh material={M.gloss()} position={[0, 0.48, 0.555]} scale={[1.62, 0.64, 0.02]}>
+      <mesh material={M.satin()} position={[0, 0.48, 0.555]} scale={[1.62, 0.64, 0.02]}>
         <boxGeometry args={[1, 1, 1]} />
       </mesh>
       {/* the dash */}
       <mesh geometry={dash} material={M.suede()} />
-      <mesh material={M.carbon()} position={[0, 0.722, -0.652]} scale={[1.58, 0.012, 0.03]}>
+      <mesh material={M.carbonIn()} position={[0, 0.722, -0.652]} scale={[1.58, 0.012, 0.03]}>
         <boxGeometry args={[1, 1, 1]} />
       </mesh>
       <mesh material={ambient(amb)} position={[0, 0.64, -0.62]} scale={[1.5, 0.004, 0.004]}>
@@ -709,7 +711,7 @@ export const Cockpit: React.FC<{ st: CarState; w: number; driver?: boolean; scre
       </mesh>
       {/* the driver's two small screens on a carbon pod */}
       <group position={[-0.36, 0.735, -0.66]} rotation={[-0.38, 0, 0]}>
-        <mesh material={M.carbon()} position={[0, 0, -0.012]} scale={[0.4, 0.1, 0.02]}>
+        <mesh material={M.carbonIn()} position={[0, 0, -0.012]} scale={[0.4, 0.1, 0.02]}>
           <boxGeometry args={[1, 1, 1]} />
         </mesh>
         <mesh material={sL.m} position={[-0.098, 0, 0.0005]}>
@@ -721,7 +723,7 @@ export const Cockpit: React.FC<{ st: CarState; w: number; driver?: boolean; scre
       </group>
       {/* the centre touchscreen, turned toward him */}
       <group position={[0.07, 0.69, -0.62]} rotation={[-0.32, -0.32, 0]}>
-        <mesh material={M.gloss()} position={[0, 0, -0.008]} scale={[0.31, 0.2, 0.014]}>
+        <mesh material={M.satin()} position={[0, 0, -0.008]} scale={[0.31, 0.2, 0.014]}>
           <boxGeometry args={[1, 1, 1]} />
         </mesh>
         <mesh material={sC.m} position={[0, 0, 0.0005]}>
@@ -730,7 +732,7 @@ export const Cockpit: React.FC<{ st: CarState; w: number; driver?: boolean; scre
       </group>
       <Yoke turn={turn} />
       {/* the console: carbon, the cupholder, the guarded thrust switch */}
-      <mesh material={M.carbon()} position={[0, 0.3, -0.13]} scale={[0.24, 0.3, 0.98]}>
+      <mesh material={M.carbonIn()} position={[0, 0.3, -0.13]} scale={[0.24, 0.3, 0.98]}>
         <boxGeometry args={[1, 1, 1]} />
       </mesh>
       <mesh material={M.suede()} position={[0, 0.452, -0.13]} scale={[0.23, 0.01, 0.96]}>

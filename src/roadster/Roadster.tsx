@@ -287,6 +287,17 @@ export const Roadster: React.FC<{ st: CarState; parts?: RoadsterParts; children?
   const body = useMemo(bodyGeometry, []);
   const glass = useMemo(canopyGeometry, []);
   const frame = useMemo(canopyFrame, []);
+  const sill = useMemo(() => {
+    const zs: number[] = [];
+    for (let z = CANOPY_Z[0] + 0.02; z <= CANOPY_Z[1] - 0.02; z += 0.08) zs.push(z);
+    return [1, -1].map((sx) => {
+      const pts = zs.map((z) => {
+        const [x, y] = shoulderAt(z);
+        return new THREE.Vector3(sx * (x - 0.03), y - 0.004, z);
+      });
+      return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.028, 6, false);
+    });
+  }, []);
   const lightK = parts.lights ?? 1;
   const susp = st.susp;
   const wing = st.wing;
@@ -351,6 +362,10 @@ export const Roadster: React.FC<{ st: CarState; parts?: RoadsterParts; children?
               <mesh key={x} material={M.carbon()} position={[x, 0.3, 2.12]} scale={[0.012, 0.12, 0.2]}>
                 <boxGeometry args={[1, 1, 1]} />
               </mesh>
+            ))}
+            {/* the carbon sill along the cockpit's edge, both sides */}
+            {sill.map((g, i) => (
+              <mesh key={`sill${i}`} geometry={g} material={M.carbonIn()} />
             ))}
             {/* the hood's heat extractors: two shallow slotted vents */}
             {[-1, 1].map((sx) => (

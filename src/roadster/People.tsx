@@ -330,7 +330,7 @@ export const Starter: React.FC<{ w: number }> = ({ w }) => {
 /** The crew by the car as you walk up: one gives you a nod and a thumbs-up, one checks the car. */
 export const Crew: React.FC<{ w: number; you: THREE.Vector3 }> = ({ w, you }) => {
   const aAt = V3(-3.3, 0, -0.2);
-  const bAt = V3(-2.4, 0, -3.9);
+  const bAt = V3(-3.7, 0, -2.6);
   const k = 1.0;
   const hipY = 0.93 * k;
   const thumb = smooth(1.2, 1.6, w) * (1 - smooth(3.0, 3.4, w));
@@ -379,7 +379,7 @@ export const Operator: React.FC<{ w: number }> = ({ w }) => {
   const padAt = V3(0, hipY + 0.2, -0.3);
   const lAt = padAt.clone().add(V3(-0.075, -0.012, 0.03));
   const rAt0 = padAt.clone().add(V3(0.075, -0.012, 0.03));
-  const rUp = V3(0.2, hipY + 0.55, -0.3);
+  const rUp = V3(0.36, hipY + 0.5, -0.26);
   const rAt = rAt0.clone().lerp(rUp, thumb);
   const pose: Pose = {
     sit: true,
