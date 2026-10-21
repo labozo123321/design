@@ -379,6 +379,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           sun={F.light.sun ?? 0}
           sunAz={F.light.sunAz ?? 0.5}
           headlight={F.light.headlight ?? -1}
+          seam={F.light.seamGlow ?? 0}
         />
       )}
       <KnockPost look={{ time: t, ...F.look }} bloom={F.bloom} lens={macro ? { focus, aperture: 0.0035, maxR: 0.014 } : { focus, aperture: F.aperture }} />

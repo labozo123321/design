@@ -65,6 +65,8 @@ export type LightState = {
   snow?: number;
   /** a car's headlights sweeping through the front windows (0..1 across the sweep) */
   headlight?: number;
+  /** warm light out of the seam onto both faces (the payoff) */
+  seamGlow?: number;
 };
 
 /** Someone out of bed (sitting up, walking, lying down somewhere else), and what they carry. */
@@ -553,7 +555,17 @@ const b9 = (t: number): Frame => {
     walkers,
     floor,
     dress: { era: "2025", trex: smooth(55.6, 55.85, t), jolt: Math.max(...[55.0, 55.3, 55.6].map((k) => (t >= k ? Math.exp(-(t - k) / 0.05) : 0))), stars: 4, starGlow: 0.6 + 0.4 * gold, beds: { nora: { kind: "air", look: "air", spec: "air-wall" }, you: { kind: "twin", look: "guest" } } },
-    light: { hall: 0, street: 0.25, moon: 0.9, nightlight: 0, fill: 0.8 + 0.2 * gold, strings: 1 - smooth(66.75, 66.85, t), snow: 1 },
+    light: {
+      hall: 0,
+      street: 0.25,
+      moon: 0.9 - 0.3 * gold,
+      nightlight: 0,
+      fill: 0.8 + 0.1 * gold,
+      strings: 1 - smooth(66.75, 66.85, t),
+      snow: 1,
+      // the bloom out of the seam, settling to an ember that stays while they laugh
+      seamGlow: smooth(59.0, 59.2, t) * (1 - 0.7 * smooth(59.6, 61.0, t)) * (1 - smooth(62.4, 63.4, t)),
+    },
     cam: t < 62.4 ? PRESETS.two : camBetween(t, 62.4, 64.9, PRESETS.two, PRESETS.wide),
     look: mixLook(SLATE, WARM, gold),
     bloom: 0.55 + 0.25 * smooth(59.0, 59.3, t) * (1 - smooth(59.6, 60.6, t)),

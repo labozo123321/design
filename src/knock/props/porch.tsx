@@ -127,7 +127,7 @@ export type PorchRoofProps = Partial<RoofSpec> & { /** 0..1 rain-darkened and gl
  * rake ends, a fascia under the eave, a soffit, and the step flashing where it meets the wall. In the porch
  * frame (see the file note); width and depth/rise default to the house's.
  */
-export const PorchRoof: React.FC<PorchRoofProps> = ({ width = ROOF_DEFAULT.width, depth = ROOF_DEFAULT.depth, rise = ROOF_DEFAULT.rise, wet = 0, color = "#4E4A47" }) => {
+export const PorchRoof: React.FC<PorchRoofProps> = ({ width = ROOF_DEFAULT.width, depth = ROOF_DEFAULT.depth, rise = ROOF_DEFAULT.rise, wet = 0, color = "#6B6560" }) => {
   const F = roofFrame({ width, depth, rise });
   const geo = onceB(`b-roofGeo-${width}-${depth}-${rise}`, () => {
     const W = width / 2;
@@ -606,8 +606,8 @@ export const DryLeaves: React.FC<DryLeavesProps> = ({ width = ROOF_DEFAULT.width
       const q = r();
       const s = q < 0.38 ? F.S - 0.02 - 0.3 * r() * r() : q < 0.55 ? 0.04 + 0.22 * r() * r() : 0.05 + (F.S - 0.1) * r();
       const x = (r() - 0.5) * (width - 0.16);
-      const size = 0.05 + 0.05 * r();
-      const rad = size * 0.62;
+      const size = 0.085 + 0.06 * r();
+      const rad = size * 0.6;
       if (placed.some((p) => Math.hypot(p.x - x, p.s - s) < p.rad + rad)) continue;
       placed.push({ x, s, rad });
       const cell = Math.floor(r() * 8);
@@ -617,9 +617,9 @@ export const DryLeaves: React.FC<DryLeavesProps> = ({ width = ROOF_DEFAULT.width
       const gp: number[] = [];
       for (let i = 0; i < Math.round(count * 0.25); i++) {
         const x = (r() - 0.5) * (width - 0.1);
-        if (gp.some((p) => Math.abs(p - x) < 0.055)) continue;
+        if (gp.some((p) => Math.abs(p - x) < 0.07)) continue;
         gp.push(x);
-        const size = 0.04 + 0.012 * r();
+        const size = 0.05 + 0.014 * r();
         const cell = Math.floor(r() * 8);
         leaf(
           x,
@@ -692,11 +692,11 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
     const rank = (x: number, s: number) => {
       const u = (x + W) / width;
       const v = s / F.Stot;
-      let q = fbm(u * (width / 1.2), v * (F.Stot / 1.2), 4, 4, seed + 11);
+      let q = 0.5 * fbm(u * (width / 0.3), v * (F.Stot / 0.3), 4, 3, seed + 11) + 0.5 * fbm(u * (width / 0.9), v * (F.Stot / 0.9), 4, 3, seed + 12);
       // first in the lee of each butt and against the wall
       const k = Math.floor((F.Stot - s) / F.E);
       const fromButt = s - (F.Stot - (k + 1) * F.E);
-      q -= 0.28 * Math.exp(-fromButt / 0.018) + 0.3 * Math.exp(-s / 0.1);
+      q -= 0.3 * Math.exp(-fromButt / 0.02) + 0.25 * Math.exp(-s / 0.12);
       return q;
     };
     const gb = new GB();
@@ -716,7 +716,7 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
           const back = (p.z - 0.0026) / F.cosA;
           p = F.P(x, s - back, top);
         }
-        const al = clamp01((ak * 1.25 - 0.55 * (rank(x, s) + 0.15)) * 9 + 0.5);
+        const al = clamp01((ak * 1.8 - (rank(x, s) + 0.05)) * 12 + 0.5);
         r.push(gb.v(p, F.N, (x + W) * 2.2, s * 2.2, [1, 1, 1, ak < 0.004 ? 0 : al]));
       }
       grid.push(r);
@@ -783,7 +783,7 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
 
 // ======================================================================================= rain splashes
 const ringMat = () => mat("b-splashRing", () => new THREE.MeshBasicMaterial({ map: ringB(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: "#FFFFFF", toneMapped: false }));
-const dropMat = () => mat("b-splashDrop", () => new THREE.MeshStandardMaterial({ color: "#DCE8F4", roughness: 0.05, metalness: 0, envMap: envB(), envMapIntensity: 1.6, transparent: true, opacity: 0.8 }));
+const dropMat = () => mat("b-splashDrop", () => new THREE.MeshStandardMaterial({ color: "#E4EEF8", emissive: new THREE.Color("#5A6878"), roughness: 0.05, metalness: 0, envMap: envB(), envMapIntensity: 1.8, transparent: true, opacity: 0.9 }));
 
 export type RainSplashProps = Partial<RoofSpec> & { time: number; amount?: number; seed?: number };
 /**
@@ -793,7 +793,7 @@ export type RainSplashProps = Partial<RoofSpec> & { time: number; amount?: numbe
  */
 export const RainSplash: React.FC<RainSplashProps> = ({ width = ROOF_DEFAULT.width, depth = ROOF_DEFAULT.depth, rise = ROOF_DEFAULT.rise, time, amount = 1, seed = 1 }) => {
   const F = roofFrame({ width, depth, rise });
-  const MAX = 120;
+  const MAX = 220;
   const DROPS = 6;
   const meshes = useMemo(() => {
     const ring = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), ringMat(), MAX);
@@ -806,7 +806,7 @@ export const RainSplash: React.FC<RainSplashProps> = ({ width = ROOF_DEFAULT.wid
     return { ring, drop };
   }, []);
   const n = Math.round(MAX * clamp01(amount));
-  const life = 0.16;
+  const life = 0.13;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), F.N);
   const c = new THREE.Color();
@@ -822,22 +822,22 @@ export const RainSplash: React.FC<RainSplashProps> = ({ width = ROOF_DEFAULT.wid
     const s = 0.03 + hash3(i, cyc, 4) * (F.Stot - 0.06);
     const base = F.P(x, s, F.hMax(s - 0.03, s + 0.03) + 0.0012);
     const k = age / life;
-    const rr = 0.006 + 0.05 * Math.sqrt(k);
+    const rr = 0.004 + 0.02 * Math.sqrt(k);
     m.compose(base, q, V(rr * 2, rr * 2, 1));
     meshes.ring.setMatrixAt(ri, m);
-    c.setScalar(0.55 * (1 - k) * (1 - k));
+    c.setScalar(0.85 * (1 - k) * (1 - k));
     meshes.ring.setColorAt(ri, c);
     ri++;
     for (let d = 0; d < DROPS; d++) {
       const ang = (d / DROPS) * Math.PI * 2 + hash3(i, cyc, 5 + d) * 0.8;
-      const vh = 0.22 + 0.2 * hash3(i, cyc, 11 + d);
-      const vv = 0.45 + 0.4 * hash3(i, cyc, 17 + d);
+      const vh = 0.18 + 0.16 * hash3(i, cyc, 11 + d);
+      const vv = 0.4 + 0.35 * hash3(i, cyc, 17 + d);
       const up = vv * age - 4.9 * age * age;
       if (up < 0) continue;
       const dir = V(Math.cos(ang), 0, Math.sin(ang));
       const tang = dir.clone().sub(F.N.clone().multiplyScalar(dir.dot(F.N))).normalize();
       const p = base.clone().addScaledVector(tang, vh * age).addScaledVector(F.N, up + 0.002);
-      const sz = 0.0013 + 0.001 * hash3(i, cyc, 23 + d);
+      const sz = 0.0018 + 0.0014 * hash3(i, cyc, 23 + d);
       m.compose(p, new THREE.Quaternion(), V(sz, sz * 1.4, sz));
       meshes.drop.setMatrixAt(di, m);
       di++;

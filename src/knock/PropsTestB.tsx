@@ -245,28 +245,29 @@ const hallPiece: Piece = {
   name: "Hall: ceiling dome (cut, on) | (closed, off) · plug-in nightlight · dog bed",
   set: () => (
     <group>
-      <group position={[-0.55, ROOM.ceiling, -0.1]}>
+      <group position={[-0.55, ROOM.ceiling, -0.15]}>
         <CeilingFixture on={1} cut />
       </group>
-      <group position={[0.1, ROOM.ceiling, -0.1]}>
+      <group position={[0.15, ROOM.ceiling, -0.15]}>
         <CeilingFixture on={0} cut={false} />
       </group>
-      <WallStub x0={-1.2} x1={1.2} z0={0.45} z1={0.6} y1={0.9} outside={paint("#EDE6D8")} inside={paint("#EDE6D8")} />
-      <group position={[-0.45, 0, 0.45]}>
+      <WallStub x0={-1.3} x1={1.3} z0={-0.75} z1={-0.6} y1={1.0} outside={paint("#EDE6D8")} inside={paint("#EDE6D8")} />
+      <group position={[-0.5, 0, -0.6]} rotation={[0, Math.PI, 0]}>
         <HallNightlight on={1} />
       </group>
-      <group position={[0.55, 0, 0.0]}>
+      <group position={[0.55, 0, 0.1]}>
         <PuppyBed />
       </group>
-      <Floor w={2.6} d={2.0} c={V(0, 0, 0)} />
+      <Floor w={2.6} d={2.0} c={V(0, 0, 0.1)} />
     </group>
   ),
-  c: V(0, 1.0, 0),
+  c: V(0, 1.0, -0.1),
   r: 2.2,
-  warm: V(0.4, 1.2, 0.2),
-  over: over(V(0, 0.9, 0.05), 6.2),
-  q1: q34(V(-0.2, 1.2, 0), V(0.8, 0.25, 1.4), 4.2),
-  q2: q34(V(0.2, 0.5, 0.1), V(-0.2, 0.9, 1.0), 2.6),
+  warm: V(0.6, 1.9, 1.0),
+  over: over(V(0, 0.9, -0.1), 6.6),
+  q1: q34(V(-0.1, 1.1, -0.2), V(0.55, 1.15, 1.3), 4.8),
+  q2: q34(V(0.0, 0.2, -0.25), V(0.2, 0.75, 1.0), 2.0),
+  q2Label: "3/4 close (nightlight, dog bed) · day",
 };
 
 const banisterPiece: Piece = {
@@ -387,11 +388,11 @@ const CLOSE: Close[] = [
         <Floor w={2} d={1} c={V(0, 0, -0.6)} kind="#CFC3B2" />
       </group>
     ),
-    cam: q34(V(0, 1.25, 0), V(-0.4, 0.35, -1.0), 2.1),
+    cam: q34(V(0, 1.3, 0), V(-0.45, 0.4, -1.0), 2.6),
     mode: "night",
     c: V(0, 1.2, 0),
     r: 1.2,
-    warm: V(0.4, 1.7, -1.0),
+    warm: V(-0.5, 2.0, -1.4),
   },
   {
     label: "treadmill console, stop key, cord (day)",
@@ -434,7 +435,7 @@ const CLOSE: Close[] = [
         <Floor w={2} d={2} />
       </group>
     ),
-    cam: q34(V(0.3, 1.0, 0.25), V(0.15, 0.25, 1.0), 1.6),
+    cam: q34(V(0.36, 1.0, 0.1), V(0.9, 0.3, 1.0), 1.5),
     mode: "day",
     c: V(0.3, 1, 0.3),
     r: 1.4,

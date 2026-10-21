@@ -175,8 +175,9 @@ const faceN = () => {
 };
 
 const darkPlastic = () => mat("b-tm-dark", () => new THREE.MeshPhysicalMaterial({ color: "#2C2F34", roughness: 0.48, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
-const greyPlastic = () => mat("b-tm-grey", () => new THREE.MeshPhysicalMaterial({ color: "#5A5F66", roughness: 0.5, clearcoat: 0.15 }));
-const alu = () => mat("b-tm-alu", () => new THREE.MeshStandardMaterial({ color: "#D9DCDF", map: brushedTex(), metalness: 0.85, roughness: 0.34, envMap: envB(), envMapIntensity: 0.9 }));
+const greyPlastic = () => mat("b-tm-grey", () => new THREE.MeshPhysicalMaterial({ color: "#6E747B", roughness: 0.5, clearcoat: 0.15 }));
+const lightPlastic = () => mat("b-tm-light", () => new THREE.MeshPhysicalMaterial({ color: "#9AA0A7", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.35 }));
+const alu = () => mat("b-tm-alu", () => new THREE.MeshStandardMaterial({ color: "#D4D8DC", map: brushedTex(), metalness: 0.35, roughness: 0.36, envMap: envB(), envMapIntensity: 1.0 }));
 const chrome = () => mat("b-tm-chrome", () => new THREE.MeshStandardMaterial({ color: "#E4E6E8", metalness: 1, roughness: 0.16, envMap: envB(), envMapIntensity: 1.2 }));
 const steelTube = () => mat("b-tm-steel", () => new THREE.MeshPhysicalMaterial({ color: "#B9BDC2", metalness: 0.6, roughness: 0.32, clearcoat: 0.5, clearcoatRoughness: 0.2, envMap: envB(), envMapIntensity: 0.8 }));
 const rubber = () => mat("b-tm-rubber", () => new THREE.MeshStandardMaterial({ color: "#151517", roughness: 0.85 }));
@@ -384,18 +385,17 @@ const LAUNDRY: Item[] = [
   { at: 0.54, kind: "shirt", bar: "X", c: 0.07, shirt: "tee", m: () => fab("teeG", () => withRepeat(cottonTex("G", "#8F969C"), 4, 4), 0.95), hanger: "#F4F4F2", tilt: 0.02 },
   // shirts on the room-side grip
   { at: 0.6, kind: "shirt", bar: "L", c: -0.12, shirt: "tee", m: () => fab("teeN", () => withRepeat(cottonTex("N", "#2C3E5C"), 4, 4), 0.95), hanger: "#E25C8A", tilt: 0.03 },
-  { at: 0.65, kind: "sock", x: -0.08, z: 0.18, y: TREADMILL.beltTop, yaw: 0.5, m: () => fab("sockW", () => withRepeat(knitTex("sockW", "#E9E6E0"), 6, 6)) },
-  { at: 0.66, kind: "sock", x: 0.0, z: 0.26, y: TREADMILL.beltTop, yaw: 0.35, m: () => fab("sockW", () => withRepeat(knitTex("sockW", "#E9E6E0"), 6, 6)) },
+  { at: 0.65, kind: "sock", x: -0.065, z: -0.034, y: TREADMILL.beltTop, yaw: 1.394, m: () => fab("sockW", () => withRepeat(knitTex("sockW", "#E9E6E0"), 6, 6)) },
+  { at: 0.66, kind: "sock", x: 0.117, z: -0.086, y: TREADMILL.beltTop, yaw: -1.88, m: () => fab("sockW", () => withRepeat(knitTex("sockW", "#E9E6E0"), 6, 6)) },
   { at: 0.7, kind: "shirt", bar: "X", c: 0.01, shirt: "tee", m: () => fab("teeR", () => withRepeat(cottonTex("R", "#B8463A"), 4, 4), 0.95), hanger: "#F4F4F2", tilt: -0.02 },
-  { at: 0.72, kind: "sock", x: 0.12, z: 0.08, y: TREADMILL.beltTop, yaw: -0.9, m: () => fab("sockK", () => withRepeat(knitTex("sockK", "#2A2B2E"), 6, 6)) },
-  { at: 0.73, kind: "sock", x: 0.06, z: -0.02, y: TREADMILL.beltTop, yaw: -1.05, m: () => fab("sockK", () => withRepeat(knitTex("sockK", "#2A2B2E"), 6, 6)) },
+  { at: 0.72, kind: "sock", x: -0.097, z: 0.173, y: TREADMILL.beltTop, yaw: 1.347, m: () => fab("sockK", () => withRepeat(knitTex("sockK", "#2A2B2E"), 6, 6)) },
+  { at: 0.73, kind: "sock", x: 0.077, z: 0.117, y: TREADMILL.beltTop, yaw: -1.674, m: () => fab("sockK", () => withRepeat(knitTex("sockK", "#2A2B2E"), 6, 6)) },
   { at: 0.76, kind: "shirt", bar: "L", c: -0.165, shirt: "button", m: () => fab("shirtP", () => withRepeat(cottonTex("P", "#3F5F45", "plaid", "#C9B15A"), 3, 3), 0.9), hanger: "#F4F4F2", tilt: -0.04 },
   { at: 0.78, kind: "fold", x: 0.0, y: TREADMILL.beltTop, z: 0.55, size: [0.36, 0.045, 0.28], yaw: 0.12, m: () => fab("denim", () => withRepeat(denimTex(), 3, 3), 0.9, 0.2) },
   { at: 0.82, kind: "shirt", bar: "X", c: -0.05, shirt: "button", m: () => fab("shirtY", () => withRepeat(cottonTex("Y", "#E8D9A8", "stripe", "#B7924A"), 4, 4), 0.85), hanger: "#2F6FB8", tilt: 0.03 },
-  { at: 0.84, kind: "sock", x: -0.31, z: 0.32, y: 0.1935, yaw: 0.1, m: () => fab("sockG", () => withRepeat(knitTex("sockG", "#6C8F6A"), 6, 6)) },
+  { at: 0.84, kind: "sock", x: -0.13, z: 0.491, y: TREADMILL.beltTop + 0.0454, yaw: 1.151, m: () => fab("sockG", () => withRepeat(knitTex("sockG", "#6C8F6A"), 6, 6)) },
   { at: 0.88, kind: "shirt", bar: "L", c: -0.205, shirt: "tee", m: () => fab("teeL", () => withRepeat(cottonTex("L", "#C9B6DC"), 4, 4), 0.95), hanger: "#F4F4F2", tilt: 0.02 },
   { at: 0.94, kind: "fold", x: 0.0, y: 0.2706, z: -0.69, size: [0.34, 0.03, 0.2], yaw: -0.05, m: () => fab("towelC", () => terryTex("C", "#8FB59A", "#F2F0E8")) },
-  { at: 0.97, kind: "sock", x: 0.18, z: 0.62, y: TREADMILL.beltTop + 0.045, yaw: 1.4, m: () => fab("sockG", () => withRepeat(knitTex("sockG", "#6C8F6A"), 6, 6)) },
 ];
 
 const hangerMat = (c: string) => mat(`b-hanger-${c}`, () => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.35, clearcoat: 0.4 }));
@@ -469,7 +469,7 @@ export const Treadmill: React.FC<TreadmillProps> = ({ belt = 0, laundry = 0, on 
   return (
     <group>
       {/* motor hood, its vent panel, the uprights' boots */}
-      <mesh geometry={geoB("b-tm-hood", () => new RoundedBoxGeometry(0.75, 0.22, 0.33, 4, 0.04))} position={[0, 0.16, -0.685]} material={darkPlastic()} castShadow receiveShadow />
+      <mesh geometry={geoB("b-tm-hood", () => new RoundedBoxGeometry(0.75, 0.22, 0.33, 4, 0.04))} position={[0, 0.16, -0.685]} material={lightPlastic()} castShadow receiveShadow />
       <mesh position={[0, 0.2706, -0.685]} rotation={[-Math.PI / 2, 0, 0]} material={hoodDecal()} receiveShadow>
         <planeGeometry args={[0.58, 0.22]} />
       </mesh>
@@ -521,7 +521,7 @@ export const Treadmill: React.FC<TreadmillProps> = ({ belt = 0, laundry = 0, on 
       {[-1, 1].map((s) => (
         <mesh key={`up${s}`} geometry={uprightGeo(s)} material={steelTube()} castShadow receiveShadow />
       ))}
-      <mesh geometry={consoleGeo()} material={darkPlastic()} castShadow receiveShadow />
+      <mesh geometry={consoleGeo()} material={lightPlastic()} castShadow receiveShadow />
       <mesh position={faceMid.clone().addScaledVector(n, 0.0009)} quaternion={faceQ} material={consoleMat(on)}>
         <planeGeometry args={[0.64, 0.24]} />
       </mesh>

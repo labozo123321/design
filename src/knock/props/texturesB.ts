@@ -110,9 +110,10 @@ export const withRepeat = (t: THREE.Texture, rx: number, ry: number) => {
   return c;
 };
 
+/** A CSS colour's sRGB bytes (THREE.Color holds linear values; getHex() gives sRGB back). */
 export const hexRGB = (h: string): [number, number, number] => {
-  const c = new THREE.Color(h);
-  return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)];
+  const n = new THREE.Color(h).getHex();
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
 const cl255 = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
 export const shade = (c: [number, number, number], k: number, add = 0): [number, number, number] => [cl255(c[0] * k + add), cl255(c[1] * k + add), cl255(c[2] * k + add)];
@@ -475,7 +476,7 @@ export const beltTex = () =>
     (x, y) => {
       const k1 = (x + y) % 8 < 1 ? 1 : 0;
       const k2 = (x - y + 4096) % 8 < 1 ? 1 : 0;
-      let v = 30 + 9 * (k1 | k2) + 7 * (hash3(x, y, 3) - 0.5) + 10 * (fbm(x / 256, y / 1024, 4, 3, 5) - 0.5);
+      let v = 40 + 10 * (k1 | k2) + 7 * (hash3(x, y, 3) - 0.5) + 10 * (fbm(x / 256, y / 1024, 4, 3, 5) - 0.5);
       // the lap seam: a diagonal line across at about v = 0.62
       const sy = 0.62 * 1024 + (x - 128) * 0.35;
       if (Math.abs(y - sy) < 1.6) v = 58;
@@ -517,7 +518,7 @@ export const brushedTex = () =>
 /** The motor hood's top: moulded dark-grey plastic with a slot vent grille and a parting line. */
 export const hoodTex = () =>
   canvasTex("b-hood", 512, 256, (g, w, h) => {
-    g.fillStyle = "#3A3D42";
+    g.fillStyle = "#5E646B";
     g.fillRect(0, 0, w, h);
     const r = rand(12);
     for (let i = 0; i < 6000; i++) {
@@ -550,14 +551,18 @@ export const hoodTex = () =>
  * a start key, programme keys and a speaker grille. Generic: icons only, no brand. */
 export const consoleTex = (on: boolean) =>
   canvasTex(`b-console-${on ? 1 : 0}`, 1024, 384, (g, w, h) => {
+    g.fillStyle = "#8F959C";
+    g.fillRect(0, 0, w, h);
     const bg = g.createLinearGradient(0, 0, 0, h);
     bg.addColorStop(0, "#2B2E33");
     bg.addColorStop(1, "#1C1E22");
     g.fillStyle = bg;
-    g.fillRect(0, 0, w, h);
-    // a lighter bezel band at the top
-    g.fillStyle = "#4A4E55";
-    g.fillRect(0, 0, w, 14);
+    g.beginPath();
+    g.roundRect(10, 10, w - 20, h - 20, 26);
+    g.fill();
+    g.strokeStyle = "rgba(255,255,255,0.18)";
+    g.lineWidth = 2;
+    g.stroke();
     // the display window
     const dx = 312;
     const dy = 46;
@@ -867,7 +872,7 @@ export type Course = { s0: number; s1: number; off: number };
 /** The texture for an asphalt-shingle roof of width W by slope length S laid in `courses` (s from the top,
  * u across). Three-tab strips 0.914 m long with 0.305 m tabs; each course's keyways offset half a tab from
  * the last; each tab its own blend of granules; the odd darker strip, faint streaks. Returns colour and bump. */
-export const shingleTex = (key: string, W: number, S: number, courses: Course[], base = "#4E4A47") => {
+export const shingleTex = (key: string, W: number, S: number, courses: Course[], base = "#6B6560") => {
   const pxm = Math.min(380, 4096 / W);
   const w = Math.min(4096, Math.ceil(W * pxm));
   const h = Math.min(2048, Math.ceil(S * pxm));
@@ -893,8 +898,8 @@ export const shingleTex = (key: string, W: number, S: number, courses: Course[],
     let col = shade(b, 0.86 + 0.24 * hk + (strip < 0.12 ? -0.12 : 0));
     // granules: a speckle of darker and lighter grains, a few rust/olive ones (weathered-wood blend)
     const g = hash3(x, y, 13);
-    if (g < 0.16) col = shade(col, 0.62);
-    else if (g > 0.9) col = shade(col, 1.32);
+    if (g < 0.12) col = shade(col, 0.72);
+    else if (g > 0.9) col = shade(col, 1.25);
     else if (g > 0.88) col = mixC(col, [120, 84, 58], 0.6);
     else if (g > 0.865) col = mixC(col, [96, 100, 72], 0.5);
     // the keyway slots: the course below shows through, in shadow

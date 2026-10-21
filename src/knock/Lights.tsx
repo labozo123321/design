@@ -22,7 +22,7 @@ const spot = (color: string, angle: number, penumbra: number, shadow = true) => 
   return l;
 };
 
-export const NightLights: React.FC<{ t: number; hall: number; street?: number; moon?: number; nightlight?: number; fill?: number; strings?: number; lightning?: number; sun?: number; sunAz?: number; headlight?: number }> = ({
+export const NightLights: React.FC<{ t: number; hall: number; street?: number; moon?: number; nightlight?: number; fill?: number; strings?: number; lightning?: number; sun?: number; sunAz?: number; headlight?: number; seam?: number }> = ({
   hall,
   street = 1,
   moon = 0,
@@ -33,6 +33,7 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
   sun = 0,
   sunAz = 0.5,
   headlight = -1,
+  seam = 0,
 }) => {
   const L = useMemo(() => {
     const st = spot("#CFDDF5", 0.42, 0.6);
@@ -63,7 +64,10 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
     sn.target.position.set(0, 0, -1.8);
     // a car's headlights passing in the street: the window shapes slide across the floors
     const hd = spot("#FFE6C4", 0.3, 0.45);
-    return { st, mn, hl, nl, lt, sn, hd };
+    // the seam's bloom in the payoff: warm light out of the wall between the two pillows, onto both faces
+    const sm = new THREE.PointLight("#FFD3A0", 1, 1.3, 1.6);
+    sm.position.set(0, 0.78, -3.18);
+    return { st, mn, hl, nl, lt, sn, hd, sm };
   }, []);
   L.lt.intensity = 1.1 * lightning;
   L.sn.intensity = 3.2 * sun;
@@ -78,6 +82,7 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
     L.hd.position.set(10 - 20 * u, 5.5, 10);
     L.hd.target.position.set((10 - 20 * u) * 0.12, 0, -2.0);
   }
+  L.sm.intensity = 0.16 * seam;
   L.st.intensity = 1.5 * street;
   L.mn.intensity = 1.1 * moon;
   // the hallway's ceiling light, or (2025) the Christmas string lights along the banister: warmer, dimmer
@@ -92,6 +97,7 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
       <primitive object={L.lt.target} />
       <primitive object={L.sn} />
       <primitive object={L.hd} />
+      <primitive object={L.sm} />
       <primitive object={L.hd.target} />
       <primitive object={L.sn.target} />
       <directionalLight position={[1.5, 9, 2.5]} intensity={0.35 * fill} color="#9FB2E0" />
