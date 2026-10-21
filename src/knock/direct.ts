@@ -96,6 +96,8 @@ export type Frame = {
   seam: number;
   /** the camera is inside the wall's cavity, looking down the slot (1) */
   macro?: number;
+  /** the note in a sleeper's near hand (drawn at the hand) */
+  noteHand?: { sib: "nora" | "you" } | null;
   /** the "sorry" note: where it is (world), how open, its spin */
   note?: { pos: THREE.Vector3; open: number; rot: THREE.Euler } | null;
   /** Moose */
@@ -143,7 +145,7 @@ const gripEdge = (sib: Sib, which: "near" | "far", side: -1 | 1, edge: number, l
   const eyeH = 1.555 * k + Math.abs(sib.who.shape.chinY);
   return {
     body: true,
-    at: V3(sgnBody * 0.075 * k, Math.min(eyeH - 0.1, edge * eyeH), -(0.13 * k + 0.06 + lift)),
+    at: V3(sgnBody * 0.075 * k, Math.min(eyeH - 0.15, edge * eyeH), -(0.13 * k + 0.06 + lift)),
     hand: { curl: [1.3, 1.35, 1.4, 1.4], spread: 0.0, thumbOut: 0.2, thumbCurl: 0.8 },
     palm: V3(0, -1, 0.3),
     pole: V3(sgnBody, -0.4, 0.5),
@@ -204,14 +206,15 @@ const b1 = (t: number): Frame => {
   ]);
   const scared = 1 - smooth(4.9, 5.3, t);
   const grin = smooth(6.75, 7.05, t);
+  // (to the chin, then pulled up to the mouth when he squeezes his eyes shut: his face always shows)
   const yCov = track(t, [
-    [0, 0.93],
-    [3.3, 0.93],
-    [3.5, 0.97],
-    [5.2, 0.97],
-    [5.5, 0.8],
-    [7.3, 0.8],
-    [7.8, 0.9],
+    [0, 0.84],
+    [3.3, 0.84],
+    [3.5, 0.88],
+    [5.2, 0.88],
+    [5.5, 0.78],
+    [7.3, 0.78],
+    [7.8, 0.84],
   ]);
   const yGrip = gripEdge(y, "near", 1, yCov, 0.01 * smooth(3.3, 3.5, t));
   const yNear = knockArm(t, 1, 5.7, 6.7, yGrip, true, 0, 0.02);
@@ -716,11 +719,16 @@ const b2 = (t: number): Frame => {
   // she pulls the note from under her pillow and pushes it into the gap at the top of the outlet cover
   const toNote: Reach = { at: V3(-0.2, 0.6, -3.38), hand: { curl: [0.3, 0.35, 0.9, 1.0], spread: 0.0, thumbOut: 0.3, thumbCurl: 0.2 }, palm: V3(0, -1, 0), pole: V3(0.3, 0.6, 1) };
   const toGap: Reach = { at: V3(-0.085, 0.64, -2.96), hand: { curl: [0.3, 0.35, 0.9, 1.0], spread: 0.0, thumbOut: 0.3, thumbCurl: 0.2 }, palm: V3(1, 0, 0), pole: V3(0, 0.4, 1) };
+  void toNote;
+  // (the note held up off her chest, then out to the outlet beside her shoulder and into the gap)
+  const held: Reach = { body: true, at: V3(0.02, 1.3 * n.k, -(0.14 * n.k + 0.16)), hand: { curl: [0.3, 0.35, 0.9, 1.0], spread: 0, thumbOut: 0.3, thumbCurl: 0.2 }, palm: V3(0, 0, -1), pole: V3(-1, -0.4, 0.4) };
   const nNear: ArmSpec =
     t < 13.0
       ? note <= 0
         ? { rest: nRest }
-        : { rest: nRest, to: push > 0 ? { ...toGap, at: toNote.at.clone().lerp(toGap.at, smoother(push)) } : toNote, k: note * (1 - smooth(12.25, 12.5, t)) }
+        : push <= 0
+          ? { rest: nRest, to: held, k: note * (1 - smooth(12.25, 12.5, t)) }
+          : { rest: held, to: toGap, k: smoother(push) * (1 - smooth(12.25, 12.5, t)) }
       : knockArm(t, -1, 13.0, 13.5, nRest, false);
   const yNear = knockArm(t, 1, 13.4, 13.9, crossArms(y, "near", 1), true);
   const scowl = { brow: -0.7, smile: -0.35, eyePitch: 0.25, squint: 0.15 };
@@ -737,6 +745,7 @@ const b2 = (t: number): Frame => {
     dog: { at: V3(-1.5, 0, -3.33), yaw: 0.6, pose: { kind: "curl", t }, collar: false },
     macro,
     note: n2,
+    noteHand: t >= 11.45 && t < 12.25 ? { sib: "nora" } : null,
   };
 };
 
@@ -748,18 +757,18 @@ const b3 = (t: number): Frame => {
   const y = YOU[11];
   const strike = (a: number, w = 0.1) => (t >= a && t < a + w ? 1 - (t - a) / w : 0) + (t >= a + 0.13 && t < a + 0.18 ? 0.6 : 0);
   const lightning = Math.max(strike(15.0), strike(15.8), strike(19.5), 0.35 * strike(21.0, 0.15));
-  const yKnocks = knockArm(t, 1, 15.9, 17.3, gripEdge(y, "near", 1, 0.92), false);
+  const yKnocks = knockArm(t, 1, 15.9, 17.3, gripEdge(y, "near", 1, 0.82), false);
   const peek = smooth(21.65, 21.9, t) * (1 - smooth(22.15, 22.4, t));
   const back = smooth(22.2, 22.45, t);
   const you: SibFrame = {
     s: y,
     side: 1,
-    covers: 0.92 - 0.2 * smooth(15.8, 16.0, t),
+    covers: 0.82 - 0.12 * smooth(15.75, 16.15, t),
     lie: {
       roll: t < 15.85 ? 0 : t < 17.5 ? 0.5 : -0.55 * peek + 0.5 * (1 - smooth(17.5, 18.0, t)) * (1 - peek),
       slide: -0.25 * peek,
       near: yKnocks,
-      far: { rest: gripEdge(y, "far", 1, 0.92) },
+      far: { rest: gripEdge(y, "far", 1, 0.82) },
       e: { lidL: back > 0.5 ? 1 : 0, lidR: back > 0.5 ? 1 : 0, brow: 0.6 * (1 - back), eyePitch: 0.2, eyeYaw: peek > 0.3 ? 0.4 : 0, smile: 0.2 * back },
       headPitch: -0.15 * peek,
     },
@@ -790,15 +799,15 @@ const b3 = (t: number): Frame => {
     };
     const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, near: null, far: null });
     // (her feet stop short of the quilt she's thrown down to the foot of the bed)
-    const sitUp: Posed = { ...nBase, hip: V3(-0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(-0.6, 0.56, -2.04), V3(-0.42, 0.56, -2.04)] };
+    const sitUp: Posed = { ...nBase, hip: V3(-0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(-0.42, 0.56, -2.04), V3(-0.6, 0.56, -2.04)] };
     const edge: Posed = { ...nBase, ...bundleArms, hip: V3(-0.86, 0.6, -2.95), q: facing(V3(-1, 0, 0.35)), feet: [V3(-1.26, 0.06, -2.85), V3(-1.22, 0.06, -3.1)] };
-    const path = [V3(-1.18, 0, -3.0), V3(-1.5, 0, -3.35), V3(-1.52, 0, -3.95), V3(-1.15, 0, -4.32), V3(1.15, 0, -4.32), V3(1.52, 0, -3.95), V3(1.52, 0, -3.35), V3(1.42, 0, -2.75)];
+    const path = [V3(-1.18, 0, -3.0), V3(-1.5, 0, -3.35), V3(-1.52, 0, -3.95), V3(-1.15, 0, -4.32), V3(1.15, 0, -4.32), V3(1.52, 0, -3.95), V3(1.52, 0, -3.35), V3(1.36, 0, -2.75)];
     const stand = standAt(n, path[0], V3(-0.5, 0, -1), { ...nBase, ...bundleArms });
     const walkT0 = 18.6;
     const speed = 2.7;
     const total = path.reduce((a, q, i) => (i ? a + q.distanceTo(path[i - 1]) : 0), 0);
     const arrive = walkT0 + total / speed;
-    const spot: Spot = { x: 1.42, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
+    const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
     let p: Posed | null = null;
     let carry: "bundle" | null = "bundle";
     if (t < 18.3) p = blendPosed({ ...lying, ...nBase }, sitUp, (t - 18.0) / 0.3);
@@ -831,7 +840,7 @@ const b3 = (t: number): Frame => {
     dog: mooseIn2009(t, n),
     // (her quilt stays thrown back on the bed while she sits up; at 18.4 she gathers it and her pillow)
     dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 18.0 ? 1 : 0, bare: t >= 18.4, noPillow: t >= 18.4 }, you: { kind: "twin", look: "you2009" } } },
-    light: { hall: 0.12, street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
+    light: { hall: 0.12 + 0.25 * smooth(18.2, 18.6, t), street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
     cam,
     look: { exposure: 1.3, sat: 0.92, con: 1.05, tint: [0.92, 0.95, 1.1], shadow: [0.85, 0.9, 1.2], vig: 0.36, grain: 0.017 },
     bloom: 0.55,
@@ -844,7 +853,7 @@ const b3 = (t: number): Frame => {
  * trotting after her along the hall, through your door, round her on the outer side, to flop across her
  * ankles facing the camera, eyes closing. */
 const mooseIn2009 = (t: number, n: Sib): Dog | null => {
-  const spot: Spot = { x: 1.42, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
+  const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
   const legs = lieToPosed(n, 1, { roll: -0.9, spot, e: {}, near: null, far: null }).feet;
   const ankle = legs[0].clone().lerp(legs[1], 0.5);
   // the quilt over her legs is a ridge the dog drapes over

@@ -35,9 +35,9 @@ export const Captions: React.FC<{ t: number }> = ({ t }) => {
       <defs>
         <filter id="kn-cap-shadow" x="-10%" y="-60%" width="120%" height="220%">
           {/* the spec's soft shadow (0 2 12 px, 55%), plus a faint tight one so letters hold over the wall's white cut top */}
-          <feDropShadow dx="0" dy="2" stdDeviation="6" floodColor="#000" floodOpacity="0.55" result="soft" />
-          <feGaussianBlur in="SourceAlpha" stdDeviation="1.2" result="tightA" />
-          <feFlood floodColor="#000" floodOpacity="0.32" />
+          <feDropShadow dx="0" dy="2" stdDeviation="6" floodColor="#000" floodOpacity="0.7" result="soft" />
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="tightA" />
+          <feFlood floodColor="#000" floodOpacity="0.7" />
           <feComposite in2="tightA" operator="in" result="tight" />
           <feMerge>
             <feMergeNode in="tight" />

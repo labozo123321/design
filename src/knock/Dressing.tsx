@@ -144,15 +144,15 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
       ) : null}
 
       {/* posters over the headboards (edge-on from above: thin strips of colour on the back wall) */}
-      {e <= at("2011") ? (
-        <group position={[-0.56, 1.5, ROOM.back + 0.001]}>
-          <Poster kind={e === at("2011") ? "band" : "unicorn"} />
-        </group>
-      ) : null}
-      {e <= at("2014") ? (
-        <group position={[0.56, 1.5, ROOM.back + 0.001]}>
-          <Poster kind={e <= at("2004b") ? "trex" : "soccer"} />
-        </group>
+      {e <= at("2004b") ? (
+        <>
+          <group position={[-0.56, 1.5, ROOM.back + 0.001]}>
+            <Poster kind="unicorn" />
+          </group>
+          <group position={[0.56, 1.5, ROOM.back + 0.001]}>
+            <Poster kind="trex" />
+          </group>
+        </>
       ) : null}
 
       {/* 2004, the first night: her taped boxes; your open box of toys */}

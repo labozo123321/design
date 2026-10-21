@@ -126,7 +126,9 @@ export const bodyCapsules = (s: Sib, f: ReturnType<typeof lieFrame>, knees: numb
     caps.push({ a: w(hip), b: w(knee), r: 0.085 * k });
     caps.push({ a: w(knee), b: w(foot), r: 0.07 * k });
     // the foot itself, pointing up out of the line of the leg
-    caps.push({ a: w(foot), b: w(foot.clone().add(V(0, 0.03, -0.24 * k))), r: 0.075 * k });
+    caps.push({ a: w(foot), b: w(foot.clone().add(V(0, 0.04, -0.3 * k))), r: 0.09 * k });
+    // the shoe itself sits below the ankle (its sole toward the foot of the bed), toes up
+    caps.push({ a: w(foot.clone().add(V(0, -0.1 * k, -0.02 * k))), b: w(foot.clone().add(V(0, -0.08 * k, -0.27 * k))), r: 0.085 * k });
   }
   return caps;
 };
@@ -286,7 +288,9 @@ export const clearOfWall = (a: Arm, sd: number, k: number, room: -1 | 1, toWorld
   return { ...a, at };
 };
 
-export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = ({ s, side, st, t }) => {
+/** A lying body's arms as the Figure will draw them (rest/target blended, kept out of the wall), in its
+ * body frame, with the body itself. */
+export const lyingArms = (s: Sib, side: -1 | 1, st: Lie) => {
   const b = lieBody(s, side, st);
   const f = b.f;
   // the arm nearer the wall: Nora's left, your right (the body's -x is its left)
@@ -309,6 +313,40 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     const hand = k > 0.5 ? g.hand : r.hand;
     return { at: r.at.clone().lerp(g.at, k), hand, palm: mix(r.palm, g.palm), pole: mix(r.pole, g.pole) };
   };
+  const toW = (p: THREE.Vector3) => p.clone().applyQuaternion(f.q).add(f.pos);
+  const toL = (d: THREE.Vector3) => dirToBody(d, f);
+  const clamp = (a: Arm | undefined, key: "armL" | "armR") => (a ? clearOfWall(a, key === "armL" ? -1 : 1, s.k, side, toW, toL) : undefined);
+  return { b, toW, nearSide, farSide, near: clamp(arm(st.near), nearSide), far: clamp(arm(st.far), farSide) };
+};
+
+/** An arm's capsules in the world (upper arm, forearm, hand), from the same IK the Figure uses, so covers
+ * drape over arms that lie under them instead of letting them through. sd: the arm's side (-1 left). */
+export const armCapsules = (a: Arm | undefined, sd: number, k: number, toW: (p: THREE.Vector3) => THREE.Vector3): Capsule[] => {
+  // (with no arm given the Figure lets it hang at the side: along the body toward the hips)
+  const at = a ? a.at : V(sd * 0.24 * k, 0.82 * k, -0.04 * k);
+  const S = V(sd * 0.168 * k, 1.374 * k, 0);
+  const la = 0.3 * k;
+  const lb = 0.27 * k;
+  const pole = (a?.pole ?? V(sd, -0.6, 0.6)).clone().normalize();
+  const d0 = at.clone().sub(S);
+  const d = Math.min(la + lb - 1e-3, Math.max(Math.abs(la - lb) + 1e-3, d0.length()));
+  const dir = d0.normalize();
+  const W = S.clone().addScaledVector(dir, d);
+  const cosA = (la * la + d * d - lb * lb) / (2 * la * d);
+  const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+  const perp = pole.clone().addScaledVector(dir, -pole.dot(dir)).normalize();
+  const E = S.clone().addScaledVector(dir, la * cosA).addScaledVector(perp, la * sinA);
+  const fore = W.clone().sub(E).normalize();
+  return [
+    { a: toW(S), b: toW(E), r: 0.05 * k },
+    { a: toW(E), b: toW(W), r: 0.042 * k },
+    { a: toW(W), b: toW(W.clone().addScaledVector(fore, 0.12 * k)), r: 0.045 * k },
+  ];
+};
+
+export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = ({ s, side, st, t }) => {
+  const { b, nearSide, farSide, near: nearArm, far: farArm } = lyingArms(s, side, st);
+  const f = b.f;
   const pose: Pose = {
     e: { ...NEUTRAL, ...st.e },
     look: st.look ? toBody(st.look, f) : null,
@@ -316,11 +354,6 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     headPitch: st.headPitch,
     feet: [footAt(s.k, -1, b.knees), footAt(s.k, 1, b.knees)],
   };
-  const toW = (p: THREE.Vector3) => p.clone().applyQuaternion(f.q).add(f.pos);
-  const toL = (d: THREE.Vector3) => dirToBody(d, f);
-  const clamp = (a: Arm | undefined, key: "armL" | "armR") => (a ? clearOfWall(a, key === "armL" ? -1 : 1, s.k, side, toW, toL) : undefined);
-  const nearArm = clamp(arm(st.near), nearSide);
-  const farArm = clamp(arm(st.far), farSide);
   if (nearArm) pose[nearSide] = nearArm;
   if (farArm) pose[farSide] = farArm;
   // Figure's look is a world point relative to its own `at`/yaw: we hand it body coordinates with at = 0

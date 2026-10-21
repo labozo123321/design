@@ -12,14 +12,30 @@ import { EndCard } from "./overlay/EndCard";
  * y = 1430) and the end card. Clear of Instagram's UI: nothing above y = 200, nothing below the captions,
  * nothing that matters right of x = 930 except the HUD's right-aligned clock up top.
  */
+/** The picture's white flash frames (director: time-lapse night cuts and the era jumps). */
+const FLASHES: [number, number][] = [
+  [8.0, 8.067],
+  [9.333, 9.4],
+  [10.35, 10.45],
+  [13.9, 13.967],
+  [22.5, 22.55],
+  [28.0, 28.05],
+  [35.95, 36.05],
+  [36.95, 37.05],
+  [38.75, 38.85],
+  [48.95, 49.05],
+];
+
 export const Overlay: React.FC<{ frame: number }> = ({ frame }) => {
   const t = frame / FPS;
   const h = hudState(t);
   // a gentle darkening behind the HUD so its thin numerals hold over the lit hallway at the top of frame
   // (deeper while the picture is day-lit); it comes in after the hallway light clicks off at 3.0
   const scrim = (0.3 + 0.15 * dayLit(t)) * smooth(3.0, 3.5, t);
+  // on the picture's white flash cuts the HUD's dark backing would print as a smudge: let the flash through
+  const flash = FLASHES.some(([a, b]) => t >= a - 1e-6 && t < b);
   return (
-    <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, overflow: "hidden", pointerEvents: "none" }}>
+    <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, overflow: "hidden", pointerEvents: "none", opacity: flash ? 0.15 : 1 }}>
       {scrim > 0.002 ? (
         <div
           style={{

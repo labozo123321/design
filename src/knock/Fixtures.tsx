@@ -115,7 +115,7 @@ export const outsideAt = (t: number, era: string): Outside => {
   const lapse = (t >= 8 && t < 10.4) || (t >= 13.9 && t < 15) || (t >= 36 && t < 47.5);
   if (lapse) {
     const s = Math.floor(((t - 8) * 3) / 2) % 4;
-    return s === 0 ? { leaves: 60 } : s === 1 ? { snow: 0.6, windowSnow: 0.4 } : s === 2 ? { rain: 0.8, wet: 0.8, windowRain: 0.6 } : {};
+    return s === 0 ? { leaves: 60 } : s === 1 ? { snow: 0.75, windowSnow: 0.4 } : s === 2 ? { rain: 0.8, wet: 0.8, windowRain: 0.6 } : {};
   }
   if (era === "2007") return { leaves: 30 };
   return {};

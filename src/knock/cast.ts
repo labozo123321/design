@@ -90,7 +90,7 @@ const nora = (age: number, k: number, face: number, cut: Cut | undefined, style:
 });
 export const NORA: Record<number, Sib> = {
   9: nora(9, 0.76, 0.15, undefined, "pigtails", { kind: "tee", main: "#8A63C2", trousers: "#8A63C2", sleeves: "long", shoe: BAREFOOT, collar: "crew", bust: true }),
-  11: nora(11, 0.82, 0.35, "pony", "base", { kind: "tee", main: "#7E5BB5", trousers: "#5A4A7A", sleeves: "short", shoe: BAREFOOT, collar: "crew", bust: true }),
+  11: nora(11, 0.82, 0.35, "pony", "base", { kind: "tee", main: "#C0577A", trousers: "#5A4A7A", sleeves: "short", shoe: BAREFOOT, collar: "crew", bust: true }),
   13: nora(13, 0.88, 0.6, "pony", "base", { kind: "tee", main: "#6F8F5A", trousers: "#4A4A5A", sleeves: "short", shoe: BAREFOOT, collar: "crew", bust: true }),
   14: nora(14, 0.9, 0.7, "pony", "base", { kind: "tee", main: "#5E8A55", trousers: "#3E4048", sleeves: "short", shoe: BAREFOOT, collar: "crew", bust: true }),
   16: nora(16, 0.93, 0.9, "flow", "long", { kind: "hoodie", main: "#B9A2D6", trousers: "#3A3D4A", sleeves: "long", shoe: BAREFOOT, collar: "hood", bust: true }),

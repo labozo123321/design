@@ -4,12 +4,12 @@ import { FPS } from "./script";
 import { cameraFor } from "./layout";
 import { House } from "./House";
 import { SharedWall } from "./SharedWall";
-import { Bed, airRect, type BedLook, type BedSpec } from "./Beds";
+import { Bed, airRect, type BedLook, type BedSpec, type Capsule } from "./Beds";
 import { KnockPost } from "./Post";
 import { Rig } from "./KnockVideo";
 import { ringsAt, setRipples } from "./ripple";
 import { NightLights } from "./Lights";
-import { LyingSib, lieBody } from "./People";
+import { LyingSib, armCapsules, lieBody, lyingArms } from "./People";
 import { PosedSib } from "./Motion";
 import { frameAt, type BedState, type Floor, type SibFrame, type Walker } from "./direct";
 import { glow } from "../home/materials";
@@ -19,7 +19,7 @@ import { Beagle } from "./Beagle";
 import { FoldedNote } from "./props/wall";
 import { AIR_MATTRESS, AirMattress } from "./props/bedroom";
 import { guestDuvetMat, navyDuvetMat, patchworkQuiltMat, pillowcaseMat, plainSheetMat, racecarDuvetMat, sleepingBagMat, soccerDuvetMat, starQuiltMat, stripedSheetMat } from "./props/textures";
-import { WALL } from "./layout";
+import { BED, WALL } from "./layout";
 
 /** Everything in the picture for one frame, as the director has it. */
 
@@ -39,6 +39,15 @@ const BEDS: Record<string, BedLook> = {
   guest: { frame: "#C99B66", cover: guestDuvetMat(M1), sheet: plainSheetMat("cream"), pillowcase: pillowcaseMat("beige") },
 };
 const AIR_MID: BedSpec = { x0: -1.78, x1: -0.79, z0: -3.25, z1: -1.35, top: 0.45 };
+
+/** What the covers lie over: the body, and the parts of the arms that lie low against it (a raised arm
+ * doesn't tent the covers; one resting under them can't come through). */
+const coverCaps = (f: SibFrame, side: -1 | 1, body: Capsule[], top: number): Capsule[] => {
+  const A = lyingArms(f.s, side, f.lie);
+  const low = (c: Capsule) => Math.max(c.a.y, c.b.y) < top + 0.36;
+  const arms = [...armCapsules(A.near, A.nearSide === "armL" ? -1 : 1, f.s.k, A.toW), ...armCapsules(A.far, A.farSide === "armL" ? -1 : 1, f.s.k, A.toW)];
+  return [...body, ...arms.filter(low)];
+};
 
 /** One sibling in their bed: the body, and the bed with covers shaped over it and the pillow dented. */
 const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[] }> = (props) => {
@@ -81,6 +90,7 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
   }
   const b = lieBody(f.s, side, f.lie);
   const zTop = f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers;
+  const caps = coverCaps(f, side, b.caps, spec?.top ?? BED.top);
   return (
     <>
       {hide.includes(side < 0 ? "nora" : "you") ? null : (
@@ -93,7 +103,7 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
         spec={spec}
         bare={bed.bare}
         pillowAt={pillowAt}
-        covers={zTop === null || hide.includes("nocover") ? null : { zTop, caps: b.caps, bag: f.bag }}
+        covers={zTop === null || hide.includes("nocover") ? null : { zTop, caps, bag: f.bag }}
         rest={b.rest}
       />
       {f.phone ? <Phone f={f} side={side} b={b} /> : null}
@@ -206,7 +216,7 @@ const CarriedPillow: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion }> = ({ a
 const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = ({ at, q, t }) => (
   <group position={at} quaternion={q}>
     <mesh geometry={pillowGeo()} position={[0, 0.06, -0.02]} castShadow>
-      <meshStandardMaterial color="#E9E0EE" roughness={0.92} />
+      <primitive object={pillowcaseMat("lilac")} attach="material" />
     </mesh>
     {[
       [-0.09, -0.03, -0.05, 0.13, 0.09, 0.075],
@@ -214,9 +224,8 @@ const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = 
       [0.0, -0.1, -0.06, 0.16, 0.07, 0.065],
       [0.17, -0.19 - 0.02 * Math.sin(t * 7), -0.03, 0.05, 0.13, 0.025],
     ].map(([x, y, z, a, b, c], i) => (
-      <mesh key={i} position={[x, y, z]} scale={[a, b, c]} castShadow>
+      <mesh key={i} position={[x, y, z]} scale={[a, b, c]} material={patchworkQuiltMat({ uvSize: [0.5, 0.5] })} castShadow>
         <sphereGeometry args={[1, 20, 14]} />
-        <meshStandardMaterial color="#8E7BB8" roughness={0.95} />
       </mesh>
     ))}
   </group>
@@ -226,7 +235,9 @@ const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = 
  * they're down. */
 const OnFloor: React.FC<{ f: Floor; t: number }> = ({ f, t }) => {
   const b = f.body ? lieBody(f.s, f.side, f.lie) : null;
-  const spec = { x0: f.spot.x - 0.45, x1: f.spot.x + 0.45, z0: f.spot.pillowZ - 0.25, z1: f.spot.pillowZ + 1.7, top: f.spot.top };
+  const caps = b ? coverCaps(f, f.side, b.caps, f.spot.top) : [];
+  // (her quilt reaches less far behind her, so it stops short of your bed's side)
+  const spec = { x0: f.spot.x - 0.3, x1: f.spot.x + 0.42, z0: f.spot.pillowZ - 0.25, z1: f.spot.pillowZ + 1.7, top: f.spot.top };
   return (
     <>
       {b ? <LyingSib s={f.s} side={f.side} st={f.lie} t={t} /> : null}
@@ -237,7 +248,7 @@ const OnFloor: React.FC<{ f: Floor; t: number }> = ({ f, t }) => {
         spec={spec}
         pillowAt={{ x: f.spot.x, z: f.spot.pillowZ }}
         rest={b ? b.rest : null}
-        covers={b && f.covers !== null ? { zTop: b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers, caps: b.caps, loft: 0.03, drape: 0.02 } : null}
+        covers={b && f.covers !== null ? { zTop: b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers, caps, loft: 0.03, drape: 0.02 } : null}
       />
     </>
   );
@@ -306,6 +317,18 @@ const Snow: React.FC<{ t: number; k: number }> = ({ t, k }) => {
   );
 };
 
+/** The folded note in Nora's near hand on the fight night (at her wrist, tipped toward the wall). */
+const NoteInHand: React.FC<{ f: SibFrame }> = ({ f }) => {
+  const A = lyingArms(f.s, f.side, f.lie);
+  if (!A.near) return null;
+  const w = A.toW(A.near.at);
+  return (
+    <group position={[w.x + 0.025, w.y + 0.03, w.z + 0.02]} rotation={[0.5, Math.PI / 2, 0.3]}>
+      <FoldedNote open={0} />
+    </group>
+  );
+};
+
 /** The note: falling down the slot, or lying on the plate. */
 const Note: React.FC<{ n: NonNullable<ReturnType<typeof frameAt>["note"]> }> = ({ n }) => (
   <group position={n.pos} rotation={n.rot}>
@@ -334,6 +357,7 @@ const debugCam = (cam?: string) => {
     return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m), fov: 22 };
   }
   if (cam === "sideN") return at([-2.3, 1.5, -0.9], [-0.45, 0.55, -2.7]);
+  if (cam === "feetY") return at([1.6, 1.1, -0.9], [0.5, 0.55, -1.9]);
   if (cam === "sideY") return at([2.3, 1.5, -0.9], [0.45, 0.55, -2.7]);
   return null;
 };
@@ -378,6 +402,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       ))}
       <Dressing d={F.dress} t={t} light={F.light} camDist={macro ? 0 : F.cam.dist} />
       {F.note ? <Note n={F.note} /> : null}
+      {F.noteHand && F.nora ? <NoteInHand f={F.nora} /> : null}
       {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} collar={F.dog.collar} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
       {(F.items ?? []).map((it, i) => (it.kind === "pillowOver" ? <PillowOver key={i} at={it.pos} q={it.q} /> : null))}
