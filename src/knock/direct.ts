@@ -6,6 +6,7 @@ import { blendPosed, facing, standAt, walkAlong, type Posed } from "./Motion";
 import { PRESETS, TREAD, WALL, knockPoint, type Preset } from "./layout";
 import { knockMotion, knocksOf, smooth, smoother, track, V3, vnoise } from "./anim";
 import type { Look } from "./Post";
+import { BEAGLE, type BeaglePose } from "./Beagle";
 
 /**
  * The director: for any moment of the film, who is where doing what (the siblings in their beds and their
@@ -71,6 +72,9 @@ export type LightState = {
   seamGlow?: number;
 };
 
+/** Moose, where and how (see Beagle): his feet (or his bed), which way he faces (0 = -z), his pose. */
+export type Dog = { at: THREE.Vector3; yaw: number; pose: BeaglePose; puppy?: boolean; inBed?: boolean; ground?: (x: number, z: number) => number };
+
 /** Someone out of bed (sitting up, walking, lying down somewhere else), and what they carry. */
 export type Walker = { key: string; s: Sib; p: Posed; carry?: "pillow" | "bundle" | null };
 /** Someone lying on the floor (a rug) with their own pillow; covers optional. */
@@ -94,6 +98,8 @@ export type Frame = {
   macro?: number;
   /** the "sorry" note: where it is (world), how open, its spin */
   note?: { pos: THREE.Vector3; open: number; rot: THREE.Euler } | null;
+  /** Moose */
+  dog?: Dog | null;
   /** loose things in the world: a pillow held over a face, an earplug in a hand or an ear */
   items?: { kind: "pillowOver" | "earplug" | "quiltBundle"; pos: THREE.Vector3; q?: THREE.Quaternion }[];
 };
@@ -639,6 +645,12 @@ const noteAt = (t: number): Frame["note"] => {
   };
 };
 
+/** A steady pseudo-random number in [0, 1) for an index (and a salt). */
+const hash01 = (i: number, salt = 0) => {
+  const v = Math.sin((i + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+};
+
 // ------------------------------------------------------------------------------------------- beat 2
 /** 2004 → 2008: nights flash by (three a second), the kids growing; one real night in 2007 when they're not
  * speaking (arms folded, scowling) and still knock goodnight; the note she slips into the wall. */
@@ -663,9 +675,17 @@ const b2 = (t: number): Frame => {
     const flash = (t >= SWAP && t < SWAP + 0.067) || t - t0 < 0.067 ? 1 : 0;
     const era: Era = late ? "2007" : t < SWAP ? "2004b" : "2007";
     const night = c.night;
+    // Moose: a puppy curled in his bed in Nora's doorway (2005-06), then curled in the doorway itself; most
+    // nights, never by day
+    const here = night && hash01(c.i + (late ? 40 : 0), 3) < 0.78;
+    const pup = !late && t < SWAP;
+    const dog: Dog | null = here
+      ? { at: pup ? V3(-1.52, 0, -3.27) : V3(-1.5, 0, -3.33), yaw: (hash01(c.i, 7) - 0.5) * 2.4, pose: { kind: "curl", t }, puppy: pup, inBed: pup }
+      : null;
     return {
       ...base,
       t,
+      dog,
       nora: night ? sleeper(NORA[nAge], -1, c.i + (late ? 40 : 0)) : null,
       you: night ? sleeper(YOU[yAge], 1, c.i + 17 + (late ? 40 : 0)) : null,
       dress: {
@@ -710,6 +730,7 @@ const b2 = (t: number): Frame => {
     dress: { era: "2007", trex: 0, jolt: 0, stars: 40, starGlow: 0.8, beds: { nora: { kind: "twin", look: "nora2007" }, you: { kind: "twin", look: "you2007" } } },
     look: { ...WARM, flash: (Math.abs(t - 10.4) < 0.05 ? 1 : 0) * 0.55 },
     cam: PRESETS.medium,
+    dog: { at: V3(-1.5, 0, -3.33), yaw: 0.6, pose: { kind: "curl", t } },
     macro,
     note: n2,
   };
@@ -803,6 +824,7 @@ const b3 = (t: number): Frame => {
     you,
     walkers,
     floor,
+    dog: mooseIn2009(t, n),
     // (her quilt stays thrown back on the bed while she sits up; at 18.4 she gathers it and her pillow)
     dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 18.0 ? 1 : 0, bare: t >= 18.4, noPillow: t >= 18.4 }, you: { kind: "twin", look: "you2009" } } },
     light: { hall: 0.12, street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
@@ -811,6 +833,53 @@ const b3 = (t: number): Frame => {
     bloom: 0.55,
     aperture: 0,
     seam: 0,
+  };
+};
+
+/** Moose in the storm: asleep in the hallway (out of sight behind the back wall) until she passes; up, and
+ * trotting after her along the hall, through your door, round her on the outer side, to flop across her
+ * ankles facing the camera, eyes closing. */
+const mooseIn2009 = (t: number, n: Sib): Dog | null => {
+  const spot: Spot = { x: 1.42, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
+  const legs = lieToPosed(n, 1, { roll: -0.9, spot, e: {}, near: null, far: null }).feet;
+  const ankle = legs[0].clone().lerp(legs[1], 0.5);
+  // the quilt over her legs is a ridge the dog drapes over
+  const ground = (x: number, z: number) => {
+    const along = Math.max(0, 1 - Math.abs(z - ankle.z + 0.05) / 0.35);
+    const across = Math.max(0, 1 - ((x - ankle.x) / 0.13) ** 2);
+    return 0.012 + 0.15 * across * Math.min(1, along * 3);
+  };
+  const path = [V3(-0.7, 0, -4.36), V3(1.15, 0, -4.36), V3(1.52, 0, -3.98), V3(1.56, 0, -3.4), V3(2.03, 0, -2.95), V3(2.03, 0, ankle.z + 0.06)];
+  const lens = path.slice(1).map((q, i) => q.distanceTo(path[i]));
+  const total = lens.reduce((a, b) => a + b, 0);
+  // (right behind her in the hall; at her feet before she's down, waiting)
+  const t0 = 19.1;
+  const speed = 2.2;
+  const arrive = t0 + total / speed;
+  if (t < t0) return { at: path[0].clone(), yaw: -Math.PI / 2, pose: { kind: "lie", t, headUp: smooth(t0 - 0.6, t0 - 0.2, t) } };
+  if (t < arrive) {
+    const d = (t - t0) * speed;
+    let rem = d;
+    let i = 0;
+    while (i < lens.length - 1 && rem > lens[i]) rem -= lens[i++];
+    const dir = path[i + 1].clone().sub(path[i]).normalize();
+    // turning smoothly into the next leg over its last 25 cm
+    if (i < lens.length - 1 && lens[i] - rem < 0.25) dir.lerp(path[i + 2].clone().sub(path[i + 1]).normalize(), (0.25 - (lens[i] - rem)) / 0.5).normalize();
+    const at = path[i].clone().addScaledVector(path[i + 1].clone().sub(path[i]).normalize(), Math.min(rem, lens[i]));
+    return { at, yaw: Math.atan2(-dir.x, -dir.z), pose: { kind: "trot", t, phase: d / BEAGLE.stride(false), wag: 0.6 } };
+  }
+  // stop beside her feet, turn to face across her ankles, and flop
+  const end = path[path.length - 1];
+  const flopAt = V3(ankle.x + 0.06, 0, ankle.z - 0.02);
+  const f0 = Math.max(arrive + 0.15, 21.8);
+  const k = smooth(f0, f0 + 0.45, t);
+  const at = end.clone().lerp(flopAt, k);
+  return {
+    at,
+    // (he came in heading +z; he turns to face your bed, across her legs)
+    yaw: Math.PI * (1 - 0.5 * smooth(arrive, arrive + 0.35, t)),
+    pose: { kind: "stand", to: "flop", mix: k, t, faceUp: 0.55, blink: smooth(f0 + 0.3, f0 + 0.7, t) * 0.92, wag: 0.4 * (1 - k) },
+    ground: k > 0.3 ? ground : undefined,
   };
 };
 

@@ -78,7 +78,8 @@ export const TREAD = { x: -1.25, deck: 0.1825, z0: -1.845, z1: -0.055, console: 
  * yaw: the prop faces -z, so turned half round its console is toward the window); by 2025 it is a laundry
  * rack turned sideways under the front windows, so the air mattress and the rug have the floor. */
 export const treadPlace = (era: string) =>
-  era === "2025" ? { at: V3(-1.5, 0, -0.5), rotY: Math.PI / 2 } : { at: V3(TREAD.x, 0, (TREAD.z0 + TREAD.z1) / 2), rotY: Math.PI };
+  // (2025: its console toward the shared wall, so the shirts hanging off its far grip stay clear of the window)
+  era === "2025" ? { at: V3(-1.5, 0, -0.5), rotY: -Math.PI / 2 } : { at: V3(TREAD.x, 0, (TREAD.z0 + TREAD.z1) / 2), rotY: Math.PI };
 
 // ---- camera presets: the target on the wall line, the distance along the 18-degree view, the fov
 export const TILT = THREE.MathUtils.degToRad(18);

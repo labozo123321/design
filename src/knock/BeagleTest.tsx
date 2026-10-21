@@ -60,12 +60,23 @@ const cellsFor = (page: number, f: number): { title: string; cols: number; rowsN
     const mk = (puppy: boolean, view: View, yaw: number): Cell => ({
       id: `gait-${puppy ? "p" : "a"}-${view}`,
       label: `${puppy ? "puppy" : "adult"} trot · ${view}`,
-      r: puppy ? 0.24 : 0.4,
-      c: [0, puppy ? 0.13 : 0.24, 0],
+      r: puppy ? 0.25 : 0.42,
+      c: view === "top" ? [puppy ? -0.055 : -0.09, 0.15, 0] : [0, puppy ? 0.14 : 0.24, puppy ? -0.055 : -0.09],
       view,
       node: (t, fr) => <Beagle at={new THREE.Vector3()} yaw={yaw} pose={{ kind: "trot", t, phase: fr / 20 }} puppy={puppy} />,
     });
     return { title: "gait (3 strides over 60 frames)", cols: 2, rowsN: 2, cells: [mk(false, "side", 0), mk(true, "side", 0), mk(false, "top", Math.PI / 2), mk(true, "top", Math.PI / 2)] };
+  }
+  if (page === 4) {
+    // the 2009 beat: trotting in, stopping, flopping over (pose blends), side and film angle
+    const steps = [0, 0.25, 0.5, 0.75, 1];
+    const pose = (k: number, t: number): BeaglePose =>
+      k < 0.5 ? { kind: "trot", to: "stand", mix: k / 0.5, phase: 0.4, t } : { kind: "stand", to: "flop", mix: (k - 0.5) / 0.5, t, blink: (k - 0.5) * 1.2, faceUp: 0.55 };
+    const cells: Cell[] = steps.flatMap((k) => [
+      { id: `blend${k}-side`, label: `blend ${k} · trot→stand→flop`, r: 0.42, c: [0, 0.16, -0.06], view: "side" as View, node: (t: number) => <Beagle at={new THREE.Vector3()} yaw={0} pose={pose(k, t)} /> },
+      { id: `blend${k}-top`, label: `blend ${k}`, r: 0.46, c: [0, 0.1, -0.06], view: "top" as View, node: (t: number) => <Beagle at={new THREE.Vector3()} yaw={0.5} pose={pose(k, t)} /> },
+    ]);
+    return { title: "pose blending (trot → stand → flop)", cols: 2, rowsN: 5, cells };
   }
   if (page === 3) {
     const A = (pose: BeaglePose, yaw = 0) => () => <Beagle at={new THREE.Vector3()} yaw={yaw} pose={pose} />;
@@ -79,11 +90,21 @@ const cellsFor = (page: number, f: number): { title: string; cols: number; rowsN
       { id: "faceA", label: "adult face", r: 0.12, c: [0, 0.47, -0.34], view: "q", dir: [0.5, 0.18, -1], node: A({ kind: "stand", t: 0.2 }) },
       { id: "faceP", label: "puppy face", r: 0.085, c: [0, 0.26, -0.2], view: "q", dir: [0.5, 0.18, -1], node: P({ kind: "stand", t: 0.2 }) },
       { id: "tailA", label: "adult tail (side)", r: 0.18, c: [0, 0.4, 0.22], view: "side", node: A({ kind: "stand", t: 0.2 }) },
-      { id: "flipA", label: "adult ear flipped (lie, head up)", r: 0.14, c: [0, 0.3, -0.36], view: "q", dir: [0.6, 0.7, -0.4], node: A({ kind: "lie", t: 0.2, headUp: 1, earFlip: 1 }) },
+      { id: "flipA", label: "adult ear flipped (lie, head up)", r: 0.16, c: [0, 0.3, -0.33], view: "q", dir: [0.6, 0.7, -0.4], node: A({ kind: "lie", t: 0.2, headUp: 1, earFlip: 1 }) },
+      { id: "flipTop", label: "puppy ear flipped (stand, film angle)", r: 0.12, c: [0, 0.2, -0.12], view: "top", node: P({ kind: "stand", t: 0.2, earFlip: 1 }, 0.5) },
       { id: "flopFace", label: "adult flop face (eyes closing)", r: 0.15, c: [-0.1, 0.1, -0.3], view: "top", node: A({ kind: "flop", t: 0.2, blink: 0.8, faceUp: 0.55 }) },
       { id: "curlP", label: "puppy curled in bed (film angle)", r: 0.16, c: [0, 0.12, 0], view: "top", node: P({ kind: "curl", t: 0.2 }, 0.4, true) },
     ];
-    return { title: "close-ups", cols: 2, rowsN: 3, cells };
+    // macro checks for seams and intersections
+    cells.push(
+      { id: "eyeMacro", label: "eye macro (open)", r: 0.035, c: [0.032, 0.483, -0.338], view: "q", dir: [0.9, 0.2, -0.7], node: A({ kind: "stand", t: 0.2, blink: 0 }) },
+      { id: "eyeShut", label: "eye macro (shut)", r: 0.035, c: [0.032, 0.483, -0.338], view: "q", dir: [0.9, 0.2, -0.7], node: A({ kind: "stand", t: 0.2, blink: 1 }) },
+      { id: "lieRear", label: "lie: hind legs from behind", r: 0.22, c: [0, 0.08, -0.05], view: "q", dir: [-0.7, 0.35, 1], node: A({ kind: "lie", t: 0.2, headUp: 0 }) },
+      { id: "pads", label: "flop: paw pads", r: 0.2, c: [0.18, 0.05, -0.05], view: "q", dir: [1, 0.5, -0.2], node: A({ kind: "flop", t: 0.2 }) },
+      { id: "curlSide", label: "puppy curl vs the bolster (low)", r: 0.2, c: [0, 0.09, 0], view: "q", dir: [0.3, 0.25, 1], node: P({ kind: "curl", t: 0.2 }, 0.4, true) },
+      { id: "flopUnder", label: "flop: belly and legs (low)", r: 0.3, c: [0.1, 0.06, -0.05], view: "q", dir: [1, 0.18, 0.4], node: A({ kind: "flop", t: 0.2 }) },
+    );
+    return { title: "close-ups", cols: 2, rowsN: Math.ceil(cells.length / 2), cells };
   }
   if (page === 2) {
     const scene = (t: number, fr: number) => {
@@ -269,7 +290,7 @@ export const BeagleTest: React.FC = () => {
   let placed: Placed[];
   let title = page.title;
   if (ip.ids) {
-    const all = [0, 1, 2, 3].flatMap((p) => cellsFor(p, frame).cells);
+    const all = [0, 1, 2, 3, 4].flatMap((p) => cellsFor(p, frame).cells);
     const sel = ip.ids.map((id) => all.find((e) => e.id === id)!).filter(Boolean);
     const cols = ip.cols ?? 2;
     const rowsN = Math.ceil(sel.length / cols);
@@ -278,7 +299,7 @@ export const BeagleTest: React.FC = () => {
     placed = sel.map((c, i) => ({ ...c, origin: new THREE.Vector3((i % 6) * SP, 0, Math.floor(i / 6) * SP), rect: [(i % cols) * cw, Math.floor(i / cols) * ch, cw, ch] }));
     title = "selection";
   } else if (ip.focus) {
-    const all = [0, 1, 2, 3].flatMap((p) => cellsFor(p, frame).cells);
+    const all = [0, 1, 2, 3, 4].flatMap((p) => cellsFor(p, frame).cells);
     const c = all.find((e) => e.id === ip.focus) ?? all[0];
     const cell = { ...c, view: ip.view ?? c.view };
     placed = [{ ...cell, origin: new THREE.Vector3(), rect: [0, 0, W, H] }];

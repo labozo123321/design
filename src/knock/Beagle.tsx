@@ -119,8 +119,8 @@ const UP = V(0, 1, 0);
 
 // =============================================================================================== anatomy
 type Variant = { s: number; leg: number; len: number; girth: number; legGirth: number; head: number; muzzle: number; paw: number; ear: number; eye: number; pup: number; h: number };
-const ADULT: Variant = { s: 1, leg: 1, len: 1, girth: 1, legGirth: 1, head: 1.07, muzzle: 1, paw: 1, ear: 1, eye: 1, pup: 0, h: 0.0034 };
-const PUPPY: Variant = { s: 0.6, leg: 0.8, len: 0.9, girth: 1.12, legGirth: 1.2, head: 1.32, muzzle: 0.6, paw: 1.34, ear: 1.14, eye: 1.16, pup: 1, h: 0.0024 };
+const ADULT: Variant = { s: 1, leg: 1, len: 1, girth: 1, legGirth: 1, head: 1.07, muzzle: 1, paw: 1, ear: 1, eye: 1, pup: 0, h: 0.0038 };
+const PUPPY: Variant = { s: 0.6, leg: 0.8, len: 0.9, girth: 1.12, legGirth: 1.2, head: 1.32, muzzle: 0.6, paw: 1.34, ear: 1.14, eye: 1.16, pup: 1, h: 0.0027 };
 
 // bones
 const PEL = 0;
@@ -305,7 +305,8 @@ const anatomy = (v: Variant) => {
     ell("cheek", Hd(sd * 0.027, 0.452, -0.312), HR(0.03, 0.03, 0.042), 0.02 * kh, HEAD, 1, undefined, sd);
     ell("brow", Hd(sd * 0.024, 0.494, -0.327), HR(0.019, 0.012, 0.017), 0.012 * kh, HEAD, 1, undefined, sd);
   }
-  cone("muzzle", Hd(0, 0.458, -0.333, true), Hd(0, 0.451, -0.392, true), 0.031 * hs, 0.026 * hs, 0.02 * kh, HEAD, 2);
+  const muzTip = Hd(0, 0.451, -0.392, true);
+  cone("muzzle", Hd(0, 0.458, -0.333, true), muzTip, 0.031 * hs, 0.026 * hs, 0.02 * kh, HEAD, 2);
   for (const sd of [-1, 1]) ell("flew", Hd(sd * 0.017, 0.432, -0.37, true), HR(0.021, 0.022, 0.036 * lerp(1, 0.8, v.pup)), 0.016 * kh, HEAD, 2, undefined, sd);
   cone("jaw", Hd(0, 0.432, -0.3), Hd(0, 0.423, -0.378, true), 0.027 * hs, 0.016 * hs, 0.016 * kh, HEAD, 2);
 
@@ -369,8 +370,8 @@ const anatomy = (v: Variant) => {
       toeR,
       pawC,
       pawR,
-      pad: { c: V(pawC.x, 0.0046 * ps, pawC.z + 0.006 * ps), r: V(0.0115, 0.0045, 0.0098).multiplyScalar(ps) },
-      digit: V(0.0058, 0.0038, 0.0064).multiplyScalar(ps),
+      pad: { c: V(pawC.x, 0.0042 * ps, pawC.z + 0.006 * ps), r: V(0.0135, 0.0052, 0.0115).multiplyScalar(ps) },
+      digit: V(0.0068, 0.0044, 0.0074).multiplyScalar(ps),
     });
   }
 
@@ -381,7 +382,7 @@ const anatomy = (v: Variant) => {
     return { c: Hd(sd * 0.0295, 0.4805, -0.3325).addScaledVector(gaze, r * 0.12), gaze, r };
   });
   for (const e of eyes) {
-    const P = ell("socket", e.c, V(1, 1, 1).multiplyScalar(e.r * 1.1), 0.003 * kh, -3, 1);
+    const P = ell("socket", e.c, V(1, 1, 1).multiplyScalar(e.r * 1.06), 0.006 * kh, -3, 1);
     P.kind = 2;
   }
   // subtractions last
@@ -416,7 +417,7 @@ const anatomy = (v: Variant) => {
       th: 0.0042 * hs,
       cup: 0.008 * hs,
     })),
-    nose: { c: Hd(0, 0.456, -0.4115, true), r: HR(0.0215, 0.0158, 0.0138) },
+    nose: { c: muzTip.clone().add(V(0, 0.005, -0.0195).multiplyScalar(hs)), r: HR(0.0215, 0.0158, 0.0138) },
     collar: { c: neckA.clone().lerp(neckB, 0.42), axis: neckB.clone().sub(neckA).normalize(), w: 0.017 * s * lerp(1, 1.05, v.pup), th: 0.0042 * s },
     lip: [-1, 1].map((sd) => [Hd(sd * 0.013, 0.419, -0.4, true), Hd(sd * 0.02, 0.4165, -0.386, true), Hd(sd * 0.025, 0.4175, -0.366, true), Hd(sd * 0.0285, 0.4225, -0.345, true)]),
     canon,
@@ -879,7 +880,7 @@ const buildStatic = (v: Variant): Static => {
     const g1 = sph.clone().scale(L.pad.r.x, L.pad.r.y, L.pad.r.z).translate(L.pad.c.x, L.pad.c.y, L.pad.c.z);
     rigid(g1, pawBone, COL.lid, 1);
     for (const t of L.toes) {
-      const g2 = sph.clone().scale(L.digit.x, L.digit.y, L.digit.z).translate(t.x, L.digit.y * 0.92, t.z + L.toeR * 0.05);
+      const g2 = sph.clone().scale(L.digit.x, L.digit.y, L.digit.z).translate(t.x, L.digit.y * 0.82, t.z + L.toeR * 0.05);
       rigid(g2, pawBone, COL.lid, 1);
     }
   });
@@ -1271,7 +1272,7 @@ const strandMap = () => {
   t.needsUpdate = true;
   return t;
 };
-const padMat = () => mat("beagle-pad", () => new THREE.MeshStandardMaterial({ color: "#3A2E2A", roughness: 0.78 }));
+const padMat = () => mat("beagle-pad", () => new THREE.MeshStandardMaterial({ color: "#4A3B37", roughness: 0.72 }));
 const noseTex = () =>
   canvasTex(
     "beagle-nose",
@@ -1638,7 +1639,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       spine: [Q(0.03), Q(0.03), Q(0.02), Q(0.02), Q(0.12), Q(0.08, turn * 0.4, -0.35 * f + tilt * 0.3), Q(-0.12 + nod, turn * 0.6, -0.85 * f + tilt * 0.7)],
       legs: [
         { fk: [0.05, 0.22, -0.05, 0.1, 0.3], spread: 0.05 },
-        { fk: [0.15, 0.95, 0.45, -0.55, -0.2], spread: -0.62 },
+        { fk: [0.15, 1.1, 0.4, -0.5, -0.2], spread: -0.45 },
         { fk: [-0.62, 0.38, -0.12, 0.3], spread: 0.05 },
         { fk: [0.28, -0.5, 0.45, 0.2], spread: -0.58 },
       ],
@@ -1664,7 +1665,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
     spine,
     legs: [
       { fk: [0.1, 0.65, 1.55, -1.0, -0.3], spread: 0.0 },
-      { fk: [0.1, 0.55, 1.95, -1.2, -0.3], spread: -0.45 },
+      { fk: [0.05, 0.25, 2.1, -1.3, -0.3], spread: -0.95 },
       { fk: [1.05, -1.55, 1.3, 0.3], spread: 0.05 },
       { fk: [1.15, -1.65, 1.35, 0.3], spread: -0.1 },
     ],
@@ -1917,7 +1918,7 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
   const nrmB = inst.body.attributes.normal.array as Float32Array;
   // the root direction: hanging, then lifted / flipped back over the skull about the head's long axis
   const fwdR = V(0, 0, -1);
-  const flipQ = QA(X_AX, flip * 0.85).multiply(QA(fwdR, -sd * (flip * 2.5 + lift)));
+  const flipQ = QA(X_AX, flip * 0.55).multiply(QA(fwdR, -sd * (flip * 3.2 + lift)));
   const swingQ = QA(X_AX, swing);
   const d0 = E.dir.clone().applyQuaternion(flipQ).applyQuaternion(swingQ).applyQuaternion(Xh.q).normalize();
   const n0 = E.nrm.clone().applyQuaternion(flipQ).applyQuaternion(swingQ).applyQuaternion(Xh.q).normalize();
@@ -2141,19 +2142,19 @@ const solveTail = (S: Static, inst: Inst, F: Frame, tl: TailSpec, t: number) => 
 const lidGeo = (g: THREE.BufferGeometry, r: number, upper: boolean, edge: (a: number) => number) => {
   const NA = 16;
   const NE = 8;
-  const A = (80 * Math.PI) / 180;
+  const A = (95 * Math.PI) / 180;
   const pos: number[] = [];
   const col: number[] = [];
   const idx: number[] = [];
   const lid = COL.lid;
   const fur = COL.tan;
-  const shells = [r * 1.085, r * 1.03];
+  const shells = [r * 1.16, r * 1.03];
   for (let sh = 0; sh < 2; sh++)
     for (let i = 0; i <= NE; i++)
       for (let j = 0; j <= NA; j++) {
         const a = -A + (2 * A * j) / NA;
         const e0 = edge(a);
-        const e1 = upper ? (105 * Math.PI) / 180 : (-105 * Math.PI) / 180;
+        const e1 = upper ? (118 * Math.PI) / 180 : (-118 * Math.PI) / 180;
         const k = i / NE;
         const e = lerp(e0, e1, k * k * 0.6 + k * 0.4);
         const R = shells[sh] * (i === 0 ? 0.985 : 1);
@@ -2258,8 +2259,9 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
     const yA = z.clone().cross(xA).normalize();
     const qE = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xA, yA, z));
     const deg = Math.PI / 180;
-    const upE = (a: number) => lerp((27 + 5 * S.v.pup) * deg, -13 * deg, blink) - (9 + 9 * (1 - blink)) * deg * (a / (80 * deg)) ** 2;
-    const loE = (a: number) => lerp(-23 * deg, -11 * deg, blink) + 8 * deg * (a / (80 * deg)) ** 2;
+    // an almond opening: the lids meet at the corners; shut, the upper lid comes down over the lower
+    const upE = (a: number) => lerp((27 + 5 * S.v.pup) * deg, -13 * deg, blink) - lerp((36 + 5 * S.v.pup) * deg, 2 * deg, blink) * (a / (95 * deg)) ** 2;
+    const loE = (a: number) => lerp(-23 * deg, -11 * deg, blink) + lerp(14 * deg, 0, blink) * (a / (95 * deg)) ** 2;
     lidGeo(inst.lids[i][0], E.r, true, upE);
     lidGeo(inst.lids[i][1], E.r * 0.985, false, loE);
     return { pos: xfApply(Xh, E.c), quat: Xh.q.clone().multiply(qE) };
@@ -2328,6 +2330,31 @@ export const Beagle: React.FC<BeagleProps> = (props) => {
       </group>
     </group>
   );
+};
+
+const boundsCache: Record<string, { x0: number; x1: number; z0: number; z1: number; top: number }> = {};
+/** The space a pose takes up, in the dog's own frame (at its feet, facing -z; x + to its right), metres:
+ * the extents of the body, ears and tail and the height of its highest point. Evaluated once per pose. */
+export const beagleBounds = (kind: BeaglePoseKind, puppy = false, inBed = false) => {
+  const key = `${kind}-${puppy}-${inBed}`;
+  if (boundsCache[key]) return boundsCache[key];
+  const S = getStatic(puppy);
+  const inst = makeInst(S);
+  update(S, inst, { at: V(), yaw: 0, pose: { kind, t: 0, phase: 0 }, puppy, inBed });
+  const b = { x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9, top: -1e9 };
+  const add = (a: Float32Array) => {
+    for (let i = 0; i < a.length; i += 3) {
+      b.x0 = Math.min(b.x0, a[i]);
+      b.x1 = Math.max(b.x1, a[i]);
+      b.top = Math.max(b.top, a[i + 1]);
+      b.z0 = Math.min(b.z0, a[i + 2]);
+      b.z1 = Math.max(b.z1, a[i + 2]);
+    }
+  };
+  add(inst.pos);
+  inst.earPos.forEach(add);
+  add(inst.tailPos);
+  return (boundsCache[key] = b);
 };
 
 /** Sizes and gait numbers for placing Moose. */

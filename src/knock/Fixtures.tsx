@@ -68,7 +68,8 @@ export const Fixtures: React.FC<{ f: FixtureState }> = ({ f }) => {
         )),
       )}
       {/* the hallway: its ceiling light, the banister over the stairwell */}
-      <group position={[0, ROOM.ceiling, (HALL.z0 + HALL.z1) / 2]}>
+      {/* (toward the stairwell side, so nobody walking the hall passes under it from the camera's view) */}
+      <group position={[0, ROOM.ceiling, HALL.z1 + 0.27]}>
         <CeilingFixture on={f.hall} />
       </group>
       <group position={[0, 0, HALL.z1 + 0.04]}>

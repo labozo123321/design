@@ -479,8 +479,9 @@ export const beltTex = () =>
       let v = 40 + 10 * (k1 | k2) + 7 * (hash3(x, y, 3) - 0.5) + 10 * (fbm(x / 256, y / 1024, 4, 3, 5) - 0.5);
       // the lap seam: a diagonal line across at about v = 0.62
       const sy = 0.62 * 1024 + (x - 128) * 0.35;
-      if (Math.abs(y - sy) < 1.6) v = 58;
-      else if (Math.abs(y - sy) < 3.5) v = 22;
+      // the lap seam: a pale glued band with dark edges (it is what shows the belt moving)
+      if (Math.abs(y - sy) < 3.5) v = 104 + 10 * (hash3(x, 7, 5) - 0.5);
+      else if (Math.abs(y - sy) < 5.5) v = 20;
       // scuffs from shoes, lighter, in the two footfall lanes
       const lane = Math.min(Math.abs(x - 78), Math.abs(x - 178));
       v += 14 * Math.max(0, 1 - lane / 34) * fbm(x / 256, y / 1024, 16, 2, 11);
@@ -957,18 +958,25 @@ export const leafAtlas = () =>
         g.translate(cx, cy);
         const path = new Path2D();
         if (c.kind === "maple") {
-          // five lobes, toothed
+          // five broad lobes, each with a pointed tip and teeth; deep sinuses between them
+          const lobes: [number, number][] = [
+            [-Math.PI / 2, 112],
+            [-Math.PI / 2 - 0.95, 98],
+            [-Math.PI / 2 + 0.95, 98],
+            [-Math.PI / 2 - 1.95, 66],
+            [-Math.PI / 2 + 1.95, 66],
+          ];
           const pts: [number, number][] = [];
-          const lobes = [0, 1, 2, 3, 4].map((i) => -Math.PI / 2 + (i - 2) * 0.95);
-          for (let a = 0; a < Math.PI * 2; a += 0.04) {
-            const ang = a - Math.PI / 2;
-            let rr = 38;
-            for (const l of lobes) {
+          for (let a = 0; a < Math.PI * 2; a += 0.02) {
+            const ang = a - Math.PI;
+            let rr = 52;
+            for (const [l, len] of lobes) {
               const d = Math.atan2(Math.sin(ang - l), Math.cos(ang - l));
-              rr = Math.max(rr, (l === -Math.PI / 2 ? 108 : Math.abs(l + Math.PI / 2) > 1.5 ? 70 : 96) * Math.exp(-(d * d) / 0.07));
+              // a lobe: broad near the centre, pointed at its tip
+              rr = Math.max(rr, len * Math.max(0, 1 - Math.abs(d) / 0.42) ** 0.75 + 52 * Math.exp(-(d * d) / 0.5));
             }
-            rr *= 1 + 0.06 * Math.sin(a * 46);
-            if (Math.sin(ang) > 0.8) rr = Math.min(rr, 46);
+            rr *= 1 + 0.045 * Math.sin(a * 38);
+            if (Math.sin(ang) > 0.75) rr = Math.min(rr, 50);
             pts.push([Math.cos(ang) * rr, Math.sin(ang) * rr]);
           }
           pts.forEach((p, i) => (i ? path.lineTo(p[0], p[1]) : path.moveTo(p[0], p[1])));
@@ -991,13 +999,11 @@ export const leafAtlas = () =>
           pts.forEach((p, i) => (i ? path.lineTo(p[0], p[1]) : path.moveTo(p[0], p[1])));
           path.closePath();
         } else {
-          // an ovate, finely toothed leaf
+          // an ovate, finely toothed leaf: pointed tip (up), rounded base
           const pts: [number, number][] = [];
-          for (let a = 0; a < Math.PI * 2; a += 0.03) {
-            const x = Math.sin(a) * 62 * (1 + 0.04 * Math.sin(a * 60));
-            const y = -Math.cos(a) * 100 + (Math.cos(a) > 0 ? 0 : 0) + 10 * Math.sin(a) * Math.sin(a);
-            pts.push([x * (1 - 0.35 * Math.max(0, -Math.cos(a))), y]);
-          }
+          const half = (t: number) => 64 * Math.pow(Math.sin(Math.PI * t), 0.85) * (1 - 0.28 * (1 - t)) * (1 + 0.03 * Math.sin(t * 90));
+          for (let t = 0; t <= 1; t += 0.01) pts.push([half(t), 92 - t * 205]);
+          for (let t = 1; t >= 0; t -= 0.01) pts.push([-half(t), 92 - t * 205]);
           pts.forEach((p, i) => (i ? path.lineTo(p[0], p[1]) : path.moveTo(p[0], p[1])));
           path.closePath();
         }

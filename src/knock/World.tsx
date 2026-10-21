@@ -15,6 +15,7 @@ import { frameAt, type BedState, type Floor, type SibFrame, type Walker } from "
 import { glow } from "../home/materials";
 import { Dressing } from "./Dressing";
 import { Fixtures, outsideAt } from "./Fixtures";
+import { Beagle } from "./Beagle";
 import { FoldedNote } from "./props/wall";
 import { AIR_MATTRESS, AirMattress } from "./props/bedroom";
 import { guestDuvetMat, navyDuvetMat, patchworkQuiltMat, pillowcaseMat, plainSheetMat, racecarDuvetMat, sleepingBagMat, soccerDuvetMat, starQuiltMat, stripedSheetMat } from "./props/textures";
@@ -373,6 +374,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       ))}
       <Dressing d={F.dress} t={t} light={F.light} camDist={macro ? 0 : F.cam.dist} />
       {F.note ? <Note n={F.note} /> : null}
+      {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
       {(F.items ?? []).map((it, i) => (it.kind === "pillowOver" ? <PillowOver key={i} at={it.pos} q={it.q} /> : null))}
       {macro ? (
