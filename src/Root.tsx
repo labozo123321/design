@@ -22,6 +22,12 @@ import { PB_DURATION } from "./pinball/timeline";
 import { Tsunami } from "./tsunami/Tsunami";
 import { Coaster, COASTER_DURATION } from "./coaster/Coaster";
 import { FaceTest } from "./coaster/FaceTest";
+import { AgeTest } from "./home/AgeTest";
+import { OverlayTest as KnockOverlayTest } from "./knock/OverlayTest";
+import { PropsTest as KnockPropsTest } from "./knock/PropsTest";
+import { BeagleTest as KnockBeagleTest } from "./knock/BeagleTest";
+import { PropsTestB as KnockPropsTestB } from "./knock/PropsTestB";
+import { KnockVideo, KNOCK_FRAMES } from "./knock/KnockVideo";
 import { CoasterPhoto } from "./coaster/CoasterPhoto";
 import { Wedding, WEDDING_DURATION } from "./wedding/Wedding";
 import { Looks, LOOKS_DURATION } from "./looks/Looks";
@@ -134,6 +140,12 @@ export const RemotionRoot: React.FC = () => (
         height={1920}
       />
       <Composition id="CoasterFaceTest" component={FaceTest} durationInFrames={6} fps={30} width={1080} height={1920} />
+      <Composition id="HomeAgeTest" component={AgeTest} durationInFrames={6} fps={30} width={1080} height={1920} />
+      <Composition id="Knock" component={KnockVideo} durationInFrames={KNOCK_FRAMES} fps={30} width={1080} height={1920} />
+      <Composition id="KnockOverlayTest" component={KnockOverlayTest} durationInFrames={2145} fps={30} width={1080} height={1920} />
+      <Composition id="KnockPropsTest" component={KnockPropsTest} durationInFrames={60} fps={30} width={1080} height={1920} />
+      <Composition id="KnockPropsTestB" component={KnockPropsTestB} durationInFrames={60} fps={30} width={1080} height={1920} />
+      <Composition id="KnockBeagleTest" component={KnockBeagleTest} durationInFrames={60} fps={30} width={1080} height={1920} />
       <Composition id="CoasterPhoto" component={CoasterPhoto} durationInFrames={1} fps={30} width={1920} height={1080} />
       <Composition id="Wedding" component={Wedding} durationInFrames={WEDDING_DURATION} fps={30} width={1080} height={1920} />
       <Composition id="Looks" component={Looks} durationInFrames={LOOKS_DURATION} fps={30} width={1080} height={1920} />

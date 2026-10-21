@@ -100,6 +100,8 @@ const skinMaterial = (sh: Shape, look: SkinLook, rider: boolean, gloss = 0) => {
   const m = new THREE.MeshPhysicalMaterial({
     map: maps.map,
     roughnessMap: maps.rough,
+    // (the creases of older skin)
+    ...(maps.bump ? { bumpMap: maps.bump, bumpScale: 2.4 } : {}),
     roughness: 1 - 0.72 * gloss,
     sheen: 0.35,
     sheenColor: new THREE.Color("#FFB09A"),

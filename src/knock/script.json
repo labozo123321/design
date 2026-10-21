@@ -1,0 +1,992 @@
+{
+ "fps": 30,
+ "duration": 71.5,
+ "frames": 2145,
+ "title": {
+  "t0": 0.2,
+  "t1": 3.0,
+  "text": "POV: you had a secret knock with your sister",
+  "sub": "TOLD BY THE WALL BETWEEN YOUR ROOMS"
+ },
+ "beats": [
+  {
+   "name": "b1",
+   "t0": 0,
+   "t1": 8,
+   "era": "2004-first-night"
+  },
+  {
+   "name": "b2",
+   "t0": 8,
+   "t1": 15,
+   "era": "2004-2008-growing"
+  },
+  {
+   "name": "b3",
+   "t0": 15,
+   "t1": 22.5,
+   "era": "2009-storm"
+  },
+  {
+   "name": "b4",
+   "t0": 22.5,
+   "t1": 28,
+   "era": "2011-teen"
+  },
+  {
+   "name": "b5",
+   "t0": 28,
+   "t1": 36,
+   "era": "2013-last-night"
+  },
+  {
+   "name": "b6",
+   "t0": 36,
+   "t1": 42,
+   "era": "2013-2016-drift"
+  },
+  {
+   "name": "b7",
+   "t0": 42,
+   "t1": 47.5,
+   "era": "2016-2024-texts"
+  },
+  {
+   "name": "b8",
+   "t0": 47.5,
+   "t1": 55,
+   "era": "2025-christmas-eve"
+  },
+  {
+   "name": "b9",
+   "t0": 55,
+   "t1": 67.5,
+   "era": "2025-payoff"
+  },
+  {
+   "name": "end",
+   "t0": 67.5,
+   "t1": 71.5,
+   "era": "end-card"
+  }
+ ],
+ "knocks": [
+  {
+   "t": 4.0,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 4.3,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 4.6,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 5.9,
+   "side": "Y",
+   "kind": "fist",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 6.2,
+   "side": "Y",
+   "kind": "fist",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 6.5,
+   "side": "Y",
+   "kind": "fist",
+   "count": true,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 8.15,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 8.27,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 8.483,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 8.603,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 8.817,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 8.937,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 9.15,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 9.27,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 9.483,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 9.603,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 9.817,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 9.937,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 10.15,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 10.27,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 13.1,
+   "side": "N",
+   "kind": "hard",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 13.25,
+   "side": "N",
+   "kind": "hard",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 13.4,
+   "side": "N",
+   "kind": "hard",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 13.5,
+   "side": "Y",
+   "kind": "hard",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 13.65,
+   "side": "Y",
+   "kind": "hard",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 13.8,
+   "side": "Y",
+   "kind": "hard",
+   "count": true,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 14.05,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 14.17,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 14.383,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 14.503,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 14.717,
+   "side": "N",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 14.837,
+   "side": "Y",
+   "kind": "pulse",
+   "count": false,
+   "gain": 0.35,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.0,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.12,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.24,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.36,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.48,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.6,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.72,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.84,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 16.96,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 17.08,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 17.2,
+   "side": "Y",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.8,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 25.3,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": "muffled: earplugs in"
+  },
+  {
+   "t": 25.6,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": "muffled: earplugs in"
+  },
+  {
+   "t": 25.9,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": "muffled: earplugs in"
+  },
+  {
+   "t": 26.5,
+   "side": "Y",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 26.75,
+   "side": "Y",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 27.0,
+   "side": "Y",
+   "kind": "tap",
+   "count": true,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 29.2,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 29.45,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 29.7,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 32.4,
+   "side": "N",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.5,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 32.7,
+   "side": "N",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.5,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 33.0,
+   "side": "N",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.5,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 34.0,
+   "side": "Y",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.7,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 34.3,
+   "side": "Y",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.7,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 34.6,
+   "side": "Y",
+   "kind": "soft",
+   "count": true,
+   "gain": 0.7,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 37.05,
+   "side": "N",
+   "kind": "grey",
+   "count": false,
+   "gain": 0.45,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 37.22,
+   "side": "N",
+   "kind": "grey",
+   "count": false,
+   "gain": 0.45,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 37.39,
+   "side": "N",
+   "kind": "grey",
+   "count": false,
+   "gain": 0.45,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 37.56,
+   "side": "N",
+   "kind": "grey",
+   "count": false,
+   "gain": 0.45,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 37.73,
+   "side": "N",
+   "kind": "grey",
+   "count": false,
+   "gain": 0.45,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 37.9,
+   "side": "N",
+   "kind": "grey",
+   "count": false,
+   "gain": 0.45,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 55.0,
+   "side": "Y",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": "F#",
+   "note": ""
+  },
+  {
+   "t": 55.3,
+   "side": "Y",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": "E",
+   "note": ""
+  },
+  {
+   "t": 55.6,
+   "side": "Y",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": "E",
+   "note": ""
+  },
+  {
+   "t": 58.4,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": "F#",
+   "note": ""
+  },
+  {
+   "t": 58.7,
+   "side": "N",
+   "kind": "tap",
+   "count": false,
+   "gain": 1.0,
+   "pitch": "E",
+   "note": ""
+  },
+  {
+   "t": 59.0,
+   "side": "N",
+   "kind": "tap",
+   "count": true,
+   "gain": 1.0,
+   "pitch": "D",
+   "note": ""
+  },
+  {
+   "t": 60.8,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 60.92,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.04,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.16,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.28,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.4,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.52,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.64,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.76,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 61.88,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 62.0,
+   "side": "N",
+   "kind": "urgent",
+   "count": false,
+   "gain": 0.75,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 70.4,
+   "side": "N",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.6,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 70.7,
+   "side": "N",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.6,
+   "pitch": null,
+   "note": ""
+  },
+  {
+   "t": 71.0,
+   "side": "N",
+   "kind": "soft",
+   "count": false,
+   "gain": 0.6,
+   "pitch": null,
+   "note": ""
+  }
+ ],
+ "odometer": [
+  [
+   0,
+   0
+  ],
+  [
+   6.7,
+   1
+  ],
+  [
+   8.0,
+   1
+  ],
+  [
+   10.4,
+   897
+  ],
+  [
+   13.9,
+   898
+  ],
+  [
+   15.0,
+   1520
+  ],
+  [
+   15.0,
+   1718
+  ],
+  [
+   22.5,
+   2533
+  ],
+  [
+   27.1,
+   2534
+  ],
+  [
+   28,
+   3215
+  ],
+  [
+   34.8,
+   3216
+  ]
+ ],
+ "odometer_note": "Rolls at each counted exchange; spins between values during time-lapses; dims to 40% and locks at 35.3; un-dims and rolls 3216->3217 at 59.1; end card shows 3217.",
+ "captions": [
+  {
+   "t0": 3.2,
+   "t1": 5.6,
+   "text": "your first night in your own room."
+  },
+  {
+   "t0": 5.8,
+   "t1": 7.9,
+   "text": "she made up the knock."
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.8,
+   "text": "every night. even when you weren't speaking."
+  },
+  {
+   "t0": 16.4,
+   "t1": 19.0,
+   "text": "eleven knocks meant come here."
+  },
+  {
+   "t0": 19.8,
+   "t1": 22.3,
+   "text": "she always came."
+  },
+  {
+   "t0": 22.8,
+   "t1": 27.6,
+   "text": "she got a boyfriend. you got earplugs."
+  },
+  {
+   "t0": 28.4,
+   "t1": 31.8,
+   "text": "her last night home."
+  },
+  {
+   "t0": 32.6,
+   "t1": 35.8,
+   "text": "you almost didn't answer."
+  },
+  {
+   "t0": 37.2,
+   "t1": 40.6,
+   "text": "mom turned her room into a gym. briefly."
+  },
+  {
+   "t0": 44.2,
+   "t1": 47.2,
+   "text": "there was no fight. it just got shorter."
+  },
+  {
+   "t0": 49.8,
+   "t1": 52.6,
+   "text": "you both still slept on the wall side."
+  },
+  {
+   "t0": 55.3,
+   "t1": 58.3,
+   "text": "this time, you knocked first."
+  },
+  {
+   "t0": 63.0,
+   "t1": 67.2,
+   "text": "twelve years. twelve centimeters."
+  }
+ ],
+ "events": {
+  "hall_light_off": 3.0,
+  "lightning": [
+   15.0,
+   15.8,
+   19.5,
+   21.0
+  ],
+  "earplugs": [
+   24.8,
+   26.2
+  ],
+  "odometer_lock": 35.3,
+  "odometer_unlock": 59.1,
+  "macro": [
+   [
+    12.3,
+    13.1
+   ],
+   [
+    59.3,
+    60.1
+   ]
+  ],
+  "flashes": [
+   10.4,
+   13.9,
+   36.0,
+   37.0,
+   38.8,
+   49.0
+  ],
+  "chat": [
+   42.3,
+   47.3
+  ],
+  "string_lights_off": 66.8,
+  "waiting": [
+   55.9,
+   58.4
+  ],
+  "double_exposure": [
+   65.4,
+   66.9
+  ],
+  "end_card": 67.5
+ }
+}

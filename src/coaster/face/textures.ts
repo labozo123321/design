@@ -38,6 +38,74 @@ export type SkinLook = {
   freckles: number;
   lip: string;
   seed: number;
+  /** years on the face, 0..1 (0: none, 0.5: the fifties, 1: the late seventies): forehead lines, crow's
+   * feet, the folds from nose to mouth, softer under the eyes, a few age spots; and a bump map for them */
+  age?: number;
+};
+
+/** A wrinkle: a polyline in face coordinates (x, y on the neutral surface, metres), its width and depth. */
+type Crease = { pts: [number, number][]; w: number; k: number };
+const creasesFor = (sh: Shape, age: number, seed: number): Crease[] => {
+  const out: Crease[] = [];
+  const ey = sh.eyeY;
+  const ex = sh.eyeX;
+  const j = (n: number) => (hash(n, seed) - 0.5) * 0.0016;
+  // the forehead: three long shallow lines, a little wavy, deeper with age
+  for (let r = 0; r < 3; r++) {
+    const y0 = ey + 0.036 + r * 0.0105;
+    const span = 0.042 - r * 0.004;
+    const pts: [number, number][] = [];
+    for (let q = 0; q <= 8; q++) {
+      const x = -span + (2 * span * q) / 8;
+      pts.push([x, y0 + Math.cos((x / span) * 1.4) * 0.0022 + j(r * 13 + q)]);
+    }
+    out.push({ pts, w: 0.0011, k: 0.55 * age });
+  }
+  // between the brows: two short upright lines past the middle years
+  for (const sd of [-1, 1]) out.push({ pts: [[sd * 0.0055, ey + 0.016], [sd * 0.0065, ey + 0.029]], w: 0.0009, k: Math.max(0, age - 0.35) * 0.8 });
+  for (const sd of [-1, 1]) {
+    // crow's feet: three fanned lines from the outer corner of each eye
+    const cx = sd * (ex + sh.eyeR * 1.35);
+    for (const a of [-0.45, 0, 0.42]) {
+      const len = 0.0105 + 0.002 * Math.cos(a * 3);
+      out.push({ pts: [[cx, ey + a * 0.004], [cx + sd * Math.cos(a) * len, ey + Math.sin(a) * len - 0.001]], w: 0.0008, k: 0.75 * age });
+    }
+    // under the eye: the lid's lower fold
+    const pts: [number, number][] = [];
+    for (let q = 0; q <= 6; q++) {
+      const t = q / 6;
+      const x = sd * (ex - sh.eyeR * 0.9 + t * sh.eyeR * 2.2);
+      pts.push([x, ey - sh.eyeR * 1.25 - Math.sin(t * Math.PI) * 0.0032]);
+    }
+    out.push({ pts, w: 0.0012, k: 0.6 * age });
+    // nose to the corner of the mouth: the deepest, widest fold
+    const nl: [number, number][] = [];
+    for (let q = 0; q <= 8; q++) {
+      const t = q / 8;
+      const x = sd * (sh.noseW * 0.0165 + t * (sh.mouthW * 0.5 + 0.004 - sh.noseW * 0.0165) + Math.sin(t * Math.PI) * 0.004);
+      nl.push([x, sh.noseY + 0.003 - t * (sh.noseY + 0.003 - (sh.mouthY - 0.008))]);
+    }
+    out.push({ pts: nl, w: 0.0022, k: 0.85 * age });
+    // and past sixty, from the mouth's corners toward the chin
+    out.push({ pts: [[sd * (sh.mouthW * 0.5 + 0.002), sh.mouthY - 0.004], [sd * (sh.mouthW * 0.5 + 0.004), sh.chinY + 0.018]], w: 0.0016, k: Math.max(0, age - 0.55) * 1.1 });
+  }
+  return out;
+};
+const segDist = (x: number, y: number, a: [number, number], b: [number, number]) => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy);
+};
+const creaseAt = (cs: Crease[], x: number, y: number) => {
+  let v = 0;
+  for (const c of cs) {
+    if (c.k <= 0) continue;
+    let d = 1;
+    for (let i = 0; i < c.pts.length - 1; i++) d = Math.min(d, segDist(x, y, c.pts[i], c.pts[i + 1]));
+    if (d < c.w * 3) v += c.k * Math.exp(-((d / c.w) ** 2));
+  }
+  return Math.min(1, v);
 };
 
 /** Direction on the unit sphere for a UV of THREE.SphereGeometry. */
@@ -47,7 +115,7 @@ export const dirOfUV = (u: number, v: number, out = new THREE.Vector3()) => {
   return out.set(-Math.cos(phi) * Math.sin(theta), Math.cos(theta), Math.sin(phi) * Math.sin(theta));
 };
 
-const cache: Record<string, { map: THREE.Texture; rough: THREE.Texture }> = {};
+const cache: Record<string, { map: THREE.Texture; rough: THREE.Texture; bump?: THREE.Texture }> = {};
 
 export const skinMaps = (sh: Shape, look: SkinLook) => {
   const key = `${JSON.stringify(sh)}|${JSON.stringify(look)}`;
@@ -64,7 +132,15 @@ export const skinMaps = (sh: Shape, look: SkinLook) => {
   cr.height = H;
   const gr = cr.getContext("2d")!;
   const rimg = gr.createImageData(W, H);
+  const age = look.age ?? 0;
+  const creases = age > 0 ? creasesFor(sh, age, look.seed) : [];
+  const cb = age > 0 ? document.createElement("canvas") : null;
+  const gb = cb ? ((cb.width = W), (cb.height = H), cb.getContext("2d")!) : null;
+  const bimg = gb ? gb.createImageData(W, H) : null;
+  const spot = new THREE.Color(look.tone).multiplyScalar(0.72).lerp(new THREE.Color("#7A4A2A"), 0.3);
   const base = new THREE.Color(look.tone);
+  // older skin: a little less colour and less flush
+  if (age > 0) base.lerp(new THREE.Color(look.tone).offsetHSL(0, -0.06 * age, 0.01 * age), 1);
   const warm = base.clone().lerp(new THREE.Color("#D9584E"), 0.32);
   const lip = new THREE.Color(look.lip);
   const shade = base.clone().multiplyScalar(0.86).lerp(new THREE.Color("#7A5A6A"), 0.12);
@@ -131,7 +207,30 @@ export const skinMaps = (sh: Shape, look: SkinLook) => {
           }
         }
       }
+      // the years: creases (darker in their valleys), a little shadow under the eyes, a few age spots
+      let crease = 0;
+      if (age > 0 && front > 0.05) {
+        crease = creaseAt(creases, x, y) * front;
+        col.lerp(shade, crease * 0.72);
+        col.lerp(shade, front * age * 0.25 * (g2(Math.abs(x), y, sh.eyeX, sh.eyeY - sh.eyeR * 1.5, 0.014, 0.006)));
+        if (age > 0.5) {
+          const sx = Math.floor(x * 260);
+          const sy = Math.floor(y * 260);
+          if (hash(sx + look.seed * 3, sy - 7) > 1 - 0.035 * (age - 0.5)) {
+            const fx = x * 260 - sx - 0.5;
+            const fy = y * 260 - sy - 0.5;
+            col.lerp(spot, Math.max(0, 1 - Math.hypot(fx, fy) * 2.4) * 0.5);
+          }
+        }
+      }
       const o = (j * W + i) * 4;
+      if (bimg) {
+        const bv = Math.round(Math.max(0, Math.min(1, 0.75 - crease * 0.75)) * 255);
+        bimg.data[o] = bv;
+        bimg.data[o + 1] = bv;
+        bimg.data[o + 2] = bv;
+        bimg.data[o + 3] = 255;
+      }
       img.data[o] = Math.round(Math.min(1, col.r) ** (1 / 2.2) * 255);
       img.data[o + 1] = Math.round(Math.min(1, col.g) ** (1 / 2.2) * 255);
       img.data[o + 2] = Math.round(Math.min(1, col.b) ** (1 / 2.2) * 255);
@@ -156,7 +255,13 @@ export const skinMaps = (sh: Shape, look: SkinLook) => {
   map.anisotropy = 8;
   const rough = new THREE.CanvasTexture(cr);
   rough.anisotropy = 8;
-  cache[key] = { map, rough };
+  let bump: THREE.Texture | undefined;
+  if (gb && bimg && cb) {
+    gb.putImageData(bimg, 0, 0);
+    bump = new THREE.CanvasTexture(cb);
+    bump.anisotropy = 8;
+  }
+  cache[key] = { map, rough, bump };
   return cache[key];
 };
 
