@@ -42,13 +42,17 @@ export const contactOf = (k: Knock, i: number) => knockPoint(k.side === "N" ? -1
 
 export type ActiveRing = { k: Knock; i: number; age: number; radius: number; strength: number; color: THREE.Color; at: THREE.Vector3 };
 
+/** The picture's cuts (era jumps and flash cuts): a ring doesn't carry across one into the next scene. */
+const CUTS = [8.0, 9.333, 10.4, 13.9, 15.0, 22.5, 28.0, 36.0, 37.0, 38.8, 42.0, 47.5, 49.0];
+
 /** The rings alive at time t (the newest last). */
 export const ringsAt = (t: number, contact: (k: Knock, i: number) => THREE.Vector3 = contactOf): ActiveRing[] => {
   const out: ActiveRing[] = [];
+  const cut = CUTS.filter((c) => c <= t + 1e-6).pop() ?? -1;
   KNOCKS.forEach((k, i) => {
     const s = RING[k.kind];
     const age = t - k.t;
-    if (age < 0 || age > s.life) return;
+    if (age < 0 || age > s.life || k.t < cut - 1e-6) return;
     const u = age / s.life;
     const radius = s.r * (1 - Math.pow(1 - u, 2.2));
     const strength = s.k * k.gain * Math.pow(1 - u, 1.4) * Math.min(1, age / 0.03);

@@ -785,12 +785,14 @@ const b3 = (t: number): Frame => {
   const floor: Floor[] = [];
   let nora: SibFrame | null = null;
   const nBase = { e: { puff: 0.0, brow: -0.1 }, nearSide: -1 as const };
-  if (t < 18.0) {
+  // (in step with the sound: the quilt thrown back at 17.62, up to sitting by 18.05, the pillow and quilt
+  // gathered at 18.32 as the legs swing off the bed, bare feet on the floor at 18.41, walking from 18.6)
+  if (t < 17.72) {
     const awake = smooth(17.4, 17.55, t);
     nora = {
       s: n,
       side: -1,
-      covers: 0.86 - 0.5 * smooth(17.65, 17.95, t),
+      covers: 0.86 - 0.5 * smooth(17.6, 17.72, t),
       lie: {
         roll: 0.15,
         near: { rest: restOnCovers(n, "near", -1, 0.5) },
@@ -817,9 +819,9 @@ const b3 = (t: number): Frame => {
     const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
     let p: Posed | null = null;
     let carry: "bundle" | null = "bundle";
-    if (t < 18.3) p = blendPosed({ ...lying, ...nBase }, sitUp, (t - 18.0) / 0.3);
-    else if (t < 18.45) p = blendPosed(sitUp, edge, (t - 18.3) / 0.15);
-    else if (t < walkT0) p = blendPosed(edge, stand, (t - 18.45) / (walkT0 - 18.45));
+    if (t < 18.05) p = blendPosed({ ...lying, ...nBase }, sitUp, (t - 17.72) / 0.33);
+    else if (t < 18.42) p = blendPosed(sitUp, edge, (t - 18.05) / 0.37);
+    else if (t < walkT0) p = blendPosed(edge, stand, (t - 18.42) / (walkT0 - 18.42));
     else if (t < arrive) p = walkAlong(n, path, (t - walkT0) * speed, { ...nBase, ...bundleArms }, WALK_STRIDE);
     else {
       // drop the pillow and quilt, down onto the rug on her side, her back to your bed
@@ -835,10 +837,11 @@ const b3 = (t: number): Frame => {
       if (t >= arrive + 0.2)
         floor.push({ s: n, side: 1, covers: p === null ? 0.14 + 0.68 * smoother((t - arrive - 0.95) / 0.5) : null, spot, pillow: t >= arrive + 0.95, body: p === null, look: "nora2007", lie: { roll: -0.9, spot, e: { lidL: 1, lidR: 1 }, near: null, far: null } });
     }
-    if (p && t < 18.4) carry = null;
+    if (p && t < 18.32) carry = null;
     if (p) walkers.push({ key: "nora", s: n, p, carry });
   }
-  const cam = t < 18.0 ? PRESETS.medium : camBetween(t, 18.0, 19.4, PRESETS.medium, PRESETS.wide);
+  // (pulling back as she gets up, so her way out of the room stays in frame)
+  const cam = t < 17.8 ? PRESETS.medium : camBetween(t, 17.8, 19.2, PRESETS.medium, PRESETS.wide);
   return {
     t,
     nora,
@@ -846,8 +849,8 @@ const b3 = (t: number): Frame => {
     walkers,
     floor,
     dog: mooseIn2009(t, n),
-    // (her quilt stays thrown back on the bed while she sits up; at 18.4 she gathers it and her pillow)
-    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 18.0 ? 1 : 0, bare: t >= 18.4, noPillow: t >= 18.4 }, you: { kind: "twin", look: "you2009" } } },
+    // (her quilt stays thrown back on the bed while she sits up; at 18.32 she gathers it and her pillow)
+    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 17.72 ? 1 : 0, bare: t >= 18.32, noPillow: t >= 18.32 }, you: { kind: "twin", look: "you2009" } } },
     light: { hall: 0.12 + 0.25 * smooth(18.2, 18.6, t), street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
     cam,
     look: { exposure: 1.3, sat: 0.92, con: 1.05, tint: [0.92, 0.95, 1.1], shadow: [0.85, 0.9, 1.2], vig: 0.36, grain: 0.017 },

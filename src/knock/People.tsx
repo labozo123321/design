@@ -46,6 +46,8 @@ export type Lie = {
   /** the near and far hands not drawn (set by the bed: hands lying under the covers, whose fingertips would
    *  otherwise come through) */
   hideHands?: [boolean, boolean];
+  /** lying uncovered: the feet fall relaxed toward the foot of the bed instead of standing up */
+  bareFeet?: boolean;
   /** slide along the bed toward the wall (+) or away (-), metres */
   slide?: number;
   /** lying somewhere other than the twin bed: the head's x (on the back), the surface height, the pillow */
@@ -132,13 +134,16 @@ export const bodyCapsules = (s: Sib, f: ReturnType<typeof lieFrame>, knees: numb
     const knee = ik(hip, foot, thigh, shin, V(sd * 0.02, 0, -1));
     caps.push({ a: w(hip), b: w(knee), r: 0.085 * k });
     caps.push({ a: w(knee), b: w(foot), r: 0.07 * k });
-    // the foot itself, pointing up out of the line of the leg
+    // the foot itself, pointing up out of the line of the leg (under covers the feet stand the cloth up)
     caps.push({ a: w(foot), b: w(foot.clone().add(V(0, 0.04, -0.3 * k))), r: 0.09 * k });
     // the shoe itself sits below the ankle (its sole toward the foot of the bed), toes up
     caps.push({ a: w(foot.clone().add(V(0, -0.1 * k, -0.02 * k))), b: w(foot.clone().add(V(0, -0.08 * k, -0.27 * k))), r: 0.085 * k });
   }
   return caps;
 };
+
+/** How far a lying body's feet fall from upright (radians about the ankle). */
+export const LIE_POINT = 0.85;
 
 /** The ankles in the body frame: legs straight on the back (only just short of full length, so the knees
  * don't buckle up), drawn up with the knees forward when curled on the side. */
@@ -377,6 +382,7 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     headPitch: st.headPitch,
     feet: [footAt(s.k, -1, b.knees), footAt(s.k, 1, b.knees)],
     ankles: true,
+    pointToes: st.bareFeet ? LIE_POINT : 0,
   };
   // (a hand under the covers isn't drawn; an arm left to the Figure hangs where armCapsules says it does)
   const hanging = (sd: number): Arm => ({ at: V(sd * 0.24 * s.k, 0.82 * s.k, -0.04 * s.k), hand: RELAX });

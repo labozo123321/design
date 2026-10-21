@@ -57,6 +57,9 @@ export type Pose = {
   /** a rounded ankle where the shin meets the shoe (lying down, seen end-on from above, the shin's taper
    *  would otherwise show as a point with the shoe beyond it) */
   ankles?: boolean;
+  /** feet pointed (radians, plantar flexion about the ankle): a body lying down lets its feet fall toward the
+   *  foot of the bed rather than stand straight up */
+  pointToes?: number;
   /** torso pitched forward (+) */
   lean?: number;
   /** torso rolled to its right (+) */
@@ -1257,7 +1260,7 @@ export const Figure: React.FC<{
             <sphereGeometry args={[1, 12, 8]} />
           </mesh>
         ) : null}
-        <Shoe at={A} side={side} k={k} o={outfit} />
+        <Shoe at={A} side={side} k={k} o={outfit} point={pose.pointToes ?? 0} />
       </group>
     );
   });
@@ -1352,11 +1355,11 @@ const shoeGeo = (heels: boolean) =>
     return g;
   })());
 
-const Shoe: React.FC<{ at: THREE.Vector3; side: number; k: number; o: Outfit }> = ({ at, side, k, o }) => {
+const Shoe: React.FC<{ at: THREE.Vector3; side: number; k: number; o: Outfit; point?: number }> = ({ at, side, k, o, point = 0 }) => {
   const heels = !!o.heels;
   const mat = leather(o.shoe);
   return (
-    <group position={at} rotation={[0, side * 0.08, 0]} scale={k}>
+    <group position={at} rotation={[-point, side * 0.08, 0]} scale={k}>
       <mesh geometry={shoeGeo(heels)} material={mat} position={[0, heels ? -0.045 : -0.05, -0.065]} rotation={[heels ? -0.12 : 0, 0, 0]} castShadow />
       {heels ? (
         <mesh material={mat} position={[0, -0.078, 0.035]} scale={[0.012, 0.045, 0.012]}>

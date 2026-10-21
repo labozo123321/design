@@ -281,7 +281,7 @@ const OnFloor: React.FC<{ f: Floor; t: number }> = ({ f, t }) => {
   const spec = { x0: f.spot.x - 0.3, x1: f.spot.x + 0.42, z0: f.spot.pillowZ - 0.25, z1: f.spot.pillowZ + 1.7, top: f.spot.top };
   return (
     <>
-      {b ? <LyingSib s={f.s} side={f.side} st={{ ...f.lie, hideHands: handsUnder(f, f.side, f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers, f.spot.top) }} t={t} /> : null}
+      {b ? <LyingSib s={f.s} side={f.side} st={{ ...f.lie, bareFeet: f.covers === null, hideHands: handsUnder(f, f.side, f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers, f.spot.top) }} t={t} /> : null}
       <Bed
         side={f.side}
         look={f.look ? BEDS[f.look] ?? BEDS.guest : BEDS.guest}
@@ -359,12 +359,21 @@ const Snow: React.FC<{ t: number; k: number }> = ({ t, k }) => {
 };
 
 /** The folded note in Nora's near hand on the fight night (at her wrist, tipped toward the wall). */
+/** The folded note pinched in the near hand: where the Figure's IK actually puts the hand (not where the
+ * arm was asked to reach), its long side along the fingers, its face to the palm. */
 const NoteInHand: React.FC<{ f: SibFrame }> = ({ f }) => {
   const A = lyingArms(f.s, f.side, f.lie);
   if (!A.near) return null;
-  const w = A.toW(A.near.at);
+  const hand = armCapsules(A.near, A.nearSide === "armL" ? -1 : 1, f.s.k, A.toW)[2];
+  const fore = hand.b.clone().sub(hand.a).normalize();
+  const at = hand.a.clone().lerp(hand.b, 0.62);
+  const side = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), fore);
+  if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+  side.normalize();
+  const up = new THREE.Vector3().crossVectors(fore, side).normalize();
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, up, fore));
   return (
-    <group position={[w.x + 0.025, w.y + 0.03, w.z + 0.02]} rotation={[0.5, Math.PI / 2, 0.3]}>
+    <group position={at.addScaledVector(fore, -0.035)} quaternion={q}>
       <FoldedNote open={0} />
     </group>
   );
@@ -400,6 +409,7 @@ const debugCam = (cam?: string) => {
   if (cam === "sideN") return at([-2.3, 1.5, -0.9], [-0.45, 0.55, -2.7]);
   if (cam === "feetY") return at([1.6, 1.1, -0.9], [0.5, 0.55, -1.9]);
   if (cam === "sideY") return at([2.3, 1.5, -0.9], [0.45, 0.55, -2.7]);
+  if (cam === "feetN") return at([-1.85, 0.78, -2.0], [-0.5, 0.58, -2.0]);
   if (cam === "rugN") return at([-0.5, 0.75, -1.0], [-1.38, 0.08, -1.95]);
   if (cam === "legsN") return at([-0.45, 1.7, -1.0], [-0.45, 0.5, -2.1]);
   if (cam === "legsY") return at([0.45, 1.7, -1.0], [0.45, 0.5, -2.1]);

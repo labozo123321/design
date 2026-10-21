@@ -15,7 +15,7 @@ import { EndCard } from "./overlay/EndCard";
 /** The picture's white flash frames (director: time-lapse night cuts and the era jumps). */
 const FLASHES: [number, number][] = [
   [8.0, 8.067],
-  [9.333, 9.4],
+  [9.333, 9.41],
   [10.35, 10.45],
   [13.9, 13.967],
   [22.5, 22.55],
@@ -37,7 +37,7 @@ export const Overlay: React.FC<{ frame: number }> = ({ frame }) => {
   // on the picture's white flash cuts the HUD's dark backing would print as a smudge: let the flash through
   const flash = FLASHES.some(([a, b]) => t >= a - 1e-6 && t < b);
   return (
-    <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, overflow: "hidden", pointerEvents: "none", opacity: flash ? 0.15 : 1 }}>
+    <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, overflow: "hidden", pointerEvents: "none", opacity: flash ? 0 : 1 }}>
       {scrim > 0.002 ? (
         <div
           style={{

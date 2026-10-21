@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { Figure, RELAX, type Arm, type Pose } from "../wedding/Figure";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
 import type { Sib } from "./cast";
-import { HeadBits, clearOfWall, lyingChains, type ArmSpec, type Reach } from "./People";
+import { HeadBits, LIE_POINT, clearOfWall, lyingChains, type ArmSpec, type Reach } from "./People";
 import { smoother, V3 } from "./anim";
 
 /**
@@ -130,6 +130,8 @@ export const PosedSib: React.FC<{ s: Sib; p: Posed; t: number }> = ({ s, p, t })
     twist: p.twist,
     feet: [toBody(p.feet[0], root, p.q), toBody(p.feet[1], root, p.q)],
     ankles: true,
+    // (the feet fall relaxed as the body lies down; upright, they stand on the floor)
+    pointToes: LIE_POINT * Math.min(1, Math.max(0, 1 - 1.4 * new THREE.Vector3(0, 1, 0).applyQuaternion(p.q).y)),
   };
   // (out of whichever room's side of the wall the hips are in)
   const room = (p.hip.x < 0 ? -1 : 1) as -1 | 1;
