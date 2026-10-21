@@ -57,3 +57,14 @@ export const KnockVideo: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+/** The overlay alone, on a transparent frame: rendered on its own and laid over the picture afterwards, so
+ * the HUD and captions can change without re-rendering the 3D. */
+export const KnockOverlayOnly: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill>
+      <Overlay frame={frame} />
+    </AbsoluteFill>
+  );
+};

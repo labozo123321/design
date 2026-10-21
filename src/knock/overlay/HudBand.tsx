@@ -34,9 +34,9 @@ export const HUD_LAYOUT = {
 const L = HUD_LAYOUT;
 const DRUMS_W = 4 * L.drumW + 3 * L.drumGap;
 const DRUMS_X = 540 - DRUMS_W / 2;
-const SHADOW = "0 1px 2px rgba(0,0,0,0.45), 0 0 18px rgba(0,0,0,0.38)";
+const SHADOW = "0 0 3px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.45), 0 0 18px rgba(0,0,0,0.38)";
 /** small type keeps its opacity in its colour so its shadow stays full strength over bright pillows */
-const SHADOW_SMALL = "0 1px 2px rgba(0,0,0,0.65), 0 0 10px rgba(0,0,0,0.5)";
+const SHADOW_SMALL = "0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.75), 0 0 10px rgba(0,0,0,0.55)";
 const BLUE = hexRGB(NORA_BLUE);
 const AMBER = hexRGB(YOUR_AMBER);
 const GOLD = hexRGB(TINTS.gold);

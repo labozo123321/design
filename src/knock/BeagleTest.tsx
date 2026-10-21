@@ -44,6 +44,7 @@ const floorMat = new THREE.MeshStandardMaterial({ color: "#8A6E52", roughness: 0
 const rugMat = new THREE.MeshStandardMaterial({ color: "#B9AFA2", roughness: 0.97 });
 const bedMat = new THREE.MeshStandardMaterial({ color: "#E9E3D8", roughness: 0.8 });
 const wallMat = new THREE.MeshStandardMaterial({ color: "#D8CFC2", roughness: 0.9 });
+const bumpMat = new THREE.MeshStandardMaterial({ color: "#7E6AA8", roughness: 0.95 });
 
 /** the poses on the contact sheet, with how each one is turned for the two views */
 const rows = (f: number): { id: string; label: string; pose: (t: number) => BeaglePose; yawTop: number; yawQ: number; bed?: boolean; r: [number, number] }[] => [
@@ -95,7 +96,51 @@ const cellsFor = (page: number, f: number): { title: string; cols: number; rowsN
       { id: "flopFace", label: "adult flop face (eyes closing)", r: 0.15, c: [-0.1, 0.1, -0.3], view: "top", node: A({ kind: "flop", t: 0.2, blink: 0.8, faceUp: 0.55 }) },
       { id: "curlP", label: "puppy curled in bed (film angle)", r: 0.16, c: [0, 0.12, 0], view: "top", node: P({ kind: "curl", t: 0.2 }, 0.4, true) },
     ];
+    // the film's 2009 beat: flopped across her ankles (a quilt-covered bump 12 cm high across its middle)
+    const ankles = (x: number, z: number) => {
+      void x;
+      const d = Math.abs(z + 0.05);
+      return d < 0.075 ? 0.05 + Math.sqrt(0.075 * 0.075 - d * d) * 0.95 : 0;
+    };
+    cells.push({
+      id: "ankles",
+      label: "flop across her ankles (ground prop)",
+      r: 0.36,
+      c: [0, 0.1, -0.05],
+      view: "q",
+      dir: [1, 0.45, 0.35],
+      node: (t: number) => (
+        <group>
+          <mesh position={[0, 0.05, -0.05]} rotation={[0, 0, Math.PI / 2]} material={bumpMat} castShadow receiveShadow>
+            <cylinderGeometry args={[0.07, 0.07, 1.2, 32]} />
+          </mesh>
+          <Beagle at={new THREE.Vector3()} yaw={0} pose={{ kind: "flop", t, blink: 0.7, faceUp: 0.6 }} ground={ankles} />
+        </group>
+      ),
+    });
+    cells.push({
+      id: "anklesTop",
+      label: "flop across her ankles · film angle",
+      r: 0.38,
+      c: [0.02, 0.1, -0.05],
+      view: "top",
+      node: (t: number) => (
+        <group>
+          <mesh position={[0, 0.05, -0.05]} rotation={[0, 0, Math.PI / 2]} material={bumpMat} castShadow receiveShadow>
+            <cylinderGeometry args={[0.07, 0.07, 1.2, 32]} />
+          </mesh>
+          <Beagle at={new THREE.Vector3()} yaw={0} pose={{ kind: "flop", t, blink: 0.7, faceUp: 0.6 }} ground={ankles} />
+        </group>
+      ),
+    });
     // macro checks for seams and intersections
+    cells.push(
+      { id: "earsTopA", label: "adult trotting · film angle (ears, saddle)", r: 0.22, c: [0, 0.3, -0.18], view: "top", node: (t: number, fr: number) => <Beagle at={new THREE.Vector3()} yaw={0} pose={{ kind: "trot", t, phase: fr / 20 }} /> },
+      { id: "earsTopP", label: "puppy standing · film angle", r: 0.14, c: [0, 0.18, -0.1], view: "top", node: P({ kind: "stand", t: 0.2 }) },
+      { id: "lieFront", label: "chin on paws: collar, tag, ears (low front)", r: 0.17, c: [0, 0.07, -0.3], view: "q", dir: [0.45, 0.3, -1], node: A({ kind: "lie", t: 0.2, headUp: 0 }) },
+      { id: "lieFrontP", label: "puppy chin on paws (low front)", r: 0.11, c: [0, 0.05, -0.18], view: "q", dir: [-0.45, 0.3, -1], node: P({ kind: "lie", t: 0.2, headUp: 0 }) },
+      { id: "lieTopP", label: "puppy chin on paws · film angle", r: 0.16, c: [0, 0.05, -0.08], view: "top", node: P({ kind: "lie", t: 0.2, headUp: 0 }) },
+    );
     cells.push(
       { id: "eyeMacro", label: "eye macro (open)", r: 0.035, c: [0.032, 0.483, -0.338], view: "q", dir: [0.9, 0.2, -0.7], node: A({ kind: "stand", t: 0.2, blink: 0 }) },
       { id: "eyeShut", label: "eye macro (shut)", r: 0.035, c: [0.032, 0.483, -0.338], view: "q", dir: [0.9, 0.2, -0.7], node: A({ kind: "stand", t: 0.2, blink: 1 }) },

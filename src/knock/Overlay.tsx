@@ -1,7 +1,7 @@
 import React from "react";
-import { FPS } from "./script";
+import { FPS, smooth } from "./script";
 import { hudState } from "./overlay/hud";
-import { Hud } from "./overlay/Hud";
+import { Hud } from "./overlay/HudBand";
 import { Captions, Title } from "./overlay/Captions";
 import { Chat } from "./overlay/Chat";
 import { EndCard } from "./overlay/EndCard";
@@ -16,7 +16,8 @@ export const Overlay: React.FC<{ frame: number }> = ({ frame }) => {
   const t = frame / FPS;
   const h = hudState(t);
   // a gentle darkening behind the HUD so its thin numerals hold over the lit hallway at the top of frame
-  const scrim = 0.3 * h.alpha;
+  const day = (t >= 8 && t < 10.4) || (t >= 13.9 && t < 15) || (t >= 36 && t < 47.5) ? 1 : 0;
+  const scrim = (0.3 + 0.15 * day) * smooth(3.0, 3.5, t);
   return (
     <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, overflow: "hidden", pointerEvents: "none" }}>
       {scrim > 0.002 ? (

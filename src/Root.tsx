@@ -27,7 +27,7 @@ import { OverlayTest as KnockOverlayTest } from "./knock/OverlayTest";
 import { PropsTest as KnockPropsTest } from "./knock/PropsTest";
 import { BeagleTest as KnockBeagleTest } from "./knock/BeagleTest";
 import { PropsTestB as KnockPropsTestB } from "./knock/PropsTestB";
-import { KnockVideo, KNOCK_FRAMES } from "./knock/KnockVideo";
+import { KnockOverlayOnly, KnockVideo, KNOCK_FRAMES } from "./knock/KnockVideo";
 import { CoasterPhoto } from "./coaster/CoasterPhoto";
 import { Wedding, WEDDING_DURATION } from "./wedding/Wedding";
 import { Looks, LOOKS_DURATION } from "./looks/Looks";
@@ -142,6 +142,7 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="CoasterFaceTest" component={FaceTest} durationInFrames={6} fps={30} width={1080} height={1920} />
       <Composition id="HomeAgeTest" component={AgeTest} durationInFrames={6} fps={30} width={1080} height={1920} />
       <Composition id="Knock" component={KnockVideo} durationInFrames={KNOCK_FRAMES} fps={30} width={1080} height={1920} />
+      <Composition id="KnockOverlay" component={KnockOverlayOnly} durationInFrames={KNOCK_FRAMES} fps={30} width={1080} height={1920} />
       <Composition id="KnockOverlayTest" component={KnockOverlayTest} durationInFrames={2145} fps={30} width={1080} height={1920} />
       <Composition id="KnockPropsTest" component={KnockPropsTest} durationInFrames={60} fps={30} width={1080} height={1920} />
       <Composition id="KnockPropsTestB" component={KnockPropsTestB} durationInFrames={60} fps={30} width={1080} height={1920} />

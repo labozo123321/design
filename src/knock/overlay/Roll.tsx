@@ -49,15 +49,20 @@ export const Roll: React.FC<{
   const w = rollWindow(h, fs);
   const D = w.height;
   /** a slot: an invisible copy of `now` sizes it; the window over it shows `now` rising and `was` leaving */
-  const slot = (now: string, was: string, key: number | string, side: "left" | "right" = "left") => (
+  const slot = (now: string, was: string, key: number | string, side: "left" | "right" = "left") => {
+    // (a longer outgoing string hangs past the slot on the side away from its anchor: open the window that far)
+    const extra = Math.max(0, was.length - now.length) * 0.66 * fs;
+    const far = SLACK + extra;
+    return (
     <span key={key} style={{ position: "relative", display: "inline-block", height: h }}>
       <span style={{ visibility: "hidden" }}>{now}</span>
-      <span style={{ position: "absolute", left: -SLACK, right: -SLACK, top: w.top, height: D, overflow: "hidden" }}>
+      <span style={{ position: "absolute", left: side === "right" ? -far : -SLACK, right: side === "left" ? -far : -SLACK, top: w.top, height: D, overflow: "hidden" }}>
         <span style={{ position: "absolute", [side]: SLACK, top: -w.top + (1 - e) * D, opacity: Math.min(1, e * 1.5) }}>{now}</span>
         <span style={{ position: "absolute", [side]: SLACK, top: -w.top - e * D, opacity: 1 - e * 0.85 }}>{was}</span>
       </span>
     </span>
-  );
+    );
+  };
   if (r.prev.length === r.text.length) {
     return <span style={base}>{[...r.text].map((c, i) => (r.prev[i] === c ? <span key={i}>{c}</span> : slot(c, r.prev[i], i)))}</span>;
   }

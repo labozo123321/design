@@ -20,12 +20,12 @@ export const END = {
   left: 68.3,
   right: 68.8,
   cta: 69.4,
-  titleY: 560,
+  titleY: 690,
   wallY0: 760,
   wallY1: 1180,
   ctaY: 1380,
   /** the extra dimming the overlay lays over the picture for legibility */
-  scrim: 0.34,
+  scrim: 0.1,
 };
 const KIDS = ["AS KIDS, SIBLINGS", "SPEND ABOUT HALF", "THEIR FREE TIME", "TOGETHER."];
 const KIDS_CREDIT = ["(DEMOGRAPHIC RESEARCH,", "2017)"];

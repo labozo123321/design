@@ -20,7 +20,21 @@ import { PUPPY_BED } from "./props/house";
  * with a soft sheen.
  *
  * Usage: <Beagle at={V3(x, 0, z)} yaw={a} pose={{ kind: "trot", phase, t }} />. yaw turns it about y (0 faces
- * -z, +pi/2 faces -x). For the puppy curled in Moose's bed pass `inBed` and the bed's own position as `at`.
+ * -z, +pi/2 faces -x; it walks along (-sin yaw, 0, -cos yaw)).
+ *  - trot: advance `phase` by BEAGLE.cadence() per second and move `at` forward BEAGLE.stride() per unit of
+ *    phase (BEAGLE.speed() m/s); planted paws then stay put (measured slip < 0.3 mm).
+ *  - blends: { kind: "trot", to: "stand", mix } then { kind: "stand", to: "flop", mix } (the lowest point stays
+ *    on the ground through a blend; lying poses squash softly onto it).
+ *  - the puppy in its bed: <PuppyBed/> and <Beagle puppy inBed at={same point} pose={{ kind: "curl", t }} />
+ *    (it settles into the dished cushion, centred, clear of the bolster).
+ *  - lying on something uneven (flopped across Nora's ankles): pass `ground(x, z)` returning the world height
+ *    of whatever is under it (floor or rug plus the quilt over her ankles); lying poses drape over a smoothed
+ *    copy of it and never sink into it. Standing poses keep their paws on the plane at.y.
+ *  - beagleBounds(kind, puppy) gives a pose's footprint and height in the dog's own frame.
+ *  - eyes: pose.blink (0 open .. 1 shut; auto-blinks when omitted and awake), `glint` scales the tiny
+ *    catchlights (they fade as the lids close).
+ * Cost: the first Beagle of each variant builds its mesh once per browser tab (2-5 s); every frame then
+ * re-poses ~50k vertices on the CPU (30-100 ms). Adult ~113k triangles, puppy ~92k. Deterministic.
  */
 
 // ================================================================================================ pose API
@@ -410,8 +424,8 @@ const anatomy = (v: Variant) => {
     eyes,
     ears: [-1, 1].map((sd) => ({
       root: Hd(sd * 0.045, 0.489, -0.278),
-      dir: V(sd * 0.62, -0.76, -0.14).normalize(),
-      nrm: V(sd * 0.76, 0.62, 0).normalize(),
+      dir: V(sd * 0.86, -0.42, -0.16).normalize(),
+      nrm: V(sd * 0.42, 0.86, 0).normalize(),
       len: 0.13 * hs * v.ear,
       wid: 0.084 * hs * v.ear,
       th: 0.0042 * hs,
@@ -695,17 +709,19 @@ const coatAt = (part: string, side: number, p: THREE.Vector3, n: THREE.Vector3, 
   const ySad = pw(
     [
       [-0.16, 0.335],
-      [-0.12, 0.293],
-      [-0.05, 0.262],
-      [0.05, 0.257],
-      [0.14, 0.27],
-      [0.22, 0.3],
+      [-0.12, 0.305],
+      [-0.05, 0.29],
+      [0.05, 0.286],
+      [0.14, 0.29],
+      [0.22, 0.31],
     ],
     z,
-  ) - 0.018 * pup;
-  const zF = -0.128 - 0.28 * (0.355 - y) - 0.02 * pup;
+  ) - 0.014 * pup;
+  // a ragged border: broad waves plus finer ones
+  const nb = fbm(p.x * 13 + 2, p.y * 13, p.z * 13, 5);
+  const zF = -0.128 - 0.28 * (0.355 - y) - 0.02 * pup + 0.016 * nb * Math.cos(p.x * 40);
   const zR = 0.216 + 0.25 * (0.335 - y) + 0.012 * pup;
-  let sad = sstep(ySad - 0.007, ySad + 0.007, y + 0.014 * n1) * sstep(zF - 0.006, zF + 0.006, z + 0.01 * n2) * (1 - sstep(zR - 0.006, zR + 0.006, z + 0.01 * n2));
+  let sad = sstep(ySad - 0.007, ySad + 0.007, y + 0.012 * n1 + 0.012 * nb) * sstep(zF - 0.006, zF + 0.006, z + 0.01 * n2) * (1 - sstep(zR - 0.006, zR + 0.006, z + 0.01 * n2));
   if (part === "arm" || part === "thigh" || part === "ham") sad *= sstep(0.27, 0.3, y);
   return mix3(c, COL.black, sad);
 };
@@ -968,7 +984,6 @@ const buildStatic = (v: Variant): Static => {
       prof.push([-Math.cos(ang), Math.sin(ang)]); // across (-1..1), out (0..1)
     }
     const p = newPiece();
-    const rows = NS + 1;
     for (let a = 0; a <= NS; a++) {
       const aa = a % NS;
       const th = (aa / NS) * Math.PI * 2;
@@ -1004,7 +1019,6 @@ const buildStatic = (v: Variant): Static => {
         const D = a * cols + i1;
         p.idx.push(A, Bq, Cq, A, Cq, D);
       }
-    void rows;
     // the tag hangs from the bottom-front of the band: the angle whose direction is most down-forward
     let best = 0;
     let bestV = -1e9;
@@ -1102,12 +1116,10 @@ const buildStatic = (v: Variant): Static => {
   {
     const start = earIdx.length;
     const o = 2 * NM;
-    perim.forEach(([i, j], k) => {
+    perim.forEach((_, k) => {
       earUvA.push(k / perim.length, 0, k / perim.length, 1);
       const c = mix3(COL.earEdge, COL.ear, 0.3);
       earCol.push(...c, ...c);
-      void i;
-      void j;
     });
     for (let k = 0; k < perim.length; k++) {
       const k1 = (k + 1) % perim.length;
@@ -1435,7 +1447,6 @@ const solveLeg = (S: Static, li: number, L: LegSpec, X: Xf[], local: THREE.Quate
     A = V(Sh.x, Sc.y + dy * c - dz * s, Sc.z + dy * s + dz * c);
     J1 = El;
     J2 = Wr;
-    void Sh;
   } else {
     A = pts[0];
     J1 = pts[1];
@@ -1572,10 +1583,12 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
         dz = zc + sweep / 2 - sweep * e;
         dy = lift[li] * Math.sin(Math.PI * u) ** (front ? 0.85 : 1.1);
         const bump = Math.sin(Math.PI * Math.min(1, u * 1.15));
-        a = front ? lerp(-0.5, 0.22, u) - 1.25 * bump : lerp(-0.45, 0.15, u) + 0.45 * bump;
+        a = front ? lerp(-0.5, 0.22, u) - lerp(1.25, 0.85, pup) * bump : lerp(-0.45, 0.15, u) + 0.45 * bump;
         pa = front ? -1.1 * bump : -0.5 * bump;
       }
-      return restLeg(li, dy, dz, a, pa);
+      const L = restLeg(li, dy, dz, a, pa);
+      if (front && p >= D) L.spread = lerp(0.05, 0.12, pup) * Math.sin((Math.PI * (p - D)) / (1 - D));
+      return L;
     });
     const bob = 0.009 * s;
     const c2 = Math.cos(4 * Math.PI * (ph - D / 2));
@@ -1596,7 +1609,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
     const drop = J.chestBottom + 0.004 * s;
     const rootPos = pv[0].clone().add(V(0, -drop, 0));
     const rootRot = Q(0.03);
-    const spine = [Q(-0.03), Q(-0.02), Q(0), Q(0.02), Q(lerp(-0.42, 0.06, h)), Q(lerp(-0.46, -0.06, h), turn * 0.4, tilt * 0.3), Q(lerp(0.6, 0.14, h) + nod, turn * 0.6, tilt * 0.7)];
+    const spine = [Q(-0.03), Q(-0.02), Q(0), Q(lerp(-0.15, 0.02, h)), Q(lerp(-1.2, 0.06, h)), Q(lerp(-1.0, -0.06, h), turn * 0.4, tilt * 0.3), Q(lerp(2.05, 0.14, h) + nod, turn * 0.6, tilt * 0.7)];
     const X: Xf[] = new Array(NB);
     const loc = Array.from({ length: NB }, () => new THREE.Quaternion());
     for (let i = 0; i < 7; i++) loc[i + 1] = spine[i];
@@ -1606,7 +1619,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       const Lj = J.legs[li];
       if (li < 2) {
         const sh = xfApply(X[4], Lj.pts[1]);
-        const wr = V(sh.x + sd * 0.012 * s, 0.02 * s * S.v.legGirth, sh.z - 0.018 * s);
+        const wr = V(sh.x + sd * 0.014 * s, 0.02 * s * S.v.legGirth, sh.z - 0.07 * s);
         const up = V(0, 0.18, 1).normalize();
         const paw = wr.clone().addScaledVector(up, -Lj.pts[3].distanceTo(Lj.pts[4]));
         return { ik: { paw, up, fwd: V(0, -0.12, -1).normalize() }, spread: 0.1 };
@@ -1641,7 +1654,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
         { fk: [0.05, 0.22, -0.05, 0.1, 0.3], spread: 0.05 },
         { fk: [0.15, 1.1, 0.4, -0.5, -0.2], spread: -0.45 },
         { fk: [-0.62, 0.38, -0.12, 0.3], spread: 0.05 },
-        { fk: [0.28, -0.5, 0.45, 0.2], spread: -0.58 },
+        { fk: [0.28, -0.5, 0.45, 0.2], spread: lerp(-0.58, -0.4, pup) },
       ],
       tail: { up: 0.05, side: -0.1, curl: 0, sideCurl: 0.35, droop: 1 },
       earLift: [0, 0],
@@ -1657,17 +1670,18 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
   const bends = [0.42, 0.5, 0.52, 0.52, 0.52, 0.45, 0.3];
   const flex = [0, 0, 0, -0.25, -0.5, -0.3, 0.45];
   const spine = bends.map((b, i) => QA(axis, -b).multiply(Q(flex[i])));
-  spine[6] = spine[6].clone().multiply(Q(nod, turn * 0.5, -0.55 + tilt));
+  spine[6] = spine[6].clone().multiply(Q(nod + lerp(0.5, 0.8, pup), turn * 0.5, -0.55 + tilt));
   return {
     ...base,
     rootPos: pv[0].clone().add(V(0, -pv[0].y + 0.09 * s, 0)),
     rootRot: Q(0, 0, rho),
     spine,
     legs: [
-      { fk: [0.1, 0.65, 1.55, -1.0, -0.3], spread: 0.0 },
-      { fk: [0.05, 0.25, 2.1, -1.3, -0.3], spread: -0.95 },
-      { fk: [1.05, -1.55, 1.3, 0.3], spread: 0.05 },
-      { fk: [1.15, -1.65, 1.35, 0.3], spread: -0.1 },
+      // (checked against the torso: no leg goes into the body)
+      { fk: [0.1, 0.2, 0.3, 0.1, 0.0], spread: 0.0 },
+      { fk: [0.1, 0.95, -0.15, 0.0, 0.0], spread: -0.2 },
+      { fk: [0.7, -1.2, 1.1, 0.3], spread: 0.25 },
+      { fk: [0.2, -1.1, 1.1, 0.3], spread: 0.0 },
     ],
     tail: { up: 0.0, side: 1.0, curl: 0, sideCurl: 3.2, droop: 1 },
     earLift: [0, 0],
@@ -1939,7 +1953,7 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
     return d.clone().applyAxisAngle(axis.normalize(), Math.min(ang, a));
   };
   for (let i = 1; i < N; i++) {
-    if (i >= 2) dir = tip(dir, 0.1 + 0.32 * (i / N));
+    if (i >= 2) dir = tip(dir, 0.05 + 0.5 * (i / N) ** 2);
     pts.push(pts[i - 1].clone().addScaledVector(dir, l));
   }
   const m = E.th * 0.5 + 0.0009 * F.s;
@@ -2184,6 +2198,8 @@ const lidGeo = (g: THREE.BufferGeometry, r: number, upper: boolean, edge: (a: nu
 };
 
 type Out = {
+  /** the posed bones (group space), for checks */
+  X: Xf[];
   eyes: { pos: THREE.Vector3; quat: THREE.Quaternion }[];
   tag: { pos: THREE.Vector3; quat: THREE.Quaternion };
   ring: { pos: THREE.Vector3; quat: THREE.Quaternion };
@@ -2223,6 +2239,65 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
     }
     off.set(-mx / S.nFur, 0, -mz / S.nFur);
   }
+  // lying on something uneven (her ankles under the quilt, the bed's dish): the body drapes over a smoothed
+  // copy of the ground under it, then settles; standing poses keep their paws on the plane at.y
+  const lying = (k: BeaglePoseKind) => (k === "stand" || k === "trot" ? 0 : 1);
+  const wL = pose.to && pose.mix ? lerp(lying(pose.kind), lying(pose.to), clamp(pose.mix, 0, 1)) : lying(pose.kind);
+  // the drape field: the ground sampled on a 1.5 cm grid over the footprint, dilated a little (so the body
+  // rests on top of a step, not in its corner) and blurred (so steps become slopes), read bilinearly
+  let drape: ((x: number, z: number) => number) | null = null;
+  if (!flat && wL > 0) {
+    let x0 = 1e9;
+    let x1 = -1e9;
+    let z0 = 1e9;
+    let z1 = -1e9;
+    for (let i = 0; i < S.nFur; i += 7) {
+      x0 = Math.min(x0, p[i * 3] + off.x);
+      x1 = Math.max(x1, p[i * 3] + off.x);
+      z0 = Math.min(z0, p[i * 3 + 2] + off.z);
+      z1 = Math.max(z1, p[i * 3 + 2] + off.z);
+    }
+    const c = 0.015 * s;
+    const pad = 0.1 * s;
+    x0 -= pad;
+    z0 -= pad;
+    const gx = Math.ceil((x1 + pad - x0) / c) + 1;
+    const gz = Math.ceil((z1 + pad - z0) / c) + 1;
+    let G = new Float32Array(gx * gz);
+    for (let j = 0; j < gz; j++) for (let i = 0; i < gx; i++) G[i + gx * j] = ground(x0 + i * c, z0 + j * c);
+    const pass = (src: Float32Array, r: number, op: "max" | "avg", dx: number, dz: number) => {
+      const out = new Float32Array(src.length);
+      for (let j = 0; j < gz; j++)
+        for (let i = 0; i < gx; i++) {
+          let acc = op === "max" ? -1e9 : 0;
+          let cnt = 0;
+          for (let k = -r; k <= r; k++) {
+            const ii = clamp(i + k * dx, 0, gx - 1);
+            const jj = clamp(j + k * dz, 0, gz - 1);
+            const v = src[ii + gx * jj];
+            if (op === "max") acc = Math.max(acc, v);
+            else acc += v;
+            cnt++;
+          }
+          out[i + gx * j] = op === "max" ? acc : acc / cnt;
+        }
+      return out;
+    };
+    G = pass(pass(G, 1, "max", 1, 0), 1, "max", 0, 1);
+    for (let it = 0; it < 2; it++) G = pass(pass(G, 2, "avg", 1, 0), 2, "avg", 0, 1);
+    drape = (x: number, z: number) => {
+      const fx = clamp((x - x0) / c, 0, gx - 1.001);
+      const fz = clamp((z - z0) / c, 0, gz - 1.001);
+      const i = Math.floor(fx);
+      const j = Math.floor(fz);
+      const u = fx - i;
+      const w = fz - j;
+      const a = G[i + gx * j] * (1 - u) + G[i + 1 + gx * j] * u;
+      const b = G[i + gx * (j + 1)] * (1 - u) + G[i + 1 + gx * (j + 1)] * u;
+      return wL * (a * (1 - w) + b * w);
+    };
+  }
+  if (drape) for (let i = 0; i < n; i++) p[i * 3 + 1] += drape(p[i * 3] + off.x, p[i * 3 + 2] + off.z);
   // anchor the lowest point of the body (not the head) to the ground
   let lo = 1e9;
   for (let i = 0; i < S.nFur; i += 2) {
@@ -2240,7 +2315,14 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
     const y = p[i * 3 + 1] + off.y;
     p[i * 3 + 1] = softClamp(y, flat ? 0 : ground(x, z), h0, eps);
   }
-  for (const x of X) x.t.add(off);
+  for (let b = 0; b < NB; b++) {
+    const x = X[b];
+    x.t.add(off);
+    if (drape) {
+      const pv = xfApply(x, S.J.pivots[b]);
+      x.t.y += drape(pv.x, pv.z);
+    }
+  }
   const body = inst.body;
   body.attributes.position.needsUpdate = true;
   body.computeVertexNormals();
@@ -2289,7 +2371,7 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
   const tz2 = tx.clone().cross(ty).normalize();
   const tagQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(tx, ty, tz2));
   const ringQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(nr.clone().cross(hang).normalize(), hang.clone().negate(), nr)).multiply(QA(UP, Math.PI / 2));
-  return { eyes, tag: { pos: tagC, quat: tagQ }, ring: { pos: ringC, quat: ringQ }, blink };
+  return { X, eyes, tag: { pos: tagC, quat: tagQ }, ring: { pos: ringC, quat: ringQ }, blink };
 };
 
 // =========================================================================================== component
@@ -2357,13 +2439,12 @@ export const beagleBounds = (kind: BeaglePoseKind, puppy = false, inBed = false)
   return (boundsCache[key] = b);
 };
 
-/** Sizes and gait numbers for placing Moose. */
+/** Gait numbers for placing Moose. */
 export const BEAGLE = {
-  /** distance covered per trot stride (one full phase cycle), metres */
+  /** distance covered per trot stride (one full phase cycle), metres: 0.42 adult, 0.215 puppy */
   stride: (puppy = false) => getStatic(puppy).J.stride,
-  /** a natural trot cadence, strides per second (adult; the puppy's quicker) */
+  /** a natural trot cadence, strides per second */
   cadence: (puppy = false) => (puppy ? 2.3 : 1.75),
-  /** nose-to-rump length and withers height, metres (approximate) */
-  length: (puppy = false) => (puppy ? 0.3 : 0.62),
-  height: (puppy = false) => (puppy ? 0.2 : 0.36),
+  /** the matching ground speed, metres per second (stride x cadence) */
+  speed: (puppy = false) => getStatic(puppy).J.stride * (puppy ? 2.3 : 1.75),
 };

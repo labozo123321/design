@@ -144,8 +144,8 @@ const nightOfOdo = (t: number) => FIRST_NIGHT + Math.max(0, Math.floor(odoValue(
 /** the drift's night counter: 'LAST KNOCK · 1 NIGHT AGO' at 36.3, holding at 134 (Sat Jan 4, 2014) for mom's
  *  treadmill, then up to 1,093 (Aug 20, 2016) by 41.6 */
 const driftNights = (t: number) => {
-  if (t < 36.55) return 1;
-  if (t < 37.0) return Math.round(1 + 133 * smoother((t - 36.55) / 0.45));
+  if (t < 36.85) return 1;
+  if (t < 37.0) return Math.round(1 + 133 * smoother((t - 36.85) / 0.15));
   if (t < 38.8) return 134;
   return Math.round(134 + 959 * smoother((t - 38.8) / 2.8));
 };
@@ -206,10 +206,14 @@ const baseAt = (t: number): Base => {
  *  leaves upward. k is the roll's progress (1 = settled). Values in a time-lapse snap (k = 1). */
 export type Rolled = { text: string; prev: string; k: number };
 export const ROLL_FRAMES = 9;
+/** the picture's hard cuts between eras */
+const HARD_CUTS = [15.0, 22.5, 28.0, 49.0];
 const rolled = (t: number, pick: (b: Base) => string): Rolled => {
   const b = baseAt(t);
   const cur = pick(b);
   if (b.lapse) return { text: cur, prev: cur, k: 1 };
+  // on a hard cut in the picture the whole HUD changes with it, at once
+  if (HARD_CUTS.some((c) => c > t - ROLL_FRAMES / FPS && c <= t + 1e-6)) return { text: cur, prev: cur, k: 1 };
   for (let i = 1; i <= ROLL_FRAMES; i++) {
     const p = pick(baseAt(t - i / FPS));
     if (p !== cur) return { text: cur, prev: p, k: i / ROLL_FRAMES };
@@ -290,6 +294,7 @@ const dotAt = (t: number, side: Side, idx: number): DotState => {
   }
   for (const p of PULSES) {
     if (p.side !== side || p.idx !== idx || p.t > t) continue;
+    if ((p.t < 10.4 && t >= 10.4) || (p.t < 15.0 && t >= 15.0)) continue;
     const dt = t - p.t;
     if (dt > 1.2) continue;
     on = Math.max(on, 0.32 * clamp(dt / 0.034) * Math.exp(-dt / 0.2));
@@ -375,7 +380,7 @@ export const hudState = (t: number): HudState => {
   const glow = smooth(59.1, 59.4, t) * (1 - smooth(59.7, 61.2, t));
 
   // status line
-  const lastA = smooth(36.3, 36.7, t) * (1 - smooth(55.9, 56.25, t));
+  const lastA = smooth(36.3, 36.55, t) * (1 - smooth(55.9, 56.25, t));
   const waitA = smooth(55.9, 56.25, t) * (1 - smooth(59.0, 59.4, t));
   const progress = clamp((t - 55.9) / 2.5);
   const num = rolled(t, (x) => x.since);
