@@ -102,11 +102,16 @@ export const pixelTex = (key: string, w: number, h: number, fn: (u: number, v: n
     srgb,
   );
 
-/** Tiling value noise (0..1) on an n x n lattice, smooth. */
+const noiseCache = new Map<string, (u: number, v: number) => number>();
+/** Tiling value noise (0..1) on an n x n lattice, smooth (each lattice is made once and cached). */
 export const tileNoise = (seed: number, n: number) => {
+  const key = `${seed}:${n}`;
+  const hit = noiseCache.get(key);
+  if (hit) return hit;
   const r = rand(seed);
-  const L = Array.from({ length: n * n }, () => r());
-  return (u: number, v: number) => {
+  const L = new Float32Array(n * n);
+  for (let i = 0; i < n * n; i++) L[i] = r();
+  const fn = (u: number, v: number) => {
     const x = fract(u) * n;
     const y = fract(v) * n;
     const i = Math.floor(x);
@@ -121,6 +126,8 @@ export const tileNoise = (seed: number, n: number) => {
     const d = L[((j + 1) % n) * n + ((i + 1) % n)];
     return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
   };
+  noiseCache.set(key, fn);
+  return fn;
 };
 
 const hex2rgb = (h: string): [number, number, number] => {
@@ -336,11 +343,12 @@ export const markerLines = (text: string, size: number, maxW: number) => {
 };
 
 /** A centred block of marker text that fits (w, h) px around (cx, cy); returns the size used. */
-export const drawMarkerBlock = (g: CanvasRenderingContext2D, text: string, cx: number, cy: number, w: number, h: number, color: string, o: MarkerOpts & { maxSize?: number } = {}) => {
+export const drawMarkerBlock = (g: CanvasRenderingContext2D, text: string, cx: number, cy: number, w: number, h: number, color: string, o: MarkerOpts & { maxSize?: number; wrap?: boolean } = {}) => {
   let size = o.maxSize ?? h * 0.4;
-  let lines = markerLines(text, size, w);
+  const lay = (sz: number) => (o.wrap === false ? text.split("\n") : markerLines(text, sz, w));
+  let lines = lay(size);
   for (let i = 0; i < 40; i++) {
-    lines = markerLines(text, size, w);
+    lines = lay(size);
     const lw = Math.max(...lines.map((l) => markerWidth(l, size)));
     const lh = lines.length * size * 1.45 - size * 0.45;
     if (lw <= w && lh <= h) break;
@@ -880,7 +888,7 @@ export const kraftTex = (key: string, w: number, h: number, base = "#C49A68", se
   });
 
 /** A box face with marker writing (multiply onto the kraft so it soaks in) and optional printed arrows. */
-export const boxFaceTex = (key: string, wm: number, hm: number, text: string | null, ink: string, seed: number, arrows = false, region?: [number, number, number, number]) => {
+export const boxFaceTex = (key: string, wm: number, hm: number, text: string | null, ink: string, seed: number, arrows = false, region?: [number, number, number, number], wrap = true) => {
   const pxm = 900;
   const w = Math.max(64, Math.round(wm * pxm));
   const h = Math.max(64, Math.round(hm * pxm));
@@ -916,7 +924,7 @@ export const boxFaceTex = (key: string, wm: number, hm: number, text: string | n
       c.width = w;
       c.height = h;
       const cg = c.getContext("2d")!;
-      drawMarkerBlock(cg, text, (rx + rw / 2) * w, (ry + rh / 2) * h, rw * w, rh * h, ink, { seed: seed + 3, maxSize: rh * h * 0.42, width: undefined, alpha: 0.95, slant: 0.03 });
+      drawMarkerBlock(cg, text, (rx + rw / 2) * w, (ry + rh / 2) * h, rw * w, rh * h, ink, { seed: seed + 3, maxSize: rh * h * 0.42, width: undefined, alpha: 0.95, slant: 0.03, wrap });
       g.globalCompositeOperation = "multiply";
       g.drawImage(c, 0, 0);
       g.globalCompositeOperation = "source-over";
@@ -1522,7 +1530,7 @@ export const braidTex = () =>
     };
     const map = pixelTex("braid-map", 1024, 683, (u, v) => {
       const p = sample(u, v);
-      const strandI = Math.floor(p.k + (p.chev < 0.5 ? 0 : 0.5)) % 3;
+      const strandI = ((Math.floor(p.k + (p.chev < 0.5 ? 0 : 0.5)) % 3) + 3) % 3;
       const base = rgbOf(ringCols[order[p.ri % 40]]);
       const alt = rgbOf(ringCols[order[(p.ri + 1 + strandI) % 40]]);
       const c = mixRGB(base, alt, strandI === 1 ? 0.35 : 0);
@@ -1920,14 +1928,14 @@ export const racecarDuvetMat = (o: BeddingOpts = {}) =>
         [0.85, 0.66, "#FF7A1A", "9", true],
         [0.1, 0.55, "#F2F2F2", "1", false],
       ];
-      for (const [x, y, c, nm, f] of cars) for (const dx of [-w, 0, w]) raceCar(g, x * w + dx, y * h, 62, c, nm, f);
+      for (const [x, y, c, nm, f] of cars) for (const dx of [-w, 0, w]) raceCar(g, x * w + dx, y * h, 78, c, nm, f);
       for (let i = 0; i < 30000; i++) {
         g.fillStyle = r() < 0.5 ? `rgba(0,0,40,${r() * 0.06})` : `rgba(255,255,255,${r() * 0.05})`;
         g.fillRect(r() * w, r() * h, 1.5, 1.5);
       }
     });
     const normal = normalFromFn("cotton-fine", 512, 512, (u, v) => weaveH(u, v, 64), 1.2);
-    return { map, normal, tile: [0.6, 0.6], sheen: 0.35, normalScale: 0.5 };
+    return { map, normal, tile: [0.8, 0.8], sheen: 0.35, normalScale: 0.5 };
   });
 
 const soccerBallDraw = (g: CanvasRenderingContext2D, x: number, y: number, s: number, rot: number) => {
@@ -1968,33 +1976,40 @@ const soccerBallDraw = (g: CanvasRenderingContext2D, x: number, y: number, s: nu
 export const soccerDuvetMat = (o: BeddingOpts = {}) =>
   fabricMat("soccerDuvet", o, () => {
     const map = canvasTex("soccerDuvet", 1024, 1024, (g, w, h) => {
-      for (let i = 0; i < 8; i++) {
+      // pitch stripes along the bed (u across), a halfway line and centre circle, a few big balls
+      for (let i = 0; i < 6; i++) {
         g.fillStyle = i % 2 ? "#2E8B45" : "#277A3C";
-        g.fillRect(0, (i * h) / 8, w, h / 8);
+        g.fillRect((i * w) / 6, 0, w / 6, h);
       }
       g.strokeStyle = "rgba(255,255,255,0.85)";
-      g.lineWidth = 6;
+      g.lineWidth = 7;
       g.beginPath();
-      g.arc(w / 2, h / 2, 150, 0, Math.PI * 2);
+      g.arc(w / 2, h / 2, 170, 0, Math.PI * 2);
       g.stroke();
       g.beginPath();
       g.moveTo(0, h / 2);
       g.lineTo(w, h / 2);
       g.stroke();
+      g.fillStyle = "rgba(255,255,255,0.9)";
+      g.beginPath();
+      g.arc(w / 2, h / 2, 9, 0, Math.PI * 2);
+      g.fill();
       const r = rand(65);
-      for (let i = 0; i < 9; i++) {
-        const x = r() * w;
-        const y = r() * h;
-        const s = 34 + r() * 26;
-        for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) soccerBallDraw(g, x + dx, y + dy, s, r() * 6);
-      }
+      const balls: [number, number, number][] = [
+        [0.2, 0.18, 74],
+        [0.74, 0.3, 62],
+        [0.36, 0.72, 80],
+        [0.86, 0.82, 58],
+        [0.08, 0.6, 52],
+      ];
+      for (const [x, y, s] of balls) for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) soccerBallDraw(g, x * w + dx, y * h + dy, s, x * 9);
       for (let i = 0; i < 30000; i++) {
         g.fillStyle = r() < 0.5 ? `rgba(0,30,0,${r() * 0.07})` : `rgba(255,255,255,${r() * 0.05})`;
         g.fillRect(r() * w, r() * h, 1.5, 1.5);
       }
     });
     const normal = normalFromFn("cotton-fine", 512, 512, (u, v) => weaveH(u, v, 64), 1.2);
-    return { map, normal, tile: [0.6, 0.6], sheen: 0.35, normalScale: 0.5 };
+    return { map, normal, tile: [0.95, 0.95], sheen: 0.35, normalScale: 0.5 };
   });
 
 /** A plain heathered colour (for duvets and sheets): mottled threads at the given tile. */

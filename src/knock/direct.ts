@@ -61,6 +61,8 @@ export type LightState = {
   /** the hallway's Christmas string lights (2025), the snow-light through the windows */
   strings?: number;
   snow?: number;
+  /** a car's headlights sweeping through the front windows (0..1 across the sweep) */
+  headlight?: number;
 };
 
 /** Someone out of bed (sitting up, walking, lying down somewhere else), and what they carry. */
@@ -264,9 +266,11 @@ const phoneHand = (sib: Sib, side: -1 | 1, down = 0): Reach => {
 
 /** The open palm laid flat on the wall (world). */
 const palmOnWall = (side: -1 | 1, dz = 0.02): Reach => ({
-  at: knockPoint(side, dz).add(V3(-side * 0.03, 0.03, 0)),
+  // (the wrist just off the wall, on the sleeper's side of it: the fingers lie up the wall from there)
+  at: knockPoint(side, dz).add(V3(side * 0.022, 0.03, 0)),
   hand: { curl: [0.1, 0.1, 0.12, 0.15], spread: 0.15, thumbOut: 0.5, thumbCurl: 0.1 },
-  palm: V3(side, 0, 0),
+  // (the palm faces the wall: toward the middle of the house)
+  palm: V3(-side, 0, 0),
   pole: V3(0, -0.5, 1),
 });
 
@@ -402,7 +406,7 @@ const b8 = (t: number): Frame => {
     nora,
     you,
     dress: { era: "2025", trex: 0, jolt: 0, stars: 4, starGlow: 0.6, beds: { nora: { kind: "air", look: "air", spec: occupied ? "air-wall" : "air-mid" }, you: { kind: "twin", look: "guest" } } },
-    light: { hall: 0, street: 0.25, moon: 0.9, nightlight: 0, fill: 0.8, strings: 1, snow: 1 },
+    light: { hall: 0, street: 0.25, moon: 0.9, nightlight: 0, fill: 0.8, strings: 1, snow: 1, headlight: t >= 47.7 && t <= 48.7 ? t - 47.7 : undefined },
     cam,
     look: SLATE,
     bloom: 0.55,
@@ -915,7 +919,7 @@ const momAt = (t: number): Posed => {
     return { ...p, near: flail(-1), far: flail(1), e: { smile: 0.2, jaw: 0.45, brow: 0.9, lidL: 0, lidR: 0 } };
   }
   // two staggering steps back onto the carpet, then over backwards onto the floor, a starfish
-  const landed = lieToPosed(s, -1, { roll: 0, spot: { x: TREAD.x, top: 0.16, pillowZ: -3.3, pillowH: 0 }, prop: -0.16, e: {}, near: null, far: null });
+  const landed = lieToPosed(s, -1, { roll: 0, spot: { x: TREAD.x, top: 0.16, pillowZ: -3.44, pillowH: 0 }, prop: -0.16, e: {}, near: null, far: null });
   const R = V3(-1, 0, 0);
   const star: Posed = {
     ...landed,

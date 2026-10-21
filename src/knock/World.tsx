@@ -49,7 +49,9 @@ const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: numb
   const zTop = f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers;
   return (
     <>
-      <LyingSib s={f.s} side={side} st={f.lie} t={t} />
+      {hide.includes(side < 0 ? "nora" : "you") ? null : (
+        <LyingSib s={f.s} side={side} st={{ ...f.lie, ...(hide.includes("noNear") ? { near: null } : {}), ...(hide.includes("noFar") ? { far: null } : {}) }} t={t} />
+      )}
       <Bed
         side={side}
         look={look}
@@ -240,6 +242,34 @@ const Motes: React.FC<{ t: number; lift: number }> = ({ t, lift }) => {
   );
 };
 
+/** Snow falling past the front windows onto the porch roof (outside the house only). */
+const Snow: React.FC<{ t: number; k: number }> = ({ t, k }) => {
+  const N = 900;
+  const geo = React.useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
+    return g;
+  }, []);
+  const p = geo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < N; i++) {
+    const h = (n: number) => {
+      const v = Math.sin((i + 1) * 12.9898 + n * 78.233) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const fall = 0.45 + 0.35 * h(1);
+    const y = 4.0 - ((h(2) * 5 + t * fall) % 5);
+    const x = (h(3) - 0.5) * 7 + 0.08 * Math.sin(t * (0.6 + h(4)) + i);
+    const z = 0.22 + h(5) * 2.6 + 0.05 * Math.cos(t * 0.7 + i * 1.7);
+    p.setXYZ(i, x, y, z);
+  }
+  p.needsUpdate = true;
+  return (
+    <points geometry={geo}>
+      <pointsMaterial color="#EEF3FF" size={0.016} sizeAttenuation transparent opacity={0.85 * k} depthWrite={false} />
+    </points>
+  );
+};
+
 /** The note: falling down the slot, or lying on the plate. */
 const Note: React.FC<{ n: NonNullable<ReturnType<typeof frameAt>["note"]> }> = ({ n }) => (
   <group position={n.pos} rotation={n.rot}>
@@ -260,20 +290,29 @@ const debugCam = (cam?: string) => {
     const m = new THREE.Matrix4().lookAt(pos, new THREE.Vector3(...q), new THREE.Vector3(0, 1, 0));
     return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m), fov: 30 };
   };
+  if (cam === "macro") return macroCam(0.95);
+  if (cam === "nearN") return at([-0.55, 0.95, -2.35], [-0.06, 0.55, -3.04]);
+  if (cam === "topN") {
+    const pos = new THREE.Vector3(-0.12, 1.75, -3.04);
+    const m = new THREE.Matrix4().lookAt(pos, new THREE.Vector3(-0.12, 0, -3.04), new THREE.Vector3(0, 0, -1));
+    return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m), fov: 22 };
+  }
   if (cam === "sideN") return at([-2.3, 1.5, -0.9], [-0.45, 0.55, -2.7]);
   if (cam === "sideY") return at([2.3, 1.5, -0.9], [0.45, 0.55, -2.7]);
   return null;
 };
 
-export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOverride?: number }> = ({ frame, cam, hide, tOverride }) => {
-  const t = tOverride ?? frame / FPS;
-  const F = frameAt(t);
+/** ghost: draw the world as it was at another moment (the double exposure), through this moment's camera. */
+export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOverride?: number; ghost?: number }> = ({ frame, cam, hide, tOverride, ghost }) => {
+  const tc = tOverride ?? frame / FPS;
+  const t = ghost ?? tc;
+  const F = ghost === undefined ? frameAt(t) : { ...frameAt(ghost), cam: frameAt(tc).cam, macro: 0 };
   const macro = (F.macro ?? 0) > 0 && !cam;
   // (the payoff's macro pushes slowly down the slot toward the note)
-  const my = MACRO.y - (t > 50 ? 0.32 * Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0);
+  const my = MACRO.y - (t > 50 ? 0.7 * Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0);
   const c = debugCam(cam) ?? (macro ? macroCam(my) : cameraFor(F.cam));
   // inside the cavity the seam's bloom is all around the lens: a fraction of it reads as the same glow
-  setRipples(ringsAt(t), F.seam * (macro ? 0.07 : 0.45), -3.15);
+  if (ghost === undefined) setRipples(ringsAt(t), F.seam * (macro ? 0.07 : 0.45), -3.15);
   const focus = macro ? (F.note ? Math.max(0.1, my - F.note.pos.y) : my - 0.05) : F.cam.dist;
   return (
     <>
@@ -291,6 +330,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       ))}
       <Dressing d={F.dress} t={t} />
       {F.note ? <Note n={F.note} /> : null}
+      {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
       {(F.items ?? []).map((it, i) => (it.kind === "pillowOver" ? <PillowOver key={i} at={it.pos} q={it.q} /> : null))}
       {macro ? (
         <>
@@ -317,6 +357,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           lightning={F.light.lightning ?? 0}
           sun={F.light.sun ?? 0}
           sunAz={F.light.sunAz ?? 0.5}
+          headlight={F.light.headlight ?? -1}
         />
       )}
       <KnockPost look={{ time: t, ...F.look }} bloom={F.bloom} lens={macro ? { focus, aperture: 0.0035, maxR: 0.014 } : { focus, aperture: F.aperture }} />

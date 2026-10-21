@@ -36,7 +36,7 @@ const ivory = () => mat("k-ivory", () => new THREE.MeshPhysicalMaterial({ color:
 const ivoryMatte = () => mat("k-ivoryMatte", () => new THREE.MeshStandardMaterial({ color: "#E9E4D6", roughness: 0.55 }));
 const zinc = () => mat("k-zinc", () => new THREE.MeshStandardMaterial({ color: "#B9BCC0", metalness: 0.85, roughness: 0.38 }));
 const darkPlastic = () => mat("k-darkPlastic", () => new THREE.MeshStandardMaterial({ color: "#2A2826", roughness: 0.6 }));
-const voidMat = () => mat("k-void", () => new THREE.MeshBasicMaterial({ color: "#050505" }));
+const voidMat = () => mat("k-void", () => new THREE.MeshBasicMaterial({ color: "#050505", polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
 /** 2200 K, the nightlight's colour (sRGB) */
 export const K2200 = "#FF9A3C";
 /** 2400 K (fairy lights, hallway nightlight) */
@@ -228,18 +228,16 @@ export type OutletProps = {
 export const Outlet: React.FC<OutletProps> = ({ crooked = false, nightlight = false, on = 1, light = 0, lightRange = 1.2 }) => {
   const k = typeof crooked === "number" ? clamp01(crooked) : crooked ? 1 : 0;
   const tilt = Math.asin(0.004 / PLATE_H) * k;
-  const mm = moonMat();
+  // per-instance (its glow is state)
+  const mm = useMemo(() => moonMat().clone(), []);
   mm.emissiveIntensity = 2.2 * clamp01(on);
   const fm = faceMats();
   return (
     <group rotation={[0, 0, 3 * DEG * k]}>
-      {/* the device: yoke ears and strap behind the plate, the body inside the box */}
+      {/* the device: the yoke strap and its ears just behind the wall face, inside the box opening */}
       <mesh geometry={geo("yokeMid", () => new THREE.BoxGeometry(0.012, 0.009, 0.0008))} material={zinc()} position={[0, 0, -0.0012]} />
       {[1, -1].map((s) => (
-        <group key={s}>
-          <mesh geometry={geo("yokeEar", () => new THREE.BoxGeometry(0.012, 0.016, 0.0008))} material={zinc()} position={[0, s * 0.0425, -0.0012]} />
-          <mesh geometry={geo("yokeEarW", () => new THREE.BoxGeometry(0.03, 0.006, 0.0008))} material={zinc()} position={[0, s * 0.0475, -0.0012]} />
-        </group>
+        <mesh key={s} geometry={geo("yokeEar", () => new THREE.BoxGeometry(0.014, 0.008, 0.0008))} material={zinc()} position={[0, s * 0.038, -0.0012]} />
       ))}
       <mesh geometry={geo("rcptBody", () => new RoundedBoxGeometry(0.034, 0.07, 0.024, 2, 0.003))} material={darkPlastic()} position={[0, 0, -0.0042 - 0.012]} />
       <mesh geometry={faceGeo()} material={fm} position={[0, FACE_Y, 0]} />
@@ -322,7 +320,7 @@ export const OutletBox: React.FC<OutletBoxProps> = ({ studX = 0.121, plateY = -0
     [-0.3, zB],
     [-0.46, zB],
   ];
-  const lm = leakMat();
+  const lm = useMemo(() => leakMat().clone(), []);
   lm.opacity = clamp01(leak) * 0.9;
   return (
     <group>
@@ -639,7 +637,7 @@ const Sticker: React.FC<GlowProps & { kind: "star" | "moon" }> = ({ kind, size, 
   const m = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: "#E7EFD8",
+        color: "#E3EED6",
         emissive: new THREE.Color(GLOW),
         emissiveMap: phosphorTex(),
         roughness: 0.6,
@@ -649,7 +647,7 @@ const Sticker: React.FC<GlowProps & { kind: "star" | "moon" }> = ({ kind, size, 
   );
   const hm = useMemo(() => new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(GLOW), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }), []);
   const g = clamp01(glow);
-  m.emissiveIntensity = 1.6 * g;
+  m.emissiveIntensity = 1.1 * g;
   m.opacity = clamp01(opacity);
   m.depthWrite = opacity > 0.99;
   hm.opacity = 0.32 * g * halo * clamp01(opacity);
@@ -737,13 +735,13 @@ export const Starfield: React.FC<StarfieldProps> = ({ seed = 7, count = 40, glow
 };
 
 // ============================================================================================ posters
-const tapeMat = () => mat("k-clearTape", () => new THREE.MeshPhysicalMaterial({ color: "#F4F1E4", roughness: 0.22, transparent: true, opacity: 0.42, clearcoat: 1, clearcoatRoughness: 0.1, depthWrite: false }));
+const tapeMat = () => mat("k-clearTape", () => new THREE.MeshPhysicalMaterial({ color: "#F4F1E4", roughness: 0.22, transparent: true, opacity: 0.42, clearcoat: 1, clearcoatRoughness: 0.1, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
 const posterBack = () => mat("k-posterBack", () => new THREE.MeshStandardMaterial({ color: "#EDE8DC", roughness: 0.9, side: THREE.BackSide }));
 const pinMat = (c: string) => mat(`k-pin-${c}`, () => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.1 }));
 
 /** A sheet's height off the wall: a gentle belly, a lifted unpinned corner (never below 0.6 mm). */
 const sheetZ = (u: number, v: number, w: number, h: number, curl: [number, number] | null) => {
-  let z = 0.0006 + 0.0026 * Math.sin(Math.PI * u) * Math.sin(Math.PI * v);
+  let z = 0.0012 + 0.0026 * Math.sin(Math.PI * u) * Math.sin(Math.PI * v);
   if (curl) {
     const d = Math.hypot((u - curl[0]) * w, (v - curl[1]) * h);
     z += 0.009 * Math.pow(Math.max(0, 1 - d / 0.12), 2);
@@ -767,7 +765,7 @@ const tapeGeo = (key: string, len: number, wid: number, sample: (x: number, y: n
   geo(`tape-${key}`, () => {
     const g = new THREE.PlaneGeometry(len, wid, 12, 2);
     const p = g.getAttribute("position");
-    for (let i = 0; i < p.count; i++) p.setZ(i, sample(p.getX(i), p.getY(i)) + 0.00035);
+    for (let i = 0; i < p.count; i++) p.setZ(i, sample(p.getX(i), p.getY(i)) + 0.0006);
     g.computeVertexNormals();
     return g;
   });
@@ -800,7 +798,7 @@ export const Poster: React.FC<PosterProps> = ({ kind, mount, w = 0.45, h = 0.6 }
         ? corners
             .filter((c) => !(c[0] === -1 && c[1] === -1))
             .map(([sx, sy], i) => (
-              <group key={i} position={[sx * (w / 2 - 0.018), sy * (h / 2 - 0.018), 0.0008]}>
+              <group key={i} position={[sx * (w / 2 - 0.018), sy * (h / 2 - 0.018), 0.0012]}>
                 <mesh geometry={geo("pinBase", () => new THREE.CylinderGeometry(0.0058, 0.0062, 0.0016, 18).rotateX(Math.PI / 2))} material={pinMat(pinCols[i])} position={[0, 0, 0.0008]} />
                 <mesh geometry={geo("pinGrip", () => new THREE.CylinderGeometry(0.0034, 0.0042, 0.006, 14).rotateX(Math.PI / 2))} material={pinMat(pinCols[i])} position={[0, 0, 0.0046]} />
                 <mesh geometry={geo("pinCap", () => new THREE.SphereGeometry(0.0037, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2))} material={pinMat(pinCols[i])} position={[0, 0, 0.0076]} />

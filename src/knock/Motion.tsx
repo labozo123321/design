@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { Figure, RELAX, type Arm, type Pose } from "../wedding/Figure";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
 import type { Sib } from "./cast";
-import { HeadBits, lyingChains, type ArmSpec, type Reach } from "./People";
+import { HeadBits, clearOfWall, lyingChains, type ArmSpec, type Reach } from "./People";
 import { smoother, V3 } from "./anim";
 
 /**
@@ -129,8 +129,14 @@ export const PosedSib: React.FC<{ s: Sib; p: Posed; t: number }> = ({ s, p, t })
     twist: p.twist,
     feet: [toBody(p.feet[0], root, p.q), toBody(p.feet[1], root, p.q)],
   };
-  const n = arm(p.near);
-  const f = arm(p.far);
+  // (out of whichever room's side of the wall the hips are in)
+  const room = (p.hip.x < 0 ? -1 : 1) as -1 | 1;
+  const qi = p.q.clone().invert();
+  const toW = (v: THREE.Vector3) => v.clone().applyQuaternion(p.q).add(root);
+  const toL = (d: THREE.Vector3) => d.clone().applyQuaternion(qi);
+  const clamp = (a: Arm | undefined, key: "armL" | "armR") => (a ? clearOfWall(a, key === "armL" ? -1 : 1, s.k, room, toW, toL) : undefined);
+  const n = clamp(arm(p.near), nearKey);
+  const f = clamp(arm(p.far), farKey);
   if (n) pose[nearKey] = n;
   if (f) pose[farKey] = f;
   return (

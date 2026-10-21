@@ -76,14 +76,15 @@ const TR = {
   shinB: [0.02, 0.038, -0.003] as P3,
   heel: [0.0175, 0.0072, 0.011] as P3,
   ball: [0.0185, 0.0062, -0.009] as P3,
+  // the tail sweeps round to the toy's left (+x): compact enough to stand along the 0.16 m shelf
   tail: [
     [0, 0.065, 0.028],
-    [0, 0.058, 0.054],
-    [0.003, 0.048, 0.078],
-    [0.009, 0.038, 0.097],
-    [0.016, 0.03, 0.11],
+    [0.004, 0.057, 0.05],
+    [0.016, 0.047, 0.066],
+    [0.032, 0.039, 0.073],
+    [0.046, 0.033, 0.07],
   ] as P3[],
-  tailR: [0.017, 0.0115, 0.0072, 0.0042, 0.0022],
+  tailR: [0.017, 0.0118, 0.0078, 0.0048, 0.0024],
 };
 const TOES: [P3, P3][] = [
   [[0.0175, 0.0055, -0.008], [0.011, 0.0038, -0.0175]],
@@ -116,7 +117,7 @@ const cosPh = Math.cos(BODY_PH);
 
 const trexTeethD = (ax: number, y: number, z: number) => {
   let d = 1;
-  for (const t of TEETH) d = Math.min(d, sdSphere(ax, y, z, t[0], t[1], t[2], 0.00135));
+  for (const t of TEETH) d = Math.min(d, sdSphere(ax, y, z, t[0], t[1], t[2], 0.0016));
   return d;
 };
 const trexD = (x: number, y: number, z: number) => {
@@ -166,7 +167,7 @@ const trexColor = (x: number, y: number, z: number): [number, number, number] =>
   const gz = trexD(x, y, z + h) - trexD(x, y, z - h);
   const gl = Math.hypot(gx, gy, gz) || 1;
   const ny = gy / gl;
-  if (z < -0.04 && y > 0.075 && trexTeethD(ax, y, z) < 0.00045) return TREX_COL.teeth;
+  if (z < -0.04 && y > 0.075 && trexTeethD(ax, y, z) < 0.0006) return TREX_COL.teeth;
   if (sdRoundCone(x, y, z, TR.mouthA, TR.mouthB, 0.0016, 0.0042) < 0.0013) return TREX_COL.mouth;
   for (const t of TOE_TIPS) if (sdSphere(ax, y, z, t[0], t[1], t[2], 0.0034) < 0) return TREX_COL.claw;
   if (sdSphere(ax, y, z, TR.clawA[0], TR.clawA[1], TR.clawA[2], 0.0018) < 0 || sdSphere(ax, y, z, TR.clawB[0], TR.clawB[1], TR.clawB[2], 0.0018) < 0) return TREX_COL.claw;
@@ -209,7 +210,7 @@ const rollPath = (hull: [number, number][], com: [number, number], minA: number)
   let k = 0;
   let best = -Infinity;
   hull.forEach((p, i) => {
-    if (p[1] < ymin + 0.0004 && p[0] > best) {
+    if (p[1] <= ymin + 1e-7 && p[0] > best) {
       best = p[0];
       k = i;
     }
@@ -249,7 +250,7 @@ const rollPose = (r: Roll, theta: number) => {
 
 const trexMesh = () =>
   once("trexMesh", () => {
-    const m = sdfMesh(trexD, [-0.04, -0.002, -0.088], [0.04, 0.124, 0.118], 0.00125, trexColor);
+    const m = sdfMesh(trexD, [-0.04, -0.002, -0.088], [0.058, 0.124, 0.092], 0.0016, trexColor);
     // soles exactly on the ground
     const p = m.geometry.getAttribute("position");
     for (let i = 0; i < p.count; i++) if (p.getY(i) < 0) p.setY(i, 0);
@@ -287,8 +288,10 @@ export const trexPose = (tip: number, dir: 1 | -1 = 1) => {
   const p = rollPose(r, clamp01(tip) * r.total);
   return dir > 0 ? p : { angle: -p.angle, tx: -p.tx, ty: p.ty };
 };
+/** The T-rex's body geometry (vertex coloured), e.g. for contact checks. */
+export const trexGeometry = () => trexMesh().geometry;
 /** Size facts: height, length (snout to tail), width, and how far it reaches from where it stood when lying. */
-export const TREX_INFO = { height: 0.12, length: 0.2, width: 0.07 };
+export const TREX_INFO = { height: 0.12, length: 0.158, width: 0.083 };
 
 export type TRexProps = { tip?: number; dir?: 1 | -1 };
 /** A green plastic toy T-rex (~0.12 tall, snout toward -z): open jaws with teeth bumps, brow ridges, tiny
@@ -330,9 +333,9 @@ const corrugTex = () =>
 const kraftPlain = (inner: boolean) =>
   mat(`k-kraft-${inner}`, () => new THREE.MeshStandardMaterial({ map: kraftTex(inner ? "inner" : "outer", 512, 512, "#C49A68", inner ? 8 : 6, inner), roughness: 0.92 }));
 const kraftEdge = () => mat("k-kraftEdge", () => new THREE.MeshStandardMaterial({ map: corrugTex(), roughness: 0.95 }));
-const faceMat = (key: string, w: number, h: number, text: string | null, ink: string, seed: number, arrows: boolean, region?: [number, number, number, number]) =>
-  mat(`k-boxface-${key}`, () => new THREE.MeshStandardMaterial({ map: boxFaceTex(key, w, h, text, ink, seed, arrows, region), roughness: 0.9 }));
-const tapeMatFor = (color: string) => mat(`k-packTape-${color}`, () => new THREE.MeshPhysicalMaterial({ map: tapeTex(color), roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.15, transparent: true, opacity: 0.9 }));
+const faceMat = (key: string, w: number, h: number, text: string | null, ink: string, seed: number, arrows: boolean, region?: [number, number, number, number], wrap = true) =>
+  mat(`k-boxface-${key}`, () => new THREE.MeshStandardMaterial({ map: boxFaceTex(key, w, h, text, ink, seed, arrows, region, wrap), roughness: 0.9 }));
+const tapeMatFor = (color: string) => mat(`k-packTape-${color}`, () => new THREE.MeshPhysicalMaterial({ map: tapeTex(color), roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.15, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
 
 export type MovingBoxProps = {
   w?: number;
@@ -360,15 +363,24 @@ export type MovingBoxProps = {
 export const MovingBox: React.FC<MovingBoxProps> = ({ w = 0.46, h = 0.34, d = 0.36, text = null, color = "#5B2E91", open = 0, sideLabel = "pz", seed = 1, tape = "#B9813F", arrows = true, children }) => {
   const t = 0.004;
   const key = `${w}x${h}x${d}-${text}-${color}-${seed}-${sideLabel}-${arrows}`;
-  const lines = text ? markerLines(text, 100, (w * 0.8 * 100) / 0.11) : [];
-  // top label: split into two halves, one per long flap (line 1 on the -z flap)
-  const half = Math.ceil(lines.length / 2);
-  const topA = text ? (lines.length > 1 ? lines.slice(0, half).join("\n") : lines[0]) : null;
-  const topB = text && lines.length > 1 ? lines.slice(half).join("\n") : null;
+  // top label: two halves, one per long flap (the first on the -z flap), split at a newline or the dash
+  let topA: string | null = null;
+  let topB: string | null = null;
+  if (text) {
+    if (text.includes("\n")) [topA, topB] = [text.split("\n")[0], text.split("\n").slice(1).join(" ")];
+    else if (text.includes(" — ")) {
+      const i = text.indexOf(" — ");
+      [topA, topB] = [text.slice(0, i) + " —", text.slice(i + 3)];
+    } else if (markerLines(text, 100, 520).length > 1) {
+      const ws = text.split(" ");
+      const h2 = Math.ceil(ws.length / 2);
+      [topA, topB] = [ws.slice(0, h2).join(" "), ws.slice(h2).join(" ")];
+    } else topA = text;
+  }
   const inner = kraftPlain(true);
   const edge = kraftEdge();
   const outerPlain = (k: string, fw: number, fh: number, s: number) => faceMat(`${key}-${k}`, fw, fh, null, color, s, arrows);
-  const sideFace = (k: "px" | "nx" | "pz" | "nz", fw: number, fh: number, s: number) => (sideLabel === k && text ? faceMat(`${key}-${k}-lbl`, fw, fh, text, color, s, arrows, [0.08, 0.14, 0.84, 0.58]) : outerPlain(k, fw, fh, s));
+  const sideFace = (k: "px" | "nx" | "pz" | "nz", fw: number, fh: number, s: number) => (sideLabel === k && text ? faceMat(`${key}-${k}-lbl`, fw, fh, text.includes(" — ") && !text.includes("\n") ? text.replace(" — ", " —\n") : text, color, s, arrows, [0.08, 0.14, 0.84, 0.58], false) : outerPlain(k, fw, fh, s));
   // box face order: px, nx, py, ny, pz, nz
   const wallZ = (s: 1 | -1) => (s > 0 ? [edge, edge, edge, edge, sideFace("pz", w, h - t, seed + 1), inner] : [edge, edge, edge, edge, inner, sideFace("nz", w, h - t, seed + 2)]);
   const wallX = (s: 1 | -1) => (s > 0 ? [sideFace("px", d - 2 * t, h - 2 * t, seed + 3), inner, edge, edge, edge, edge] : [inner, sideFace("nx", d - 2 * t, h - 2 * t, seed + 4), edge, edge, edge, edge]);
@@ -376,7 +388,7 @@ export const MovingBox: React.FC<MovingBoxProps> = ({ w = 0.46, h = 0.34, d = 0.
   const longA = 112 * DEG * sstep(0, 0.55, open);
   const shortA = 100 * DEG * sstep(0.5, 1, open);
   const flapTop = (s: 1 | -1) =>
-    faceMat(`${key}-flap${s}`, w, fd, s < 0 ? topA : topB, color, seed + 5 + (s > 0 ? 1 : 0), false, s < 0 ? [0.08, 0.1, 0.84, 0.62] : [0.08, 0.36, 0.84, 0.56]);
+    faceMat(`${key}-flap${s}`, w, fd, s < 0 ? topA : topB, color, seed + 5 + (s > 0 ? 1 : 0), false, s < 0 ? [0.08, 0.12, 0.84, 0.6] : [0.08, 0.3, 0.84, 0.6], false);
   const longFlapMats = (s: 1 | -1) => [edge, edge, flapTop(s), inner, edge, edge];
   const shortFlapMats = () => [edge, edge, kraftPlain(false), inner, edge, edge];
   const tm = tapeMatFor(tape);
@@ -403,17 +415,17 @@ export const MovingBox: React.FC<MovingBoxProps> = ({ w = 0.46, h = 0.34, d = 0.
       {([1, -1] as const).map((s) => (
         <group key={`lf${s}`} position={[0, h - t, s * (d / 2)]} rotation={[s * longA, 0, 0]}>
           <mesh geometry={geo(`boxLF-${w}-${fd}-${t}`, () => new THREE.BoxGeometry(w, t, fd))} material={longFlapMats(s)} position={[0, t / 2, -s * (fd / 2)]} />
-          {isOpen && <mesh geometry={geo(`tapeHalf-${w}`, () => new THREE.PlaneGeometry(w, tw / 2).rotateX(-Math.PI / 2))} material={tm} position={[0, t + 0.0004, -s * (fd - tw / 4)]} />}
+          {isOpen && <mesh geometry={geo(`tapeHalf-${w}`, () => new THREE.PlaneGeometry(w, tw / 2).rotateX(-Math.PI / 2))} material={tm} position={[0, t + 0.0007, -s * (fd - tw / 4)]} />}
         </group>
       ))}
       {/* tape: across the seam and down both ends (when cut, only the lower ends stay) */}
-      {!isOpen && <mesh geometry={geo(`tapeTop-${w}`, () => new THREE.PlaneGeometry(w, tw).rotateX(-Math.PI / 2))} material={tm} position={[0, h + 0.0004, 0]} />}
+      {!isOpen && <mesh geometry={geo(`tapeTop-${w}`, () => new THREE.PlaneGeometry(w, tw).rotateX(-Math.PI / 2))} material={tm} position={[0, h + 0.0007, 0]} />}
       {([1, -1] as const).map((s) => (
         <mesh
           key={`tt${s}`}
           geometry={geo(`tapeTail-${isOpen}`, () => new THREE.PlaneGeometry(tw, isOpen ? tail - 2 * t - 0.002 : tail).rotateY(Math.PI / 2))}
           material={tm}
-          position={[s * (w / 2 + 0.0004), isOpen ? h - 2 * t - 0.002 - (tail - 2 * t - 0.002) / 2 : h - tail / 2, 0]}
+          position={[s * (w / 2 + 0.0007), isOpen ? h - 2 * t - 0.002 - (tail - 2 * t - 0.002) / 2 : h - tail / 2, 0]}
           rotation={[0, s > 0 ? 0 : Math.PI, 0]}
         />
       ))}
@@ -467,11 +479,11 @@ export const ToyBoxContents: React.FC = () => {
 // ========================================================================================= dino lamp
 const DL = {
   neck: [
-    [0, 0.075, -0.035],
-    [0, 0.125, -0.08],
-    [0, 0.168, -0.098],
+    [0, 0.07, -0.04],
+    [0, 0.115, -0.1],
+    [0, 0.15, -0.142],
   ] as P3[],
-  neckR: [0.028, 0.019, 0.016],
+  neckR: [0.028, 0.019, 0.0155],
   tail: [
     [0, 0.052, 0.07],
     [0.018, 0.034, 0.118],
@@ -485,8 +497,9 @@ const DL = {
     [[0.031, 0.006, 0.055], [0.03, 0.045, 0.05]],
     [[-0.031, 0.006, 0.055], [-0.03, 0.045, 0.05]],
   ] as [P3, P3][],
-  snoutA: [0, 0.185, -0.118] as P3,
-  snoutB: [0, 0.181, -0.142] as P3,
+  head: [0, 0.168, -0.158] as P3,
+  snoutA: [0, 0.165, -0.165] as P3,
+  snoutB: [0, 0.161, -0.19] as P3,
   bumps: [
     [0.006, 0.083, 0.088, 0.008],
     [0.024, 0.06, 0.123, 0.0065],
@@ -497,7 +510,7 @@ const dinoD = (x: number, y: number, z: number) => {
   let d = sdEll(x, y, z, 0, 0.062, 0.012, 0.05, 0.043, 0.068);
   for (const [a, b] of DL.legs) d = smin(d, Math.max(sdRoundCone(x, y, z, a, b, 0.016, 0.0175), -y), 0.012);
   for (let i = 0; i < DL.neck.length - 1; i++) d = smin(d, sdRoundCone(x, y, z, DL.neck[i], DL.neck[i + 1], DL.neckR[i], DL.neckR[i + 1]), 0.012);
-  d = smin(d, sdEll(x, y, z, 0, 0.188, -0.112, 0.025, 0.023, 0.03), 0.01);
+  d = smin(d, sdEll(x, y, z, DL.head[0], DL.head[1], DL.head[2], 0.025, 0.023, 0.03), 0.01);
   d = smin(d, sdRoundCone(x, y, z, DL.snoutA, DL.snoutB, 0.02, 0.0165), 0.008);
   for (let i = 0; i < DL.tail.length - 1; i++) d = smin(d, sdRoundCone(x, y, z, DL.tail[i], DL.tail[i + 1], DL.tailR[i], DL.tailR[i + 1]), 0.012);
   for (const [bx, by, bz, br] of DL.bumps) d = smin(d, sdSphere(x, y, z, bx, by, bz, br), 0.006);
@@ -515,18 +528,18 @@ const dinoColor = (x: number, y: number, z: number): [number, number, number] =>
   c = mix3(c, DINO_COL.belly, sstep(-0.1, -0.5, ny) * 0.9);
   // the front of the neck is cream too
   const nz = gz / (Math.hypot(gx, gy, gz) || 1);
-  if (y > 0.07 && z < -0.03) c = mix3(c, DINO_COL.belly, sstep(-0.4, -0.85, nz) * 0.8);
+  if (y > 0.07 && z < -0.04) c = mix3(c, DINO_COL.belly, sstep(-0.4, -0.85, nz) * 0.8);
   // spots on the back
   const sp = dnoise(x * 9 + 0.5, z * 9 + y * 4);
   if (ny > 0.2) c = mix3(c, DINO_COL.spot, sstep(0.66, 0.72, sp) * 0.9);
   // cheeks
   for (const s of [1, -1]) {
-    const dd = Math.hypot(x - s * 0.02, y - 0.182, z + 0.132);
+    const dd = Math.hypot(x - s * 0.02, y - (DL.head[1] - 0.006), z - (DL.head[2] - 0.02));
     c = mix3(c, DINO_COL.cheek, sstep(0.012, 0.004, dd) * 0.85);
   }
   return c;
 };
-const dinoMesh = () => once("dinoMesh", () => sdfMesh(dinoD, [-0.065, -0.002, -0.17], [0.1, 0.222, 0.168], 0.0032, dinoColor));
+const dinoMesh = () => once("dinoMesh", () => sdfMesh(dinoD, [-0.065, -0.002, -0.222], [0.1, 0.205, 0.168], 0.0032, dinoColor));
 /** project a point onto the dino's surface (along the SDF gradient) */
 const onDino = (p: THREE.Vector3, lift = 0) => {
   const q = p.clone();
@@ -546,7 +559,7 @@ const dinoFace = () =>
       const pts: THREE.Vector3[] = [];
       for (let i = 0; i <= 10; i++) {
         const a = (i / 10) * Math.PI;
-        pts.push(onDino(V(s * 0.03, 0.196 + 0.0045 * Math.sin(a), -0.122 + 0.0065 * Math.cos(a)), 0.0006));
+        pts.push(onDino(V(s * 0.03, DL.head[1] + 0.008 + 0.0045 * Math.sin(a), DL.head[2] - 0.01 + 0.0065 * Math.cos(a)), 0.0006));
       }
       arcs.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.0011, 6, false));
     }
@@ -554,10 +567,10 @@ const dinoFace = () =>
     const sm: THREE.Vector3[] = [];
     for (let i = 0; i <= 12; i++) {
       const a = Math.PI + (i / 12) * Math.PI;
-      sm.push(onDino(V(0.009 * Math.cos(a), 0.177 + 0.004 * Math.sin(a) + 0.002, -0.16), 0.0006));
+      sm.push(onDino(V(0.009 * Math.cos(a), DL.snoutB[1] - 0.004 + 0.004 * Math.sin(a) + 0.002, DL.snoutB[2] - 0.018), 0.0006));
     }
     arcs.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sm), 16, 0.001, 6, false));
-    const nostrils = [1, -1].map((s) => onDino(V(s * 0.0065, 0.19, -0.16), 0.0002));
+    const nostrils = [1, -1].map((s) => onDino(V(s * 0.0065, DL.snoutB[1] + 0.009, DL.snoutB[2] - 0.018), 0.0002));
     return { lines: mergeGeometries(arcs), nostrils };
   });
 const glaze = () => mat("k-dinoGlaze", () => new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.3, clearcoat: 0.85, clearcoatRoughness: 0.12 }));
@@ -617,11 +630,17 @@ export const DinoLamp: React.FC<DinoLampProps> = ({ on = 0, light = 0, lightRang
   const m = dinoMesh();
   const face = dinoFace();
   const k = clamp01(on);
-  const bulb = mat("k-dinoBulb", () => new THREE.MeshStandardMaterial({ color: "#F4F0E8", roughness: 0.25, emissive: new THREE.Color(K2700) }));
+  // per-instance materials (their glow is state)
+  const [bulb, shOut, shIn] = useMemo(
+    () => [
+      new THREE.MeshStandardMaterial({ color: "#F4F0E8", roughness: 0.25, emissive: new THREE.Color(K2700) }),
+      new THREE.MeshStandardMaterial({ map: shadeTex(), roughness: 0.92, emissive: new THREE.Color(K2700), emissiveMap: shadeTex(), side: THREE.FrontSide }),
+      new THREE.MeshStandardMaterial({ color: "#F8EED2", roughness: 0.9, emissive: new THREE.Color(K2700), side: THREE.BackSide }),
+    ],
+    [],
+  );
   bulb.emissiveIntensity = 5 * k;
-  const shOut = mat("k-shadeOut", () => new THREE.MeshStandardMaterial({ map: shadeTex(), roughness: 0.92, emissive: new THREE.Color(K2700), emissiveMap: shadeTex(), side: THREE.FrontSide }));
   shOut.emissiveIntensity = 0.85 * k;
-  const shIn = mat("k-shadeIn", () => new THREE.MeshStandardMaterial({ color: "#F8EED2", roughness: 0.9, emissive: new THREE.Color(K2700), side: THREE.BackSide }));
   shIn.emissiveIntensity = 1.8 * k;
   const harp = geo("dinoHarp", () => {
     const pts = [V(0.03, 0.3, 0), V(0.036, 0.35, 0), V(0.032, 0.392, 0), V(0.01, 0.404, 0), V(-0.01, 0.404, 0), V(-0.032, 0.392, 0), V(-0.036, 0.35, 0), V(-0.03, 0.3, 0)];
@@ -631,10 +650,10 @@ export const DinoLamp: React.FC<DinoLampProps> = ({ on = 0, light = 0, lightRang
     const parts: THREE.BufferGeometry[] = [];
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * Math.PI * 2 + 0.4;
-      parts.push(new THREE.TubeGeometry(new THREE.LineCurve3(V(0, 0.4065, 0), V(Math.cos(a) * 0.087, 0.4065, Math.sin(a) * 0.087)), 2, 0.0012, 5, false));
+      parts.push(new THREE.TubeGeometry(new THREE.LineCurve3(V(0, 0.4065, 0), V(Math.cos(a) * 0.0835, 0.4065, Math.sin(a) * 0.0835)), 2, 0.0012, 5, false));
     }
-    parts.push(new THREE.TorusGeometry(0.087, 0.0016, 6, 64).rotateX(Math.PI / 2).translate(0, 0.4065, 0));
-    parts.push(new THREE.TorusGeometry(0.104, 0.0016, 6, 64).rotateX(Math.PI / 2).translate(0, 0.269, 0));
+    parts.push(new THREE.TorusGeometry(0.0835, 0.0016, 6, 64).rotateX(Math.PI / 2).translate(0, 0.4065, 0));
+    parts.push(new THREE.TorusGeometry(0.0995, 0.0016, 6, 64).rotateX(Math.PI / 2).translate(0, 0.269, 0));
     return mergeGeometries(parts);
   });
   const cord = geo("dinoCord", () => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(-0.028, 0.004, 0.064), V(-0.045, 0.0032, 0.12), V(-0.08, 0.0032, 0.2), V(-0.07, 0.0032, 0.3), V(-0.1, 0.0032, 0.38)]), 40, 0.0029, 6, false));
@@ -647,7 +666,7 @@ export const DinoLamp: React.FC<DinoLampProps> = ({ on = 0, light = 0, lightRang
       ))}
       <mesh geometry={cord} material={mat("k-cordWhite", () => new THREE.MeshStandardMaterial({ color: "#EDEAE2", roughness: 0.5 }))} />
       {/* the lamp: collar, stem, socket, bulb, harp, shade */}
-      <group position={[0, 0, 0.02]}>
+      <group position={[0, 0, 0.03]}>
         <mesh geometry={geo("dinoCollar", () => new THREE.CylinderGeometry(0.013, 0.015, 0.009, 24))} material={brassMat()} position={[0, 0.1045, 0]} />
         <mesh geometry={geo("dinoStem", () => new THREE.CylinderGeometry(0.0072, 0.0072, 0.2, 16))} material={brassMat()} position={[0, 0.195, 0]} />
         <mesh geometry={geo("dinoSocket", () => new THREE.CylinderGeometry(0.0155, 0.017, 0.034, 24))} material={brassMat()} position={[0, 0.312, 0]} />
@@ -656,8 +675,8 @@ export const DinoLamp: React.FC<DinoLampProps> = ({ on = 0, light = 0, lightRang
         <mesh geometry={harp} material={brassMat()} />
         <mesh geometry={geo("dinoFinial", () => new THREE.SphereGeometry(0.0065, 14, 10))} material={brassMat()} position={[0, 0.412, 0]} />
         <mesh geometry={spider} material={brassMat()} />
-        <mesh geometry={geo("dinoShade", () => new THREE.CylinderGeometry(0.088, 0.105, 0.138, 72, 1, true))} material={shOut} position={[0, 0.338, 0]} />
-        <mesh geometry={geo("dinoShade", () => new THREE.CylinderGeometry(0.088, 0.105, 0.138, 72, 1, true))} material={shIn} position={[0, 0.338, 0]} />
+        <mesh geometry={geo("dinoShade", () => new THREE.CylinderGeometry(0.084, 0.1, 0.138, 72, 1, true))} material={shOut} position={[0, 0.338, 0]} />
+        <mesh geometry={geo("dinoShade", () => new THREE.CylinderGeometry(0.084, 0.1, 0.138, 72, 1, true))} material={shIn} position={[0, 0.338, 0]} />
         {light > 0 && k > 0 && <pointLight color={K2700} intensity={light * k} distance={lightRange} decay={2} position={[0, 0.34, 0]} />}
       </group>
     </group>
@@ -790,7 +809,7 @@ const wireMat = () => mat("k-copperWire", () => new THREE.MeshStandardMaterial({
 const beadOff = () => mat("k-beadOff", () => new THREE.MeshPhysicalMaterial({ color: "#E9DDBE", roughness: 0.2, clearcoat: 1, transparent: true, opacity: 0.85 }));
 /** Warm micro LED "fairy" lights on a thin copper wire along any curve. Bulbs are instanced (2.5 mm rice
  * beads along the wire) with additive halo points; everything deterministic in t. */
-export const FairyLights: React.FC<FairyLightsProps> = ({ curve, count = 50, on = 1, t = 0, twinkleAmount = 0.35, color = K2400, halo = 0.028 }) => {
+export const FairyLights: React.FC<FairyLightsProps> = ({ curve, count = 50, on = 1, t = 0, twinkleAmount = 0.35, color = K2400, halo = 0.036 }) => {
   const data = useMemo(() => {
     const wire = new THREE.TubeGeometry(curve, Math.max(64, count * 8), 0.00055, 4, false);
     const pos: THREE.Vector3[] = [];
@@ -821,7 +840,7 @@ export const FairyLights: React.FC<FairyLightsProps> = ({ curve, count = 50, on 
   for (let i = 0; i < count; i++) {
     const b = k * twinkle(t, i, twinkleAmount);
     inst.setColorAt(i, new THREE.Color(b, b, b));
-    col.setXYZ(i, c.r * b * 0.85, c.g * b * 0.85, c.b * b * 0.85);
+    col.setXYZ(i, c.r * b, c.g * b, c.b * b);
   }
   if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
   col.needsUpdate = true;
@@ -884,9 +903,9 @@ const tinLidTex = () =>
     g.fill();
     drawMarker(g, "z z z", w * 0.52, h * 0.42, 22, "#F2E6C2", { seed: 4, width: 4, jitter: 0.3 });
   });
-/** An open round tin (0.06 across, 0.017 tall) of orange foam earplugs; the lid lies beside it (or none).
- * count 0..8 plugs (the top two go first). Origin floor centre of the tin. */
-export const EarplugTin: React.FC<{ count?: number; lid?: "beside" | "none" }> = ({ count = 8, lid = "beside" }) => {
+/** An open round tin (0.06 across, 0.017 tall) of orange foam earplugs heaped over its rim; the lid lies
+ * beside it (or none). count 0..6 plugs (the top layer goes first). Origin floor centre of the tin. */
+export const EarplugTin: React.FC<{ count?: number; lid?: "beside" | "none" }> = ({ count = 6, lid = "beside" }) => {
   const base = geo("tinBase", () => {
     const p = [
       [0, 0],
@@ -901,19 +920,22 @@ export const EarplugTin: React.FC<{ count?: number; lid?: "beside" | "none" }> =
     ].map(([x, y]) => new THREE.Vector2(x, y));
     return new THREE.LatheGeometry(p, 48);
   });
-  // plugs: five tangential in a ring, one across the middle, two on top
-  const plugs: { p: P3; yaw: number }[] = [];
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 + 0.3;
-    plugs.push({ p: [Math.cos(a) * 0.0188, 0.0013 + 0.0059, Math.sin(a) * 0.0188], yaw: -a });
-  }
-  plugs.push({ p: [0, 0.0013 + 0.0059, 0], yaw: 0.9 });
-  plugs.push({ p: [0.0064, 0.0013 + 0.0118 + 0.0058, -0.002], yaw: 0.25 });
-  plugs.push({ p: [-0.0064, 0.0013 + 0.0118 + 0.0058, 0.001], yaw: 0.25 });
+  // plugs: three side by side on the bottom, three across them on top (rested on the crossings); within a
+  // layer they keep 13.5 mm apart (12 mm thick), so nothing intersects; the top layer heaps over the rim
+  const y1 = 0.0013 + 0.0061;
+  const y2 = y1 + 0.0122;
+  const plugs: { p: P3; yaw: number }[] = [
+    { p: [-0.0135, y1, 0.0006], yaw: 0.03 },
+    { p: [0, y1, -0.0008], yaw: -0.02 },
+    { p: [0.0135, y1, 0.001], yaw: 0.04 },
+    { p: [0.001, y2, -0.0135], yaw: Math.PI / 2 + 0.22 },
+    { p: [-0.0008, y2, 0], yaw: Math.PI / 2 + 0.2 },
+    { p: [0.0012, y2, 0.0135], yaw: Math.PI / 2 + 0.24 },
+  ];
   return (
     <group>
       <mesh geometry={base} material={tinMat()} />
-      {plugs.slice(0, Math.max(0, Math.min(8, Math.round(count)))).map((e, i) => (
+      {plugs.slice(0, Math.max(0, Math.min(6, Math.round(count)))).map((e, i) => (
         <group key={i} position={e.p} rotation={[0, e.yaw, 0]}>
           <Earplug />
         </group>
@@ -1042,7 +1064,7 @@ export type LaptopProps = { open?: number; screen?: number; screenKind?: "game" 
 export const Laptop: React.FC<LaptopProps> = ({ open = 0, screen = 0, screenKind = "game", color = "#2B2D33" }) => {
   const body = mat(`k-laptop-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.4 }));
   const deck = mat("k-deck", () => new THREE.MeshStandardMaterial({ map: keyboardTex(), roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
-  const scr = mat(`k-laptopScreen-${screenKind}`, () => new THREE.MeshPhysicalMaterial({ color: "#050608", roughness: 0.12, clearcoat: 0.6, emissive: new THREE.Color("#ffffff"), emissiveMap: laptopScreenTex(screenKind), polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  const scr = useMemo(() => mat(`k-laptopScreen-${screenKind}`, () => new THREE.MeshPhysicalMaterial({ color: "#050608", roughness: 0.12, clearcoat: 0.6, emissive: new THREE.Color("#ffffff"), emissiveMap: laptopScreenTex(screenKind), polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })).clone(), [screenKind]);
   scr.emissiveIntensity = 1.3 * clamp01(screen);
   const ang = 110 * DEG * clamp01(open);
   const stick = (k: "star" | "planet" | "bolt") => mat(`k-stk-${k}`, () => new THREE.MeshStandardMaterial({ map: stickerTex(k), transparent: true, alphaTest: 0.3, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
@@ -1052,7 +1074,7 @@ export const Laptop: React.FC<LaptopProps> = ({ open = 0, screen = 0, screenKind
       <mesh geometry={geo("lapDeck", () => new THREE.PlaneGeometry(0.31, 0.21).rotateX(-Math.PI / 2))} material={deck} position={[0, 0.02 + 0.0002, 0]} />
       {/* ports */}
       {[0.03, 0.05, 0.075].map((z, i) => (
-        <mesh key={i} geometry={geo("lapPort", () => new THREE.PlaneGeometry(0.012, 0.005).rotateY(Math.PI / 2))} material={mat("k-portBlack", () => new THREE.MeshBasicMaterial({ color: "#050505" }))} position={[0.165 + 0.0003, 0.01, z]} />
+        <mesh key={i} geometry={geo("lapPort", () => new THREE.PlaneGeometry(0.012, 0.005).rotateY(Math.PI / 2))} material={mat("k-portBlack", () => new THREE.MeshBasicMaterial({ color: "#050505", polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }))} position={[0.165 + 0.0003, 0.01, z]} />
       ))}
       <group position={[0, 0.0201, -0.115]} rotation={[-ang, 0, 0]}>
         <mesh geometry={geo("lapLid", () => new RoundedBoxGeometry(0.33, 0.007, 0.23, 2, 0.003))} material={body} position={[0, 0.0036, 0.115]} />
@@ -1214,21 +1236,21 @@ export const Phone: React.FC<PhoneProps> = ({ w = 0.071, l = 0.146, t = 0.0078, 
     g.rotateX(-Math.PI / 2);
     return g;
   });
-  const lift = 0.0005;
+  // face up it rests on its camera bump (the lenses touch the ground); face down, on its screen glass
   return (
-    <group position={[0, faceDown ? t + 0.0006 + lift : lift, 0]} rotation={[0, 0, faceDown ? Math.PI : 0]}>
+    <group position={[0, faceDown ? t + 0.00025 : 0.0007, 0]} rotation={[0, 0, faceDown ? Math.PI : 0]}>
       <mesh geometry={phoneBodyGeo(w, l, t)} material={body} />
       <mesh geometry={scrGeo} material={sm} position={[0, t + 0.00015, 0]} />
-      {/* the camera module on the back (a 0.5 mm rise), two lenses and a flash */}
+      {/* the camera module on the back (a 0.5 mm rise), two lenses (0.2 mm proud of it) and a flash */}
       <group position={[-w / 2 + 0.016, -0.00025, -l / 2 + 0.018]}>
         <mesh geometry={geo("phoneCam", () => new RoundedBoxGeometry(0.022, 0.0005, 0.024, 1, 0.0002))} material={body} />
         {[
           [0, -0.0055],
           [0, 0.0055],
         ].map(([x, z], i) => (
-          <mesh key={i} geometry={geo("phoneLens", () => new THREE.CylinderGeometry(0.0038, 0.0038, 0.0006, 20))} material={mat("k-lens", () => new THREE.MeshPhysicalMaterial({ color: "#07080A", roughness: 0.05, clearcoat: 1, metalness: 0.4 }))} position={[x - 0.003, -0.0002, z]} />
+          <mesh key={i} geometry={geo("phoneLens", () => new THREE.CylinderGeometry(0.0038, 0.0038, 0.0005, 20))} material={mat("k-lens", () => new THREE.MeshPhysicalMaterial({ color: "#07080A", roughness: 0.05, clearcoat: 1, metalness: 0.4 }))} position={[x - 0.003, -0.0002, z]} />
         ))}
-        <mesh geometry={geo("phoneFlash", () => new THREE.CylinderGeometry(0.0016, 0.0016, 0.0006, 12))} material={mat("k-flash", () => new THREE.MeshStandardMaterial({ color: "#F2E6C8", roughness: 0.3 }))} position={[0.0065, -0.0002, 0]} />
+        <mesh geometry={geo("phoneFlash", () => new THREE.CylinderGeometry(0.0016, 0.0016, 0.0004, 12))} material={mat("k-flash", () => new THREE.MeshStandardMaterial({ color: "#F2E6C8", roughness: 0.3 }))} position={[0.0065, -0.0001, 0]} />
       </group>
       {/* side buttons */}
       <mesh geometry={geo("phoneBtn", () => new RoundedBoxGeometry(0.0016, 0.0032, 0.018, 1, 0.0006))} material={body} position={[w / 2 + 0.0002, t / 2, -l * 0.18]} />
@@ -1274,7 +1296,7 @@ const cordCoil = () =>
 export const MiniFridge: React.FC<{ color?: string; packed?: boolean }> = ({ color = "#E9EAE6", packed = true }) => {
   const shell = mat(`k-fridge-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, clearcoat: 0.5, clearcoatRoughness: 0.25 }));
   const black = mat("k-fridgeBlack", () => new THREE.MeshStandardMaterial({ color: "#1C1D20", roughness: 0.6 }));
-  const blueTape = mat("k-blueTape", () => new THREE.MeshStandardMaterial({ color: "#3C8FD8", roughness: 0.85 }));
+  const blueTape = mat("k-blueTape", () => new THREE.MeshStandardMaterial({ color: "#3C8FD8", roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   const vent = mat("k-vent", () =>
     new THREE.MeshStandardMaterial({
       map: canvasTex("fridgeVent", 256, 32, (g, w, h) => {
@@ -1284,6 +1306,9 @@ export const MiniFridge: React.FC<{ color?: string; packed?: boolean }> = ({ col
         for (let x = 8; x < w - 8; x += 12) g.fillRect(x, 6, 7, h - 12);
       }),
       roughness: 0.6,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     }),
   );
   return (
@@ -1298,22 +1323,31 @@ export const MiniFridge: React.FC<{ color?: string; packed?: boolean }> = ({ col
       ))}
       <mesh geometry={geo("fridgeBody", () => new RoundedBoxGeometry(0.45, 0.478, 0.47, 3, 0.012))} material={shell} position={[0, 0.022 + 0.239, 0.015]} />
       <mesh geometry={geo("fridgeDoor", () => new RoundedBoxGeometry(0.446, 0.43, 0.034, 3, 0.011))} material={shell} position={[0, 0.07 + 0.215, -0.22 - 0.017 + 0.0005]} />
-      <mesh geometry={geo("fridgeVentP", () => new THREE.PlaneGeometry(0.36, 0.03))} material={vent} position={[0, 0.047, -0.2201 + 0.0001]} rotation={[0, Math.PI, 0]} />
+      <mesh geometry={geo("fridgeVentP", () => new THREE.PlaneGeometry(0.36, 0.03))} material={vent} position={[0, 0.047, -0.2206]} rotation={[0, Math.PI, 0]} />
       <mesh geometry={geo("fridgeHandle", () => new RoundedBoxGeometry(0.022, 0.2, 0.02, 2, 0.007))} material={shell} position={[0.18, 0.33, -0.254 - 0.006]} />
       <mesh geometry={coilGeo()} material={black} position={[0, 0, 0.25 + 0.012]} />
       {packed && (
         <>
           <mesh geometry={cordCoil()} material={black} position={[-0.06, 0.5, 0.05]} />
           <mesh geometry={geo("fridgePlug", () => new RoundedBoxGeometry(0.03, 0.012, 0.022, 2, 0.003))} material={black} position={[0.035, 0.5 + 0.006, 0.1]} rotation={[0, 0.5, 0]} />
-          <mesh geometry={geo("fridgeCordTape", () => new THREE.PlaneGeometry(0.05, 0.16).rotateX(-Math.PI / 2))} material={blueTape} position={[-0.06, 0.5 + 0.0085, 0.05]} rotation={[0, 0.3, 0]} />
-          {/* tape over the door seam: front and side */}
-          <mesh geometry={geo("doorTapeF", () => new THREE.PlaneGeometry(0.06, 0.05))} material={blueTape} position={[-0.21, 0.36, -0.254 - 0.0006]} rotation={[0, Math.PI, 0]} />
-          <mesh geometry={geo("doorTapeS", () => new THREE.PlaneGeometry(0.06, 0.05).rotateY(-Math.PI / 2))} material={blueTape} position={[-0.225 - 0.0006, 0.36, -0.22]} />
+          <mesh geometry={drapedStrip("fridgeCordTape", 0.17, 0.05, (s) => (Math.abs(s) < 0.05 ? 0.0083 : Math.max(0.0005, 0.0083 - (Math.abs(s) - 0.05) * 0.75)))} material={blueTape} position={[-0.06, 0.5, 0.05]} rotation={[0, 0.3, 0]} />
+          {/* a strip of tape over the door seam on top, holding it shut */}
+          <mesh geometry={geo("doorTapeTop", () => new THREE.PlaneGeometry(0.05, 0.06).rotateX(-Math.PI / 2))} material={blueTape} position={[-0.12, 0.5 + 0.0008, -0.21]} />
         </>
       )}
     </group>
   );
 };
+
+/** A strip (along x, `wid` across z) whose height follows y(s) along it: tape laid over something. */
+const drapedStrip = (key: string, len: number, wid: number, y: (s: number) => number) =>
+  geo(`drape-${key}`, () => {
+    const g = new THREE.PlaneGeometry(len, wid, 24, 1).rotateX(-Math.PI / 2);
+    const p = g.getAttribute("position");
+    for (let i = 0; i < p.count; i++) p.setY(i, y(p.getX(i)));
+    g.computeVertexNormals();
+    return g;
+  });
 
 // ======================================================================================= boxed desk lamp
 const newsTex = () =>
@@ -1432,68 +1466,91 @@ const flameGeo = () =>
     }
     return new THREE.LatheGeometry(pts, 20);
   });
-/** An ivory pillar candle (0.064 across, 0.075 tall) on a small white saucer, a melt pool and a curled wick;
+/** An ivory pillar candle (0.045 across, 0.064 tall) on a small white saucer (0.057 across), a melt pool, a curled wick;
  * lit 0..1 shows a soft flickering flame (t in seconds), glowing wax and a halo. Origin floor centre. */
 export const Candle: React.FC<{ lit?: number; t?: number; light?: number }> = ({ lit = 1, t = 0, light = 0 }) => {
   const k = clamp01(lit);
   const saucer = geo("candleSaucer", () => {
     const p = [
       [0, 0],
-      [0.03, 0],
-      [0.033, 0.001],
-      [0.043, 0.006],
-      [0.046, 0.0085],
-      [0.0448, 0.009],
-      [0.041, 0.0068],
-      [0.031, 0.0032],
+      [0.024, 0],
+      [0.026, 0.001],
+      [0.03, 0.005],
+      [0.0318, 0.0072],
+      [0.031, 0.0077],
+      [0.0285, 0.006],
+      [0.0262, 0.003],
       [0, 0.003],
-    ].map(([x, y]) => new THREE.Vector2(x, y));
+    ].map(([x, y]) => new THREE.Vector2(x * 0.9, y));
     return new THREE.LatheGeometry(p, 48);
   });
   const wax = geo("candleWax", () => {
     const p: [number, number][] = [
       [0, 0],
-      [0.031, 0],
-      [0.032, 0.002],
-      [0.032, 0.072],
-      [0.0318, 0.0748],
-      [0.0302, 0.0752],
-      [0.026, 0.0722],
-      [0.016, 0.0702],
-      [0.004, 0.0694],
-      [0, 0.0693],
+      [0.024, 0],
+      [0.025, 0.002],
+      [0.025, 0.063],
+      [0.0248, 0.0655],
+      [0.0234, 0.066],
+      [0.02, 0.0632],
+      [0.012, 0.0614],
+      [0.003, 0.0607],
+      [0, 0.0606],
     ];
     return new THREE.LatheGeometry(
-      p.map(([x, y]) => new THREE.Vector2(x, y)),
+      p.map(([x, y]) => new THREE.Vector2(x * 0.9, y)),
       48,
     );
   });
-  const waxMat = mat("k-wax", () => new THREE.MeshPhysicalMaterial({ color: "#F1E4CB", roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color("#FFE7C2"), emissive: new THREE.Color("#FF9A4A"), emissiveMap: canvasTex("waxGlow", 8, 128, (g, w, h) => {
-    const gr = g.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, "#ffffff");
-    gr.addColorStop(0.25, "#444444");
-    gr.addColorStop(1, "#000000");
-    g.fillStyle = gr;
-    g.fillRect(0, 0, w, h);
-  }) }));
-  waxMat.emissiveIntensity = 0.55 * k;
+  const waxMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: "#F1E4CB",
+        roughness: 0.5,
+        sheen: 0.6,
+        sheenColor: new THREE.Color("#FFE7C2"),
+        emissive: new THREE.Color("#FF9A4A"),
+        emissiveMap: canvasTex("waxGlow", 8, 128, (g, w, h) => {
+          // lathe v runs from the bottom centre (0) up the side (to ~0.33) over the rim to the pool centre (1):
+          // the pool and rim glow, the side glows near its top and fades down (light carried in the wax)
+          const gr = g.createLinearGradient(0, 0, 0, h);
+          const stops: [number, number][] = [
+            [1, 0.55],
+            [0.45, 0.52],
+            [0.36, 0.55],
+            [0.33, 0.5],
+            [0.22, 0.2],
+            [0.11, 0.05],
+            [0, 0],
+          ];
+          for (const [v, k] of stops) {
+            const c = Math.round(k * 255);
+            gr.addColorStop(1 - v, `rgb(${c},${c},${c})`);
+          }
+          g.fillStyle = gr;
+          g.fillRect(0, 0, w, h);
+        }),
+      }),
+    [],
+  );
+  waxMat.emissiveIntensity = 0.42 * k;
   const fl = 1 + 0.07 * Math.sin(t * 13.1) + 0.05 * Math.sin(t * 23.7 + 1.3) + 0.03 * Math.sin(t * 41 + 0.4);
   const sway = 0.06 * Math.sin(t * 3.1) + 0.04 * Math.sin(t * 7.3 + 0.8);
-  const fm = flameMat();
+  const fm = useMemo(() => flameMat().clone(), []);
   (fm.uniforms.uK as { value: number }).value = k;
-  const top = 0.003 + 0.0693;
-  const halo = mat("k-candleHalo", () => new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color("#FFB05A"), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  halo.opacity = 0.55 * k * (0.9 + 0.1 * fl);
+  const top = 0.0031 + 0.0606;
+  const halo = useMemo(() => new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color("#FFB05A"), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }), []);
+  halo.opacity = 0.35 * k * (0.9 + 0.1 * fl);
   return (
     <group>
       <mesh geometry={saucer} material={mat("k-saucer", () => new THREE.MeshPhysicalMaterial({ color: "#F4F2EC", roughness: 0.2, clearcoat: 0.8 }))} />
-      <mesh geometry={wax} material={waxMat} position={[0, 0.003, 0]} />
+      <mesh geometry={wax} material={waxMat} position={[0, 0.0031, 0]} />
       <mesh geometry={geo("wick", () => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(0, -0.002, 0), V(0, 0.004, 0), V(0.0012, 0.0075, 0), V(0.0026, 0.0088, 0)]), 10, 0.0006, 5, false))} material={inkMat()} position={[0, top, 0]} />
       {k > 0.01 && (
         <group position={[0, top + 0.0045, 0]} rotation={[0, 0, sway * 0.4]} scale={[1, fl, 1]}>
           <mesh geometry={flameGeo()} material={fm} />
-          <sprite material={halo} position={[0, 0.012, 0]} scale={[0.07, 0.07, 1]} />
-          {light > 0 && <pointLight color="#FFA24A" intensity={light * k * fl} distance={1.5} decay={2} position={[0, 0.015, 0]} />}
+          <sprite material={halo} position={[0, 0.012, 0]} scale={[0.05, 0.05, 1]} />
+          {light > 0 && <pointLight color="#FFA24A" intensity={light * k * fl} distance={1.5} decay={2} position={[0, 0.06, 0]} />}
         </group>
       )}
     </group>
@@ -2043,7 +2100,7 @@ export const AirMattress: React.FC<{ sheet?: boolean; quilt?: boolean; quiltMate
         <mesh geometry={geo("amPump", () => new RoundedBoxGeometry(0.17, 0.11, 0.02, 3, 0.008))} material={mat("k-pump", () => new THREE.MeshPhysicalMaterial({ color: "#3A3D44", roughness: 0.45, clearcoat: 0.4 }))} />
         <mesh geometry={geo("amDial", () => new THREE.CylinderGeometry(0.026, 0.028, 0.012, 32).rotateX(Math.PI / 2))} material={mat("k-dial", () => new THREE.MeshPhysicalMaterial({ color: "#1F2126", roughness: 0.35, clearcoat: 0.6 }))} position={[-0.03, 0, 0.016]} />
         <mesh geometry={geo("amDialMark", () => new THREE.BoxGeometry(0.004, 0.018, 0.002))} material={mat("k-dialMark", () => new THREE.MeshStandardMaterial({ color: "#E9E9E4", roughness: 0.5 }))} position={[-0.03, 0.006, 0.0225]} />
-        <mesh geometry={geo("amSocket", () => new THREE.CircleGeometry(0.012, 20))} material={mat("k-portBlack", () => new THREE.MeshBasicMaterial({ color: "#050505" }))} position={[0.045, 0, 0.0102]} />
+        <mesh geometry={geo("amSocket", () => new THREE.CircleGeometry(0.012, 20))} material={mat("k-portBlack", () => new THREE.MeshBasicMaterial({ color: "#050505", polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }))} position={[0.045, 0, 0.0102]} />
       </group>
       {sheet && (
         <>

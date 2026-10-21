@@ -22,7 +22,7 @@ const spot = (color: string, angle: number, penumbra: number, shadow = true) => 
   return l;
 };
 
-export const NightLights: React.FC<{ t: number; hall: number; street?: number; moon?: number; nightlight?: number; fill?: number; strings?: number; lightning?: number; sun?: number; sunAz?: number }> = ({
+export const NightLights: React.FC<{ t: number; hall: number; street?: number; moon?: number; nightlight?: number; fill?: number; strings?: number; lightning?: number; sun?: number; sunAz?: number; headlight?: number }> = ({
   hall,
   street = 1,
   moon = 0,
@@ -32,6 +32,7 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
   lightning = 0,
   sun = 0,
   sunAz = 0.5,
+  headlight = -1,
 }) => {
   const L = useMemo(() => {
     const st = spot("#CFDDF5", 0.42, 0.6);
@@ -60,14 +61,22 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
     sn.shadow.normalBias = 0.02;
     Object.assign(sn.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 0.5, far: 30 });
     sn.target.position.set(0, 0, -1.8);
-    return { st, mn, hl, nl, lt, sn };
+    // a car's headlights passing in the street: the window shapes slide across the floors
+    const hd = spot("#FFE6C4", 0.3, 0.45);
+    return { st, mn, hl, nl, lt, sn, hd };
   }, []);
-  L.lt.intensity = 2.6 * lightning;
+  L.lt.intensity = 1.1 * lightning;
   L.sn.intensity = 3.2 * sun;
   {
     const a = (sunAz - 0.5) * 2.2;
     L.sn.position.set(Math.sin(a) * 9, 4.2 + 2.5 * Math.cos(a), 8 + 0.0 * a);
     L.sn.color.set(new THREE.Color("#FFD29A").lerp(new THREE.Color("#FFF2DE"), Math.cos(a)));
+  }
+  {
+    const u = Math.min(1, Math.max(0, headlight));
+    L.hd.intensity = headlight >= 0 && headlight <= 1 ? 3.2 * Math.pow(Math.sin(Math.PI * u), 0.8) : 0;
+    L.hd.position.set(10 - 20 * u, 5.5, 10);
+    L.hd.target.position.set((10 - 20 * u) * 0.12, 0, -2.0);
   }
   L.st.intensity = 1.5 * street;
   L.mn.intensity = 1.1 * moon;
@@ -78,10 +87,12 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
   L.nl.intensity = 0.12 * nightlight;
   return (
     <>
-      <hemisphereLight args={[sun > 0 ? "#9FB8D8" : "#3B4C78", sun > 0 ? "#6A5A48" : "#1A1612", 1.5 * fill + 2.4 * sun + 0.35 * lightning]} />
+      <hemisphereLight args={[sun > 0 ? "#9FB8D8" : "#3B4C78", sun > 0 ? "#6A5A48" : "#1A1612", 1.5 * fill + 2.4 * sun + 0.15 * lightning]} />
       <primitive object={L.lt} />
       <primitive object={L.lt.target} />
       <primitive object={L.sn} />
+      <primitive object={L.hd} />
+      <primitive object={L.hd.target} />
       <primitive object={L.sn.target} />
       <directionalLight position={[1.5, 9, 2.5]} intensity={0.35 * fill} color="#9FB2E0" />
       <primitive object={L.st} />

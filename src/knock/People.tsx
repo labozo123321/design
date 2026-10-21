@@ -212,10 +212,78 @@ export const lyingChains = (s: Sib): THREE.Vector3[][] | undefined => {
 /** A person in bed. Returns the figure; use lieBody() for the covers and the pillow. */
 export const lieBody = (s: Sib, side: -1 | 1, st: Lie) => {
   const { eye, rest } = headAt(s, side, st);
-  const f = lieFrame(s, side, st, eye);
+  let f = lieFrame(s, side, st, eye);
+  // the near shoulder (and the upper arm round it) must clear the wall: slide the whole body away if not
+  {
+    const nearSd = side < 0 ? -1 : 1;
+    const sh = V(nearSd * 0.168 * s.k, 1.374 * s.k, 0).applyQuaternion(f.q).add(f.pos);
+    const need = WALL.half + 0.054 * s.k + 0.004;
+    const short = need - side * sh.x;
+    if (short > 0) {
+      const d = V(side * short, 0, 0);
+      eye.add(d);
+      rest.at.add(d);
+      f = lieFrame(s, side, st, eye);
+    }
+  }
   const knees = st.knees ?? Math.abs(st.roll) * 0.3;
   const caps = bodyCapsules(s, f, knees);
   return { f, eye, rest, caps, knees };
+};
+
+/** Keep an arm out of the wall: the Figure's IK (shoulder, elbow, wrist) and the hand beyond the wrist,
+ * pushed back so every part stays on its own side of the wall's face. sd: the arm's side in the body (-1
+ * left); room: which room the body is in (-1 Nora's); toWorld/dirToLocal: the body frame. */
+export const clearOfWall = (a: Arm, sd: number, k: number, room: -1 | 1, toWorld: (p: THREE.Vector3) => THREE.Vector3, dirToLocal: (d: THREE.Vector3) => THREE.Vector3): Arm => {
+  const S = V(sd * 0.168 * k, 1.374 * k, 0);
+  const la = 0.3 * k;
+  const lb = 0.27 * k;
+  const pole = (a.pole ?? V(sd, -0.6, 0.6)).clone().normalize();
+  const curl = a.hand ? a.hand.curl.reduce((x, y) => x + y, 0) / 4 : 0.3;
+  const reach = (curl > 0.85 ? 0.1 : 0.175) * k;
+  let at = a.at.clone();
+  for (let it = 0; it < 4; it++) {
+    const d0 = at.clone().sub(S);
+    const d = Math.min(la + lb - 1e-3, Math.max(Math.abs(la - lb) + 1e-3, d0.length()));
+    const dir = d0.normalize();
+    const W = S.clone().addScaledVector(dir, d);
+    const cosA = (la * la + d * d - lb * lb) / (2 * la * d);
+    const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+    const perp = pole.clone().addScaledVector(dir, -pole.dot(dir)).normalize();
+    const E = S.clone().addScaledVector(dir, la * cosA).addScaledVector(perp, la * sinA);
+    const fore = W.clone().sub(E).normalize();
+    // the hand's frame as the Figure builds it: its width across (the thumb's side) and its palm normal
+    const handY = fore.clone().negate();
+    const pw = (a.palm ?? V(-sd, 0, 0)).clone();
+    const handZ = pw.addScaledVector(handY, -pw.dot(handY)).normalize();
+    const handX = new THREE.Vector3().crossVectors(handY, handZ);
+    // points with their radii: the elbow, along the forearm, the wrist, the hand to the knuckles/fingertips,
+    // its two edges (the thumb's and the little finger's)
+    const mid = W.clone().addScaledVector(fore, reach * 0.5);
+    const pts: [THREE.Vector3, number][] = [
+      [E, 0.042 * k],
+      [E.clone().lerp(W, 0.5), 0.036 * k],
+      [W, 0.03 * k],
+      [mid, 0.028 * k],
+      [W.clone().addScaledVector(fore, reach), 0.02 * k],
+      [mid.clone().addScaledVector(handX, 0.05 * k), 0.02 * k],
+      [mid.clone().addScaledVector(handX, -0.05 * k), 0.02 * k],
+      [mid.clone().addScaledVector(handZ, 0.03 * k), 0.015 * k],
+      // the thumb, out from the heel of the hand on its own side (the Hand mirrors it for a left hand)
+      [W.clone().addScaledVector(fore, 0.03 * k).addScaledVector(handX, sd * 0.07 * k), 0.016 * k],
+      [W.clone().addScaledVector(fore, 0.05 * k).addScaledVector(handX, sd * 0.095 * k), 0.012 * k],
+    ];
+    let pen = 0;
+    for (const [p, r] of pts) {
+      const w = toWorld(p);
+      // only near the wall's height (it's cut at 1.1 m; above it, nothing to hit)
+      if (w.y > WALL.cut + r) continue;
+      pen = Math.max(pen, WALL.half + r + 0.002 - room * w.x);
+    }
+    if (pen <= 1e-4) break;
+    at = at.add(dirToLocal(V(room * pen, 0, 0)));
+  }
+  return { ...a, at };
 };
 
 export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = ({ s, side, st, t }) => {
@@ -248,8 +316,11 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     headPitch: st.headPitch,
     feet: [footAt(s.k, -1, b.knees), footAt(s.k, 1, b.knees)],
   };
-  const nearArm = arm(st.near);
-  const farArm = arm(st.far);
+  const toW = (p: THREE.Vector3) => p.clone().applyQuaternion(f.q).add(f.pos);
+  const toL = (d: THREE.Vector3) => dirToBody(d, f);
+  const clamp = (a: Arm | undefined, key: "armL" | "armR") => (a ? clearOfWall(a, key === "armL" ? -1 : 1, s.k, side, toW, toL) : undefined);
+  const nearArm = clamp(arm(st.near), nearSide);
+  const farArm = clamp(arm(st.far), farSide);
   if (nearArm) pose[nearSide] = nearArm;
   if (farArm) pose[farSide] = farArm;
   // Figure's look is a world point relative to its own `at`/yaw: we hand it body coordinates with at = 0

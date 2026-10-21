@@ -6,6 +6,7 @@ import { useThree } from "@react-three/fiber";
 import { NFRAMES } from "./script";
 import { Overlay } from "./Overlay";
 import { World } from "./World";
+import { FPS } from "./script";
 
 /**
  * POV: you had a secret knock with your sister. Told by the wall between your rooms: a roofless dollhouse
@@ -27,6 +28,15 @@ export const Rig: React.FC<{ c: Cam }> = ({ c }) => {
   return null;
 };
 
+const GHOST_OF = 22.49;
+const ghostK = (t: number) => {
+  const s = (a: number, b: number, x: number) => {
+    const u = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return u * u * (3 - 2 * u);
+  };
+  return 0.38 * s(65.4, 65.85, t) * (1 - s(66.45, 66.9, t));
+};
+
 export const KnockVideo: React.FC = () => {
   const frame = useCurrentFrame();
   const props = getInputProps() as { cam?: string; hide?: string[]; t?: number; noOverlay?: boolean };
@@ -35,6 +45,14 @@ export const KnockVideo: React.FC = () => {
       <ThreeCanvas width={1080} height={1920} shadows camera={{ fov: 30, near: 0.05, far: 200, position: [0, 10, 2] }} gl={{ antialias: false, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}>
         <World frame={frame} cam={props.cam} hide={props.hide ?? []} tOverride={props.t} />
       </ThreeCanvas>
+      {/* the double exposure: the storm night of 2009 (her on your floor) over this one (you on hers) */}
+      {ghostK(frame / FPS) > 0 && !props.cam ? (
+        <AbsoluteFill style={{ opacity: ghostK(frame / FPS), mixBlendMode: "screen" }}>
+          <ThreeCanvas width={1080} height={1920} shadows camera={{ fov: 30, near: 0.05, far: 200, position: [0, 10, 2] }} gl={{ antialias: false, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}>
+            <World frame={frame} hide={props.hide ?? []} tOverride={props.t} ghost={GHOST_OF} />
+          </ThreeCanvas>
+        </AbsoluteFill>
+      ) : null}
       {!props.noOverlay && !props.cam ? <Overlay frame={frame} /> : null}
     </AbsoluteFill>
   );
