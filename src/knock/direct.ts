@@ -369,7 +369,8 @@ const b5 = (t: number): Frame => {
     you,
     dress: { era: "2013", moveOut: true, trex: 0, jolt: 0, stars: 40, starGlow: 0.45, beds: { nora: { kind: "twin", look: "bare", bare: true }, you: { kind: "twin", look: "you2011" } } },
     light: { hall: 0, street: 0.35, moon: 1, nightlight: 0, fill: 0.85 },
-    cam: camBetween(t, 28, 36, PRESETS.medium, PRESETS.two),
+    // (from the wide, her stripped room and the boxes, slowly in to the two of them)
+    cam: camBetween(t, 28, 34.5, PRESETS.wide, PRESETS.two),
     look: { ...mixLook(WARM, NEUTRAL_GRADE, smooth(28, 33, t)), flash: t < 28.05 ? 0.55 : 0 },
     bloom: 0.5,
     aperture: 0.012 * smooth(29, 35, t),
@@ -965,6 +966,8 @@ const b4 = (t: number): Frame => {
       },
       headPitch: 0.15 * roll * (1 - smooth(26.6, 26.9, t)),
       prop: 0.006 * Math.exp(-Math.max(0, t - 26.0) / 0.08) * (t >= 26.0 ? 1 : 0),
+      // (both in at 24.9; the one facing up (the head's +x side as you lie) out at 26.3 and back in at 27.3)
+      plugs: [t >= 24.9, t >= 24.9 && (t < 26.3 || t >= 27.3)],
     },
   };
   const items: Frame["items"] = [];

@@ -34,7 +34,7 @@ const ghostK = (t: number) => {
     const u = Math.min(1, Math.max(0, (x - a) / (b - a)));
     return u * u * (3 - 2 * u);
   };
-  return 0.38 * s(65.4, 65.85, t) * (1 - s(66.45, 66.9, t));
+  return 0.5 * s(65.4, 65.85, t) * (1 - s(66.45, 66.9, t));
 };
 
 export const KnockVideo: React.FC = () => {

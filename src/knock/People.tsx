@@ -41,6 +41,8 @@ export type Lie = {
   headPitch?: number;
   /** knees drawn up (0..1) */
   knees?: number;
+  /** foam earplugs in the left and right ears */
+  plugs?: [boolean, boolean];
   /** slide along the bed toward the wall (+) or away (-), metres */
   slide?: number;
   /** lying somewhere other than the twin bed: the head's x (on the back), the surface height, the pillow */
@@ -158,7 +160,7 @@ const onScalp = (sh: Sib["who"]["shape"], d: THREE.Vector3, off: number) => {
 };
 
 /** Things worn on the head: the haircut's cards, glasses, the clip, the cowlick. */
-export const HeadBits: React.FC<{ s: Sib; t: number }> = ({ s, t }) => {
+export const HeadBits: React.FC<{ s: Sib; t: number; plugs?: [boolean, boolean] }> = ({ s, t, plugs }) => {
   const sh = s.who.shape;
   const clip = onScalp(sh, V(0.3, 0.86, -0.42), 0.016);
   const lick = onScalp(sh, V(-0.08, 0.72, -0.69), 0.008);
@@ -175,6 +177,17 @@ export const HeadBits: React.FC<{ s: Sib; t: number }> = ({ s, t }) => {
           </mesh>
         </group>
       ) : null}
+      {/* orange foam earplugs, the round ends standing out of the ears */}
+      {plugs
+        ? ([-1, 1] as const).map((side, i) =>
+            plugs[i] ? (
+              <mesh key={side} position={[side * (sh.w * 0.955 + 0.011), sh.eyeY - 0.017, -0.012]} rotation={[0, 0, Math.PI / 2]}>
+                <capsuleGeometry args={[0.0068, 0.009, 4, 12]} />
+                <meshStandardMaterial color="#F2843A" roughness={0.85} />
+              </mesh>
+            ) : null,
+          )
+        : null}
       {s.cowlick ? (
         <group position={lick.p} quaternion={lick.q}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -362,7 +375,7 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
   // Figure's look is a world point relative to its own `at`/yaw: we hand it body coordinates with at = 0
   return (
     <group position={f.pos} quaternion={f.q}>
-      <Figure who={s.who} outfit={s.outfit} k={s.k} pose={pose} at={V(0, 0, 0)} yaw={0} t={t} hi headExtra={<HeadBits s={s} t={t} />} chains={lyingChains(s)} />
+      <Figure who={s.who} outfit={s.outfit} k={s.k} pose={pose} at={V(0, 0, 0)} yaw={0} t={t} hi headExtra={<HeadBits s={s} t={t} plugs={st.plugs} />} chains={lyingChains(s)} />
     </group>
   );
 };

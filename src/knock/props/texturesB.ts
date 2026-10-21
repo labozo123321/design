@@ -609,6 +609,12 @@ export const consoleTex = (on: boolean) =>
       });
     };
     const lit = on ? "#8FF2E2" : "rgba(0,0,0,0)";
+    // (the readout turned half round in its window: the film only ever looks down on it from the runner's
+    // back, and there it should read the right way up)
+    g.save();
+    g.translate(dx + dw / 2, dy + dh / 2);
+    g.rotate(Math.PI);
+    g.translate(-(dx + dw / 2), -(dy + dh / 2));
     if (on) {
       // time 12:07 . speed 3.2 . a little bar graph (the programme profile)
       seg(dx + 26, dy + 26, 70, "1", lit);
@@ -629,6 +635,7 @@ export const consoleTex = (on: boolean) =>
     } else {
       for (let i = 0; i < 4; i++) seg(dx + 26 + i * 60, dy + 26, 70, "8", "rgba(0,0,0,0)");
     }
+    g.restore();
     // a soft reflection across the display glass
     const gl = g.createLinearGradient(dx, dy, dx + dw, dy + dh);
     gl.addColorStop(0, "rgba(255,255,255,0.10)");
