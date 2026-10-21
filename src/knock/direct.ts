@@ -73,7 +73,7 @@ export type LightState = {
 };
 
 /** Moose, where and how (see Beagle): his feet (or his bed), which way he faces (0 = -z), his pose. */
-export type Dog = { at: THREE.Vector3; yaw: number; pose: BeaglePose; puppy?: boolean; inBed?: boolean; ground?: (x: number, z: number) => number };
+export type Dog = { at: THREE.Vector3; yaw: number; pose: BeaglePose; puppy?: boolean; inBed?: boolean; ground?: (x: number, z: number) => number; collar?: boolean };
 
 /** Someone out of bed (sitting up, walking, lying down somewhere else), and what they carry. */
 export type Walker = { key: string; s: Sib; p: Posed; carry?: "pillow" | "bundle" | null };
@@ -684,7 +684,7 @@ const b2 = (t: number): Frame => {
     const here = night && hash01(c.i + (late ? 40 : 0), 3) < 0.78;
     const pup = !late && t < SWAP;
     const dog: Dog | null = here
-      ? { at: pup ? V3(-1.52, 0, -3.27) : V3(-1.5, 0, -3.33), yaw: (hash01(c.i, 7) - 0.5) * 2.4, pose: { kind: "curl", t }, puppy: pup, inBed: pup }
+      ? { at: pup ? V3(-1.52, 0, -3.27) : V3(-1.5, 0, -3.33), yaw: (hash01(c.i, 7) - 0.5) * 2.4, pose: { kind: "curl", t }, puppy: pup, inBed: pup, collar: false }
       : null;
     return {
       ...base,
@@ -734,7 +734,7 @@ const b2 = (t: number): Frame => {
     dress: { era: "2007", trex: 0, jolt: 0, stars: 40, starGlow: 0.8, beds: { nora: { kind: "twin", look: "nora2007" }, you: { kind: "twin", look: "you2007" } } },
     look: { ...WARM, flash: (Math.abs(t - 10.4) < 0.05 ? 1 : 0) * 0.55 },
     cam: PRESETS.medium,
-    dog: { at: V3(-1.5, 0, -3.33), yaw: 0.6, pose: { kind: "curl", t } },
+    dog: { at: V3(-1.5, 0, -3.33), yaw: 0.6, pose: { kind: "curl", t }, collar: false },
     macro,
     note: n2,
   };
@@ -857,8 +857,8 @@ const mooseIn2009 = (t: number, n: Sib): Dog | null => {
   const lens = path.slice(1).map((q, i) => q.distanceTo(path[i]));
   const total = lens.reduce((a, b) => a + b, 0);
   // (right behind her in the hall; at her feet before she's down, waiting)
-  const t0 = 19.1;
-  const speed = 2.2;
+  const t0 = 19.0;
+  const speed = 1.9;
   const arrive = t0 + total / speed;
   if (t < t0) return { at: path[0].clone(), yaw: -Math.PI / 2, pose: { kind: "lie", t, headUp: smooth(t0 - 0.6, t0 - 0.2, t) } };
   if (t < arrive) {
@@ -870,7 +870,8 @@ const mooseIn2009 = (t: number, n: Sib): Dog | null => {
     // turning smoothly into the next leg over its last 25 cm
     if (i < lens.length - 1 && lens[i] - rem < 0.25) dir.lerp(path[i + 2].clone().sub(path[i + 1]).normalize(), (0.25 - (lens[i] - rem)) / 0.5).normalize();
     const at = path[i].clone().addScaledVector(path[i + 1].clone().sub(path[i]).normalize(), Math.min(rem, lens[i]));
-    return { at, yaw: Math.atan2(-dir.x, -dir.z), pose: { kind: "trot", t, phase: d / BEAGLE.stride(false), wag: 0.6 } };
+    // (running, not trotting: long bounds, under three a second, so the legs read at 30 fps)
+    return { at, yaw: Math.atan2(-dir.x, -dir.z), pose: { kind: "trot", t, phase: d / (1.6 * BEAGLE.stride(false)), wag: 0.6 } };
   }
   // stop beside her feet, turn to face across her ankles, and flop
   const end = path[path.length - 1];
@@ -882,8 +883,8 @@ const mooseIn2009 = (t: number, n: Sib): Dog | null => {
     at,
     // (he came in heading +z; he turns to face your bed, across her legs)
     yaw: Math.PI * (1 - 0.5 * smooth(arrive, arrive + 0.35, t)),
-    pose: { kind: "stand", to: "flop", mix: k, t, faceUp: 0.55, blink: smooth(f0 + 0.3, f0 + 0.7, t) * 0.92, wag: 0.4 * (1 - k) },
-    ground: k > 0.3 ? ground : undefined,
+    pose: { kind: "stand", to: "flop", mix: k, t, faceUp: 0.55, headNod: 0.45 * k, blink: smooth(f0 + 0.3, f0 + 0.7, t) * 0.92, wag: 0.4 * (1 - k) },
+    ground,
   };
 };
 

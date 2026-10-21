@@ -378,7 +378,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       ))}
       <Dressing d={F.dress} t={t} light={F.light} camDist={macro ? 0 : F.cam.dist} />
       {F.note ? <Note n={F.note} /> : null}
-      {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} /> : null}
+      {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} collar={F.dog.collar} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
       {(F.items ?? []).map((it, i) => (it.kind === "pillowOver" ? <PillowOver key={i} at={it.pos} q={it.q} /> : null))}
       {macro ? (

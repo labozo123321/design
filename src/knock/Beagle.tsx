@@ -78,6 +78,8 @@ export type BeagleProps = {
   ground?: (x: number, z: number) => number;
   /** the eyes' tiny catchlights (0 off .. 1) */
   glint?: number;
+  /** wearing the collar (and its ring and tag) */
+  collar?: boolean;
 };
 
 // ============================================================================================ small maths
@@ -1334,8 +1336,13 @@ const collarTex = () =>
   );
 const collarMat = () => mat("beagle-collar", () => new THREE.MeshPhysicalMaterial({ map: collarTex(), roughness: 0.55, sheen: 0.4, sheenColor: new THREE.Color("#FF8C8C") }));
 const lipMat = () => mat("beagle-lip", () => new THREE.MeshStandardMaterial({ color: "#4A342B", roughness: 0.6 }));
+const earStrands = () => {
+  const t = strandMap();
+  t.repeat.set(3, 3);
+  return t;
+};
 const earMats = (pup: number) => [
-  mat(`beagle-earOut-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, map: strandMap(), roughness: 0.62, sheen: 0.6, sheenRoughness: 0.42, sheenColor: new THREE.Color("#D8B48C"), side: THREE.DoubleSide })),
+  mat(`beagle-earOut-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, map: earStrands(), roughness: 0.62, sheen: 0.6, sheenRoughness: 0.42, sheenColor: new THREE.Color("#D8B48C"), side: THREE.DoubleSide })),
   mat(`beagle-earIn-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.55, sheen: 0.35, sheenColor: new THREE.Color("#F2C2B4"), side: THREE.DoubleSide })),
   mat(`beagle-earRim-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.65, sheen: 0.5, sheenColor: new THREE.Color("#D8B48C"), side: THREE.DoubleSide })),
 ];
@@ -2304,7 +2311,7 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
     if (S.headMask[i]) continue;
     const x = p[i * 3] + off.x;
     const z = p[i * 3 + 2] + off.z;
-    lo = Math.min(lo, p[i * 3 + 1] - (flat ? 0 : ground(x, z)));
+    lo = Math.min(lo, p[i * 3 + 1] - (flat ? 0 : wL * ground(x, z)));
   }
   off.y = -sol.sink - lo;
   const h0 = 0.004 * s;
@@ -2375,7 +2382,8 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
 };
 
 // =========================================================================================== component
-const bodyMats = (pup: boolean) => [furMat(pup ? "pup" : "adult", pup ? 26 : 20), padMat(), noseMat(), collarMat(), lipMat()];
+const noCollar = () => mat("beagle-noCollar", () => Object.assign(new THREE.MeshBasicMaterial(), { visible: false }));
+const bodyMats = (pup: boolean, collar = true) => [furMat(pup ? "pup" : "adult", pup ? 26 : 20), padMat(), noseMat(), collar ? collarMat() : noCollar(), lipMat()];
 
 /** Moose. Built at its feet facing -z; `at` is where its feet (or its bed) are, `yaw` turns it about y. */
 export const Beagle: React.FC<BeagleProps> = (props) => {
@@ -2387,7 +2395,7 @@ export const Beagle: React.FC<BeagleProps> = (props) => {
   const glint = (props.glint ?? 1) * (1 - sstep(0.2, 0.6, o.blink));
   return (
     <group position={props.at} rotation={[0, props.yaw, 0]}>
-      <mesh geometry={inst.body} material={bodyMats(puppy)} castShadow receiveShadow frustumCulled={false} />
+      <mesh geometry={inst.body} material={bodyMats(puppy, props.collar ?? true)} castShadow receiveShadow frustumCulled={false} />
       {inst.ears.map((g, i) => (
         <mesh key={`ear${i}`} geometry={g} material={earMats(pup)} castShadow receiveShadow frustumCulled={false} />
       ))}
@@ -2404,12 +2412,16 @@ export const Beagle: React.FC<BeagleProps> = (props) => {
           ) : null}
         </group>
       ))}
-      <group position={o.ring.pos} quaternion={o.ring.quat}>
-        <mesh geometry={S.ringGeo} material={brass()} castShadow />
-      </group>
-      <group position={o.tag.pos} quaternion={o.tag.quat}>
-        <mesh geometry={S.tagGeo} material={brass()} castShadow />
-      </group>
+      {props.collar ?? true ? (
+        <>
+          <group position={o.ring.pos} quaternion={o.ring.quat}>
+            <mesh geometry={S.ringGeo} material={brass()} castShadow />
+          </group>
+          <group position={o.tag.pos} quaternion={o.tag.quat}>
+            <mesh geometry={S.tagGeo} material={brass()} castShadow />
+          </group>
+        </>
+      ) : null}
     </group>
   );
 };

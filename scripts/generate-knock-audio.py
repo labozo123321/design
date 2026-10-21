@@ -1990,10 +1990,10 @@ def b3(B):
     place(B.F, flop(0.6, 32, 0.5) * 0.11, arrive + 0.85, pan=xpan(1.42))
     place(B.F, cloth(0.5, "quilt", 37) * 0.35, arrive + 0.9, pan=xpan(1.42))
     # Moose: lifts his head in the hall as she passes; trots after her (tags, paws), and drops at her feet
-    place(B.H, tags(1, 1) * 0.02, 18.75, pan=xpan(-0.7))
+    place(B.H, tags(1, 1) * 0.02, 18.65, pan=xpan(-0.7))
     dpath = [(-0.7, -4.36), (1.15, -4.36), (1.52, -3.98), (1.56, -3.4), (2.03, -2.95), (2.03, -1.6)]
     stride = 0.42
-    dsteps, darrive = path_walk(dpath, 19.1, 2.2, 1.0, step_len_scale=stride)
+    dsteps, darrive = path_walk(dpath, 19.0, 1.9, 1.0, step_len_scale=stride * 1.6)
     for j, (ts, x, z, d) in enumerate(dsteps):
         hall = in_hall(z)
         fl = "wood" if hall or z < -3.35 else "rug"
