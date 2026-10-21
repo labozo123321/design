@@ -83,6 +83,21 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
     L.hd.target.position.set((10 - 20 * u) * 0.12, 0, -2.0);
   }
   L.sm.intensity = 0.16 * seam;
+  // a light that's off doesn't redraw its shadow map (each one re-renders the whole house); its shadow
+  // settings stay as they are, so no shader changes
+  const gate = (l: THREE.Light & { shadow: THREE.LightShadow }, on: boolean) => {
+    l.shadow.autoUpdate = on;
+    // (every map is drawn at least once, so a light that's off still has a valid one)
+    if (!l.userData.drawn) {
+      l.shadow.needsUpdate = true;
+      l.userData.drawn = true;
+    }
+  };
+  gate(L.sn, L.sn.intensity > 0);
+  gate(L.hd, L.hd.intensity > 0);
+  gate(L.mn, moon > 0.001);
+  gate(L.st, street > 0.001);
+  gate(L.hl, hall + strings > 0.001);
   L.st.intensity = 1.5 * street;
   L.mn.intensity = 1.1 * moon;
   // the hallway's ceiling light, or (2025) the Christmas string lights along the banister: warmer, dimmer
