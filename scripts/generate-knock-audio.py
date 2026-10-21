@@ -2126,13 +2126,14 @@ def b6(B):
     place(B.F, plastic([(1350, 1, 0.01), (2400, 0.6, 0.006)], "console", thud=0.6) * 0.06, 37.93, pan=-0.5)
     place(B.F, stop_beep() * 0.025, 37.97, pan=-0.5)
     B.events.append((37.93, "treadmill stop"))
-    place(B.F, step("sneaker", "carpet", 1.0, "off") * 0.06, 38.12, pan=-0.55)
-    for j, ts in enumerate((38.27, 38.41)):
-        place(B.F, step("sneaker", "carpet", 0.9, ("stag", j)) * 0.06, ts, pan=-0.55)
-    place(B.F, flop(1.0, "mom", 0.6) * 0.1, 38.64, pan=-0.55)
-    place(B.F, cloth(0.4, "cotton", 61) * 0.3, 38.62, pan=-0.55)
-    place(B.F, plastic([(2600, 1, 0.006), (4100, 0.5, 0.004)], "readers", thud=0.1) * 0.01, 38.7, pan=-0.5)
-    B.events.append((38.64, "mom's whump"))
+    # (carried off the belt's end by 38.27, two staggering steps, the flop lands at 38.7)
+    place(B.F, step("sneaker", "carpet", 1.0, "off") * 0.06, 38.22, pan=-0.55)
+    for j, ts in enumerate((38.32, 38.45)):
+        place(B.F, step("sneaker", "carpet", 0.9, ("stag", j)) * 0.06, ts, pan=-0.6)
+    place(B.F, flop(1.0, "mom", 0.6) * 0.1, 38.69, pan=-0.7)
+    place(B.F, cloth(0.4, "cotton", 61) * 0.3, 38.67, pan=-0.7)
+    place(B.F, plastic([(2600, 1, 0.006), (4100, 0.5, 0.004)], "readers", thud=0.1) * 0.01, 38.75, pan=-0.75)
+    B.events.append((38.69, "mom's whump"))
     # the laundry rack growing (time-lapse)
     r = rng("laundry")
     for j in range(9):
