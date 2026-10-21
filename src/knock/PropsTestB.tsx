@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { ThreeCanvas } from "@remotion/three";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { AbsoluteFill, getInputProps, useCurrentFrame } from "remotion";
 import { createPortal, useFrame } from "@react-three/fiber";
 import { canvasTex, mat } from "../roadster/materials";
 import { paint, trim } from "../home/materials";
@@ -188,12 +188,13 @@ const doorPiece: Piece = {
 };
 
 const winXs = [-1.8, -0.6, 0.6, 1.8];
+const DBG = (getInputProps() as { dbg?: string }).dbg ?? "";
 const windowPiece: Piece = {
   name: "Window: plain | curtains | rain | snow corners (porch roof below)",
   set: (_m, t) => (
     <group>
       <WallStub x0={-2.4} x1={2.4} z0={-0.075} z1={0.075} y0={-0.3} holes={winXs.map((x) => [x - WINDOWS.w / 2, x + WINDOWS.w / 2, WINDOWS.sill, WINDOWS.head] as [number, number, number, number])} outside={siding()} />
-      {winXs.map((x, i) => (
+      {winXs.map((x, i) => DBG.includes("nowin") ? null : (
         <group key={i} position={[x, 0, 0]}>
           <Window
             seed={i + 1}
@@ -204,10 +205,12 @@ const windowPiece: Piece = {
           />
         </group>
       ))}
-      <Floor w={4.8} d={2.2} c={V(0, 0, -1.175)} kind="#CFC3B2" />
-      <group position={[0, PORCH.yWall, 0.075]}>
-        <PorchRoof width={4.8} depth={1.7} rise={0.6} />
-      </group>
+      {DBG.includes("nofloor") ? null : <Floor w={4.8} d={2.2} c={V(0, 0, -1.175)} kind="#CFC3B2" />}
+      {DBG.includes("noroof") ? null : (
+        <group position={[0, PORCH.yWall, 0.075]}>
+          <PorchRoof width={4.8} depth={1.7} rise={0.6} />
+        </group>
+      )}
     </group>
   ),
   c: V(0, 1.2, 0.2),

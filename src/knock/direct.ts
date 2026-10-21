@@ -355,7 +355,7 @@ const b5 = (t: number): Frame => {
     dress: { era: "2013", moveOut: true, trex: 0, jolt: 0, stars: 40, starGlow: 0.45, beds: { nora: { kind: "twin", look: "bare", bare: true }, you: { kind: "twin", look: "you2011" } } },
     light: { hall: 0, street: 0.35, moon: 1, nightlight: 0, fill: 0.85 },
     cam: camBetween(t, 28, 36, PRESETS.medium, PRESETS.two),
-    look: mixLook(WARM, NEUTRAL_GRADE, smooth(28, 33, t)),
+    look: { ...mixLook(WARM, NEUTRAL_GRADE, smooth(28, 33, t)), flash: t < 28.05 ? 0.55 : 0 },
     bloom: 0.5,
     aperture: 0.012 * smooth(29, 35, t),
     seam: 0,
@@ -412,7 +412,7 @@ const b8 = (t: number): Frame => {
     dress: { era: "2025", trex: 0, jolt: 0, stars: 4, starGlow: 0.6, beds: { nora: { kind: "air", look: "air", spec: occupied ? "air-wall" : "air-mid" }, you: { kind: "twin", look: "guest" } } },
     light: { hall: 0, street: 0.25, moon: 0.9, nightlight: 0, fill: 0.8, strings: 1, snow: 1, headlight: t >= 47.7 && t <= 48.7 ? t - 47.7 : undefined },
     cam,
-    look: SLATE,
+    look: { ...SLATE, flash: Math.abs(t - 49.0) < 0.05 ? 0.55 : 0 },
     bloom: 0.55,
     aperture: 0.012 * smooth(50, 53, t),
     seam: 0,
@@ -654,10 +654,12 @@ const b2 = (t: number): Frame => {
     const c = cycle(t, t0);
     const late = t >= 13.9;
     // ages: 2004-05 (9, 6), 2006-07 (11, 9) after the 9.4 flash; the end of 2008 (13, 10)
-    const nAge = late ? 13 : t < 9.4 ? 9 : 11;
-    const yAge = late ? 10 : t < 9.4 ? 6 : 9;
-    const flash = c.u < 0.07 && (Math.abs(t - 9.4) < 0.2 || t - t0 < 0.07) ? 1 : 0;
-    const era: Era = late ? "2007" : t < 8.7 ? "2004b" : "2007";
+    // the kids grow, and the bedding changes, inside one white flash on a night cut (9.33)
+    const SWAP = 8.0 + 4 / 3;
+    const nAge = late ? 13 : t < SWAP ? 9 : 11;
+    const yAge = late ? 10 : t < SWAP ? 6 : 9;
+    const flash = (t >= SWAP && t < SWAP + 0.067) || t - t0 < 0.067 ? 1 : 0;
+    const era: Era = late ? "2007" : t < SWAP ? "2004b" : "2007";
     const night = c.night;
     return {
       ...base,
@@ -675,7 +677,7 @@ const b2 = (t: number): Frame => {
         beds: { nora: { kind: "twin", look: era === "2004b" ? "nora2004" : "nora2007" }, you: { kind: "twin", look: era === "2004b" ? "you2004" : "you2007" } },
       },
       light: night ? { hall: 0, street: 1, moon: 0.3, nightlight: 1, fill: 1 } : { hall: 0, street: 0, moon: 0, nightlight: 0, fill: 0.4, sun: 1, sunAz: (c.u - 0.62) / 0.38 },
-      look: { ...(night ? WARM : WARM_DAY), flash: flash * 0.85 },
+      look: { ...(night ? WARM : WARM_DAY), flash: flash * 0.55 },
       cam: PRESETS.wide,
     };
   }
@@ -704,7 +706,7 @@ const b2 = (t: number): Frame => {
     nora: { s: n, side: -1, covers: 0.6, lie: { roll: 0, near: nNear, far: { rest: crossArms(n, "far", -1) }, e: scowl } },
     you: { s: y, side: 1, covers: 0.6, lie: { roll: 0, near: yNear, far: { rest: crossArms(y, "far", 1) }, e: scowl } },
     dress: { era: "2007", trex: 0, jolt: 0, stars: 40, starGlow: 0.8, beds: { nora: { kind: "twin", look: "nora2007" }, you: { kind: "twin", look: "you2007" } } },
-    look: { ...WARM, flash: (Math.abs(t - 10.4) < 0.07 ? 1 : 0) * 0.8 },
+    look: { ...WARM, flash: (Math.abs(t - 10.4) < 0.05 ? 1 : 0) * 0.55 },
     cam: PRESETS.medium,
     macro,
     note: n2,
@@ -885,7 +887,7 @@ const b4 = (t: number): Frame => {
       const k = smooth(22.5, 28, t);
       return { target: V3(0, 0.62, -2.98 - 0.3 * k), dist: 4.0 };
     })(),
-    look: { exposure: 1.3, sat: 1.08, con: 1.04, tint: [0.98, 0.98, 1.04], shadow: [0.9, 0.92, 1.12], vig: 0.32, grain: 0.016 },
+    look: { exposure: 1.3, sat: 1.08, con: 1.04, tint: [0.98, 0.98, 1.04], shadow: [0.9, 0.92, 1.12], vig: 0.32, grain: 0.016, flash: t < 22.55 ? 0.55 : 0 },
     bloom: 0.6,
     aperture: 0,
     seam: 0,
@@ -985,7 +987,7 @@ const b6 = (t: number): Frame => {
         ? { hall: 0, street: 0.6, moon: 0.4, nightlight: 0, fill: 0.7 }
         : { hall: 0, street: 0, moon: 0, nightlight: 0, fill: 0.4, sun: 1, sunAz: (c.u - 0.62) / 0.38 },
     cam: momTime ? { target: V3(-1.2, 0.45, -1.75), dist: 5.6 } : PRESETS.wide,
-    look: { ...mixLook(NEUTRAL_GRADE, SLATE, smooth(36, 42, t)), ...(night && !momTime ? {} : { exposure: 1.0 }), flash: [36.0, 37.0, 38.8].some((x) => Math.abs(t - x) < 0.07) ? 0.8 : 0 },
+    look: { ...mixLook(NEUTRAL_GRADE, SLATE, smooth(36, 42, t)), ...(night && !momTime ? {} : { exposure: 1.0 }), flash: [36.0, 37.0, 38.8].some((x) => Math.abs(t - x) < 0.05) ? 0.55 : 0 },
     bloom: 0.5,
     aperture: 0,
     seam: 0,
