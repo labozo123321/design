@@ -22,7 +22,6 @@ import {
   rand,
   snowBump,
   snowTex,
-  stippleBump,
   sweep,
   sweepX,
   tubeCapped,
@@ -44,7 +43,7 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // ------------------------------------------------------------------------------------------- materials
 /** Satin white trim and door paint (a fine roller stipple). */
 export const satinWhite = (color = "#F3F1EA") =>
-  mat(`b-satin-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.18, clearcoatRoughness: 0.4, bumpMap: stippleBump(), bumpScale: 0.03 }));
+  mat(`b-satin-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.18, clearcoatRoughness: 0.4 }));
 export const brassB = () => mat("b-brass", () => new THREE.MeshStandardMaterial({ color: "#C9A057", metalness: 1, roughness: 0.27, envMap: envB(), envMapIntensity: 1.1 }));
 const nickelB = () => mat("b-nickel", () => new THREE.MeshStandardMaterial({ color: "#C8C7C1", metalness: 1, roughness: 0.34, envMap: envB(), envMapIntensity: 1 }));
 const oakRail = () =>

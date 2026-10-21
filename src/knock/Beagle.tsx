@@ -405,20 +405,20 @@ const anatomy = (v: Variant) => {
     head: H,
     chestBottom: rib.cy - rib.ry,
     tailRoot: B(0, 0.333, 0.212),
-    tail: { len: 0.235 * s * lerp(1, 0.95, v.pup), r0: 0.021 * s * lerp(1, 1.12, v.pup), r1: 0.0074 * s * lerp(1, 1.2, v.pup) },
+    tail: { len: 0.235 * s * lerp(1, 0.95, v.pup), r0: 0.023 * s * lerp(1, 1.12, v.pup), r1: 0.0095 * s * lerp(1, 1.2, v.pup) },
     eyes,
     ears: [-1, 1].map((sd) => ({
-      root: Hd(sd * 0.044, 0.493, -0.276),
-      dir: V(sd * 0.52, -0.84, -0.12).normalize(),
-      nrm: V(sd * 0.84, 0.52, 0).normalize(),
+      root: Hd(sd * 0.045, 0.489, -0.278),
+      dir: V(sd * 0.62, -0.76, -0.14).normalize(),
+      nrm: V(sd * 0.76, 0.62, 0).normalize(),
       len: 0.13 * hs * v.ear,
       wid: 0.084 * hs * v.ear,
       th: 0.0042 * hs,
-      cup: 0.0065 * hs,
+      cup: 0.008 * hs,
     })),
     nose: { c: Hd(0, 0.456, -0.4115, true), r: HR(0.0215, 0.0158, 0.0138) },
     collar: { c: neckA.clone().lerp(neckB, 0.42), axis: neckB.clone().sub(neckA).normalize(), w: 0.017 * s * lerp(1, 1.05, v.pup), th: 0.0042 * s },
-    lip: [-1, 1].map((sd) => [Hd(sd * 0.003, 0.426, -0.41, true), Hd(sd * 0.011, 0.421, -0.403, true), Hd(sd * 0.019, 0.417, -0.388, true), Hd(sd * 0.025, 0.418, -0.366, true), Hd(sd * 0.0285, 0.4235, -0.343, true)]),
+    lip: [-1, 1].map((sd) => [Hd(sd * 0.013, 0.419, -0.4, true), Hd(sd * 0.02, 0.4165, -0.386, true), Hd(sd * 0.025, 0.4175, -0.366, true), Hd(sd * 0.0285, 0.4225, -0.345, true)]),
     canon,
     zStop: Hd(0, 0.45, -0.335).z,
     stride: 0.42 * s * v.len * lerp(1, 0.95, v.pup),
@@ -621,9 +621,9 @@ const COL = {
   tanLight: lin("#BE7C3F"),
   tanPup: lin("#8C4C1F"),
   black: lin("#1B1613"),
-  ear: lin("#9C5826"),
-  earPup: lin("#7E431B"),
-  earEdge: lin("#5E3418"),
+  ear: lin("#A9622B"),
+  earPup: lin("#8A4A1E"),
+  earEdge: lin("#6A3A1A"),
   pink: lin("#D9998A"),
   lid: lin("#2A1C16"),
 };
@@ -737,8 +737,8 @@ type Static = {
   tagGeo: THREE.BufferGeometry;
   ringGeo: THREE.BufferGeometry;
 };
-const EAR_N = 13;
-const EAR_M = 7;
+const EAR_N = 15;
+const EAR_M = 9;
 const TAIL_N = 16;
 const TAIL_R = 10;
 
@@ -893,8 +893,8 @@ const buildStatic = (v: Variant): Static => {
       let y = pa.getY(i);
       let z = pa.getZ(i);
       // flatten the front (-z) and the underside a little, widen the top
-      if (z < -0.55) z = -0.55 - (z + 0.55) * 0.45;
-      if (y < -0.6) y = -0.6 - (y + 0.6) * 0.5;
+      if (z < -0.55) z = -0.55 + (z + 0.55) * 0.45;
+      if (y < -0.6) y = -0.6 + (y + 0.6) * 0.5;
       x *= 1 + 0.12 * y;
       // nostrils: comma-shaped dips on the front, flaring out and down
       for (const sd of [-1, 1]) {
@@ -1073,7 +1073,7 @@ const buildStatic = (v: Variant): Static => {
         const edge = Math.max(Math.abs(u * 2 - 1) ** 3, sv ** 6);
         if (surf === 0) {
           const base = mix3(COL.ear, COL.earPup, v.pup);
-          earCol.push(...mix3(base, COL.earEdge, 0.55 * sstep(0.45, 1, edge)));
+          earCol.push(...mix3(base, COL.earEdge, 0.45 * sstep(0.55, 1, edge)));
         } else {
           // pink skin in the middle near the root, fading to tan hair at the edges and the tip
           const pinkness = (1 - sstep(0.25, 0.85, Math.abs(u * 2 - 1))) * (1 - sstep(0.35, 0.95, sv));
@@ -1128,10 +1128,10 @@ const buildStatic = (v: Variant): Static => {
       tailUvA.push(r / TAIL_R, sv * 4);
       const top = Math.cos(ang); // +1 on top
       const n1 = vnoise(r * 0.7, i * 0.5, 0, 31);
-      const tipWhite = sstep(0.7, 0.8, sv + 0.03 * n1);
-      const blackTop = sstep(-0.35, 0.05, top + 0.25 * n1 + 0.5 * (1 - sstep(0, 0.18, sv)) * 0);
-      let c = mix3(mix3(COL.tan, COL.tanPup, v.pup), COL.black, blackTop * (1 - sstep(0.62, 0.72, sv)));
-      c = mix3(c, COL.white, Math.max(tipWhite, (1 - sstep(-0.9, -0.5, top)) * sstep(0.25, 0.4, sv) * 0.85));
+      const tipWhite = sstep(0.68, 0.76, sv + 0.025 * n1);
+      const blackTop = sstep(-0.8, -0.45, top + 0.15 * n1);
+      let c = mix3(mix3(COL.tan, COL.tanPup, v.pup), COL.black, blackTop * (1 - sstep(0.6, 0.7, sv)) * sstep(-0.02, 0.06, sv));
+      c = mix3(c, COL.white, Math.max(tipWhite, (1 - sstep(-0.95, -0.7, top)) * sstep(0.3, 0.45, sv) * 0.9));
       tailCol.push(...c);
     }
   // the tip cap vertex
@@ -1354,7 +1354,7 @@ const irisTex = () =>
   });
 const eyeMat = () => mat("beagle-eye", () => new THREE.MeshPhysicalMaterial({ map: irisTex(), roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.03, specularIntensity: 0.8 }));
 const lidMat = (pup: number) => mat(`beagle-lid-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.6, sheen: 0.5, sheenColor: new THREE.Color("#CDB79A") }));
-const glintMat = () => mat("beagle-glint", () => new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.42, 1.3), transparent: true, depthWrite: false }));
+const glintMat = () => mat("beagle-glint", () => new THREE.MeshBasicMaterial({ color: new THREE.Color(1.25, 1.2, 1.1), transparent: true, depthWrite: false }));
 
 // ================================================================================================ posing
 type Xf = { q: THREE.Quaternion; t: THREE.Vector3 };
@@ -1537,7 +1537,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
     rootRot: new THREE.Quaternion(),
     spine: [Q(), Q(), Q(), Q(), Q(-0.04), Q(0, turn * 0.4, tilt * 0.3), Q(0.1 + nod, turn * 0.6, tilt * 0.7)],
     legs: [0, 1, 2, 3].map((li) => restLeg(li)),
-    tail: { up: 0.95, side: 0.25 * wag * Math.sin(t * 15), curl: 0.85, sideCurl: 0, droop: 0.04 },
+    tail: { up: 0.8, side: 0.25 * wag * Math.sin(t * 15), curl: 1.25, sideCurl: 0, droop: 0.04 },
     earFlip,
     earLift: [0, 0],
     earSwing: 0,
@@ -1585,7 +1585,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       rootRot: Q(0.012 * Math.sin(4 * Math.PI * ph), 0.025 * s1, 0.03 * s1),
       spine: [Q(0, -0.012 * s1), Q(0, -0.012 * s1), Q(0, 0.01 * s1), Q(-0.01), Q(-0.1 + 0.02 * c2), Q(0.02, turn * 0.4 - 0.02 * s1, tilt * 0.3), Q(0.2 + nod - 0.03 * c2, turn * 0.6, tilt * 0.7 - 0.02 * s1)],
       legs,
-      tail: { up: 1.05, side: 0.22 * Math.sin(2 * Math.PI * ph) + 0.3 * wag * Math.sin(t * 15), curl: 0.9, sideCurl: 0, droop: 0.03 },
+      tail: { up: 0.85, side: 0.22 * Math.sin(2 * Math.PI * ph) + 0.3 * wag * Math.sin(t * 15), curl: 1.3, sideCurl: 0, droop: 0.03 },
       earLift: [0.22 * Math.sin(4 * Math.PI * (ph - D / 2) + 1.3) + 0.1, 0.22 * Math.sin(4 * Math.PI * (ph - D / 2) + 1.3) + 0.1].map((x) => x * lerp(1, 1.3, pup)) as [number, number],
       earSwing: -0.25,
     };
@@ -1664,7 +1664,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
     spine,
     legs: [
       { fk: [0.1, 0.65, 1.55, -1.0, -0.3], spread: 0.0 },
-      { fk: [0.15, 0.8, 1.7, -1.1, -0.3], spread: -0.12 },
+      { fk: [0.1, 0.55, 1.95, -1.2, -0.3], spread: -0.45 },
       { fk: [1.05, -1.55, 1.3, 0.3], spread: 0.05 },
       { fk: [1.15, -1.65, 1.35, 0.3], spread: -0.1 },
     ],
@@ -1917,7 +1917,7 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
   const nrmB = inst.body.attributes.normal.array as Float32Array;
   // the root direction: hanging, then lifted / flipped back over the skull about the head's long axis
   const fwdR = V(0, 0, -1);
-  const flipQ = QA(fwdR, -sd * (flip * 2.75 + lift));
+  const flipQ = QA(X_AX, flip * 0.85).multiply(QA(fwdR, -sd * (flip * 2.5 + lift)));
   const swingQ = QA(X_AX, swing);
   const d0 = E.dir.clone().applyQuaternion(flipQ).applyQuaternion(swingQ).applyQuaternion(Xh.q).normalize();
   const n0 = E.nrm.clone().applyQuaternion(flipQ).applyQuaternion(swingQ).applyQuaternion(Xh.q).normalize();
@@ -1928,8 +1928,17 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
   const pts: THREE.Vector3[] = [p0.clone()];
   let dir = d0.clone();
   const down = V(0, -1, 0);
+  const backW = V(0, 0, 1).applyQuaternion(Xh.q);
+  /** turn a direction toward the floor by at most `a` (tipping backward if it points straight up) */
+  const tip = (d: THREE.Vector3, a: number) => {
+    const ang = d.angleTo(down);
+    if (ang < 1e-4) return d;
+    const axis = d.clone().cross(down);
+    if (axis.lengthSq() < 1e-6) axis.copy(d).cross(backW);
+    return d.clone().applyAxisAngle(axis.normalize(), Math.min(ang, a));
+  };
   for (let i = 1; i < N; i++) {
-    if (i >= 2) dir = dir.clone().multiplyScalar(1 - (0.12 + 0.3 * (i / N)) * (1 - flip * 0.7)).addScaledVector(down, (0.12 + 0.3 * (i / N)) * (1 - flip * 0.7)).normalize();
+    if (i >= 2) dir = tip(dir, 0.1 + 0.32 * (i / N));
     pts.push(pts[i - 1].clone().addScaledVector(dir, l));
   }
   const m = E.th * 0.5 + 0.0009 * F.s;
@@ -1947,7 +1956,7 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
     if (hit) cn[i] = hit;
   };
   for (let it = 0; it < 6; it++) {
-    for (let i = 2; i < N; i++) pts[i].y -= l * 0.22 * (1 - flip * 0.5);
+    for (let i = 2; i < N; i++) pts[i].addScaledVector(down, l * 0.22).addScaledVector(backW, l * 0.04);
     for (let i = 1; i < N; i++) collide(pts[i], i);
     // follow the leader, with a stiff root
     const d1 = pts[1].clone().sub(pts[0]).normalize().lerp(d0, 0.75).normalize();
@@ -1984,15 +1993,24 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
     if (i > 0 && bn.dot(Bn[i - 1]) < 0) bn.negate();
     Bn.push(bn);
   }
-  // the flap grid
+  // the flap grid: a rounded leaf. Each column runs to its own length (shorter toward the edges) so the tip
+  // is round; the width grows from the root fold and eases in toward the end; the edges cup toward the head
   const M = EAR_M;
+  const at = (arr: THREE.Vector3[], sv: number) => {
+    const f = clamp(sv, 0, 1) * (N - 1);
+    const i0 = Math.min(N - 2, Math.floor(f));
+    return arr[i0].clone().lerp(arr[i0 + 1], f - i0);
+  };
   const mid: THREE.Vector3[] = [];
   for (let i = 0; i < N; i++) {
-    const sv = i / (N - 1);
-    const w = E.wid * (sv < 0.6 ? 0.6 + 0.4 * Math.sin((Math.PI / 2) * (sv / 0.6)) : Math.sqrt(Math.max(0, 1 - ((sv - 0.6) / 0.4) ** 2.2)) * 0.97 + 0.03);
+    const sv0 = i / (N - 1);
     for (let j = 0; j < M; j++) {
       const u = -1 + (2 * j) / (M - 1);
-      const q = pts[i].clone().addScaledVector(Bn[i], (u * w) / 2 + w * 0.08).addScaledVector(Nn[i], -E.cup * (1 - sv) * u * u);
+      const sv = sv0 * (1 - 0.24 * (1 - Math.sqrt(Math.max(0, 1 - u * u))));
+      const w = E.wid * (0.55 + 0.45 * Math.sin((Math.PI / 2) * Math.min(1, sv / 0.6))) * (1 - 0.22 * sstep(0.7, 1, sv));
+      const b = at(Bn, sv).normalize();
+      const n = at(Nn, sv).normalize();
+      const q = at(pts, sv).addScaledVector(b, (u * w) / 2 + w * 0.06).addScaledVector(n, -E.cup * (1 - 0.55 * sv) * u * u);
       if (i >= 1) collide(q, i);
       mid.push(q);
     }
@@ -2008,7 +2026,7 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
       if (nAt.dot(Nn[i]) < 0) nAt.negate();
       const sv = i / (N - 1);
       const u = -1 + (2 * j) / (M - 1);
-      const th = E.th * (1 - 0.45 * sv) * (1 - 0.6 * u ** 4);
+      const th = E.th * (1 - 0.4 * sv) * (1 - 0.55 * u ** 4);
       const q = mid[i * M + j];
       const k = (i * M + j) * 3;
       out[k] = q.x + nAt.x * th * 0.5;
@@ -2061,7 +2079,7 @@ const solveTail = (S: Static, inst: Inst, F: Frame, tl: TailSpec, t: number) => 
     d.multiplyScalar(1 - k).addScaledVector(down, k).normalize();
     pts.push(pts[i - 1].clone().addScaledVector(d, l));
   }
-  const radius = (sv: number) => lerp(J.tail.r0, J.tail.r1, sv ** 0.65) * (sv > 0.92 ? Math.sqrt(Math.max(0.05, 1 - ((sv - 0.92) / 0.08) ** 2)) : 1);
+  const radius = (sv: number) => lerp(J.tail.r0, J.tail.r1, sv ** 0.85) * (sv > 0.88 ? Math.sqrt(1 - 0.75 * ((sv - 0.88) / 0.12) ** 2) : 1);
   for (let it = 0; it < 4; it++) {
     for (let i = 2; i < N; i++) {
       const q = pts[i];
@@ -2109,7 +2127,7 @@ const solveTail = (S: Static, inst: Inst, F: Frame, tl: TailSpec, t: number) => 
       out[o + 2] = pts[i].z + (nn.z * c + bn.z * sn) * rr;
     }
   }
-  const last = pts[N - 1].clone().addScaledVector(pts[N - 1].clone().sub(pts[N - 2]).normalize(), radius(1) * 0.6);
+  const last = pts[N - 1].clone().addScaledVector(pts[N - 1].clone().sub(pts[N - 2]).normalize(), radius(1) * 1.3);
   const o = N * (TAIL_R + 1) * 3;
   out[o] = last.x;
   out[o + 1] = last.y;
@@ -2129,7 +2147,7 @@ const lidGeo = (g: THREE.BufferGeometry, r: number, upper: boolean, edge: (a: nu
   const idx: number[] = [];
   const lid = COL.lid;
   const fur = COL.tan;
-  const shells = [r * 1.13, r * 1.035];
+  const shells = [r * 1.085, r * 1.03];
   for (let sh = 0; sh < 2; sh++)
     for (let i = 0; i <= NE; i++)
       for (let j = 0; j <= NA; j++) {
@@ -2140,7 +2158,7 @@ const lidGeo = (g: THREE.BufferGeometry, r: number, upper: boolean, edge: (a: nu
         const e = lerp(e0, e1, k * k * 0.6 + k * 0.4);
         const R = shells[sh] * (i === 0 ? 0.985 : 1);
         pos.push(R * Math.sin(a) * Math.cos(e), R * Math.sin(e), -R * Math.cos(a) * Math.cos(e));
-        col.push(...mix3(lid, fur, sstep(0.5, 2.2, i)));
+        col.push(...mix3(lid, fur, sstep(0.15, 1.1, i)));
       }
   const row = NA + 1;
   const off = (NE + 1) * row;
@@ -2240,7 +2258,7 @@ const update = (S: Static, inst: Inst, props: BeagleProps): Out => {
     const yA = z.clone().cross(xA).normalize();
     const qE = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xA, yA, z));
     const deg = Math.PI / 180;
-    const upE = (a: number) => lerp(27 * deg, -13 * deg, blink) - (9 + 9 * (1 - blink)) * deg * (a / (80 * deg)) ** 2;
+    const upE = (a: number) => lerp((27 + 5 * S.v.pup) * deg, -13 * deg, blink) - (9 + 9 * (1 - blink)) * deg * (a / (80 * deg)) ** 2;
     const loE = (a: number) => lerp(-23 * deg, -11 * deg, blink) + 8 * deg * (a / (80 * deg)) ** 2;
     lidGeo(inst.lids[i][0], E.r, true, upE);
     lidGeo(inst.lids[i][1], E.r * 0.985, false, loE);
@@ -2296,7 +2314,7 @@ export const Beagle: React.FC<BeagleProps> = (props) => {
           <mesh geometry={inst.lids[i][0]} material={lidMat(pup)} castShadow frustumCulled={false} />
           <mesh geometry={inst.lids[i][1]} material={lidMat(pup)} frustumCulled={false} />
           {glint > 0.01 ? (
-            <mesh position={[-0.32 * S.J.eyes[i].r, 0.36 * S.J.eyes[i].r, -0.9 * S.J.eyes[i].r]} scale={S.J.eyes[i].r * 0.16 * glint} material={glintMat()}>
+            <mesh position={[-0.32 * S.J.eyes[i].r, 0.36 * S.J.eyes[i].r, -0.9 * S.J.eyes[i].r]} scale={S.J.eyes[i].r * 0.11 * glint} material={glintMat()}>
               <sphereGeometry args={[1, 8, 6]} />
             </mesh>
           ) : null}

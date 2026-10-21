@@ -17,7 +17,6 @@ import {
   ringB,
   shingleTex,
   snowBump,
-  snowEdgeTex,
   snowTex,
   sweepX,
   tubeCapped,
@@ -648,8 +647,66 @@ export const DryLeaves: React.FC<DryLeavesProps> = ({ width = ROOF_DEFAULT.width
 };
 
 // ======================================================================================= snow
-const snowRoofMat = (lvl: number) =>
-  mat(`b-snowRoof-${lvl}`, () => new THREE.MeshPhysicalMaterial({ map: snowTex(), bumpMap: snowBump(), bumpScale: 0.1, alphaMap: snowEdgeTex(), alphaTest: 0.5, vertexColors: true, roughness: 0.8, sheen: 0.4, sheenColor: new THREE.Color("#DDE8FF") }));
+/**
+ * Where snow settles first, per pixel over the roof (u across, v down the slope as the shingle texture):
+ * fine, middle and coarse noise, a head start in the lee of every butt and in the wall's corner, then
+ * flattened to percentiles, so a coverage c shows exactly the fraction c (alpha = 1 - percentile).
+ */
+const snowRankTex = (F: RoofFrame, seed: number) =>
+  canvasTex(`b-snowRank-${F.width}-${F.Stot.toFixed(3)}-${seed}`, Math.min(2048, Math.ceil(F.width / 0.004)), Math.min(1024, Math.ceil(F.Stot / 0.004)), (g, w, h) => {
+    const q = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const s = ((y + 0.5) / h) * F.Stot;
+      const k = Math.floor((F.Stot - s) / F.E);
+      const fromButt = s - (F.Stot - (k + 1) * F.E);
+      const bonus = 0.3 * Math.exp(-fromButt / 0.02) + 0.25 * Math.exp(-s / 0.12);
+      for (let x = 0; x < w; x++) {
+        const u = (x + 0.5) / w;
+        const v = (y + 0.5) / h;
+        // fbm tiles over [0, 1) with the given period in cells; v is scaled to keep the cells square
+        const ar = F.Stot / F.width;
+        const fine = fbm(u, v * ar, Math.round(F.width / 0.07), 3, seed + 21);
+        const mid = fbm(u, v * ar, Math.round(F.width / 0.3), 3, seed + 11);
+        const coarse = fbm(u, v * ar, Math.max(2, Math.round(F.width / 1.0)), 2, seed + 12);
+        q[y * w + x] = 0.38 * fine + 0.37 * mid + 0.25 * coarse - bonus;
+      }
+    }
+    const sorted = Float32Array.from(q).sort();
+    const img = g.createImageData(w, h);
+    for (let i = 0; i < q.length; i++) {
+      // the value's percentile (binary search)
+      let lo = 0;
+      let hi = sorted.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (sorted[mid] < q[i]) lo = mid + 1;
+        else hi = mid;
+      }
+      const a = Math.round(255 * (1 - lo / sorted.length));
+      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = a;
+      img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }, undefined, false);
+const snowRoofMat = (F: RoofFrame, seed: number, cover: number) => {
+  const c = Math.round(cover * 50) / 50;
+  return mat(`b-snowRoof-${F.width}-${F.Stot.toFixed(3)}-${seed}-${c}`, () => {
+    const map = snowTex().clone();
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(F.width * 1.6, F.Stot * 1.6);
+    map.needsUpdate = true;
+    const bump = snowBump().clone();
+    bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+    bump.repeat.set(F.width * 1.6, F.Stot * 1.6);
+    bump.needsUpdate = true;
+    const m = new THREE.MeshPhysicalMaterial({ map, bumpMap: bump, bumpScale: 0.1, roughness: 0.8, sheen: 0.4, sheenColor: new THREE.Color("#DDE8FF") });
+    if (c < 0.999) {
+      m.alphaMap = snowRankTex(F, seed);
+      m.alphaTest = Math.min(0.999, Math.max(0.002, 1 - c));
+    }
+    return m;
+  });
+};
 const snowSolidMat = () => mat("b-snowSolid", () => new THREE.MeshPhysicalMaterial({ map: snowTex(), bumpMap: snowBump(), bumpScale: 0.1, roughness: 0.8, sheen: 0.4, sheenColor: new THREE.Color("#DDE8FF") }));
 const iceMat = () => mat("b-ice", () => new THREE.MeshPhysicalMaterial({ color: "#E8F2FA", roughness: 0.06, transparent: true, opacity: 0.6, envMap: envB(), envMapIntensity: 1.4, clearcoat: 1, depthWrite: false }));
 
@@ -681,23 +738,13 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
     const depthAt = (x: number, s: number) => {
       const u = (x + W) / width;
       const v = s / F.Stot;
-      const n = fbm(u * (width / 2), v * (F.Stot / 2), 3, 3, seed);
+      const n = fbm(u, v * (F.Stot / width), Math.max(2, Math.round(width / 0.8)), 3, seed);
       let d = Math.pow(ak, 1.25) * 0.09 * (0.72 + 0.56 * n);
-      d += ak * ak * 0.08 * Math.exp(-s / 0.22) * (0.8 + 0.4 * fbm(u * 3, 0.2, 3, 2, seed + 3));
+      d += ak * ak * 0.08 * Math.exp(-s / 0.22) * (0.8 + 0.4 * fbm(u, 0.2, Math.max(2, Math.round(width / 1.5)), 2, seed + 3));
       // round off at the eave and the rakes
       const ee = clamp01((F.Stot - s) / 0.09);
       const re = clamp01((W - Math.abs(x)) / 0.07);
       return d * Math.sqrt(ee * (2 - ee)) * Math.sqrt(re * (2 - re));
-    };
-    const rank = (x: number, s: number) => {
-      const u = (x + W) / width;
-      const v = s / F.Stot;
-      let q = 0.5 * fbm(u * (width / 0.3), v * (F.Stot / 0.3), 4, 3, seed + 11) + 0.5 * fbm(u * (width / 0.9), v * (F.Stot / 0.9), 4, 3, seed + 12);
-      // first in the lee of each butt and against the wall
-      const k = Math.floor((F.Stot - s) / F.E);
-      const fromButt = s - (F.Stot - (k + 1) * F.E);
-      q -= 0.3 * Math.exp(-fromButt / 0.02) + 0.25 * Math.exp(-s / 0.12);
-      return q;
     };
     const gb = new GB();
     const grid: number[][] = [];
@@ -716,8 +763,7 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
           const back = (p.z - 0.0026) / F.cosA;
           p = F.P(x, s - back, top);
         }
-        const al = clamp01((ak * 1.8 - (rank(x, s) + 0.05)) * 12 + 0.5);
-        r.push(gb.v(p, F.N, (x + W) * 2.2, s * 2.2, [1, 1, 1, ak < 0.004 ? 0 : al]));
+        r.push(gb.v(p, F.N, (x + W) / width, 1 - Math.min(F.Stot, Math.max(0, s)) / F.Stot));
       }
       grid.push(r);
     }
@@ -778,7 +824,7 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
     });
   return (
     <group name="v:snow">
-      {ak > 0.004 ? <mesh geometry={roof} material={snowRoofMat(lvl)} castShadow receiveShadow /> : null}
+      {ak > 0.004 ? <mesh geometry={roof} material={snowRoofMat(F, seed, Math.min(1, ak * 1.65))} castShadow receiveShadow /> : null}
       {gutter && ak >= 0.15 ? <mesh geometry={gut} material={snowSolidMat()} castShadow receiveShadow /> : null}
       {gutter
         ? icicles.map((ic, i) => (

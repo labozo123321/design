@@ -14,6 +14,7 @@ import { PosedSib } from "./Motion";
 import { frameAt, type BedState, type Floor, type SibFrame, type Walker } from "./direct";
 import { glow } from "../home/materials";
 import { Dressing } from "./Dressing";
+import { Fixtures, outsideAt } from "./Fixtures";
 import { FoldedNote } from "./props/wall";
 import { AIR_MATTRESS, AirMattress } from "./props/bedroom";
 import { guestDuvetMat, navyDuvetMat, patchworkQuiltMat, pillowcaseMat, plainSheetMat, racecarDuvetMat, sleepingBagMat, soccerDuvetMat, starQuiltMat, stripedSheetMat } from "./props/textures";
@@ -350,7 +351,17 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
     <>
       <Rig c={c} />
       <color attach="background" args={[(F.light.sun ?? 0) > 0.3 ? "#2A3138" : "#05060A"]} />
-      <House paint={ERA_PAINT} />
+      <House paint={ERA_PAINT} porch={<></>} />
+      <Fixtures
+        f={{
+          era: F.dress.era,
+          t,
+          hall: F.light.hall,
+          strings: F.light.strings ?? 0,
+          puppyBed: F.dress.era === "2004b" && t >= 8,
+          outside: outsideAt(t, F.dress.era),
+        }}
+      />
       <SharedWall noraPaint={ERA_PAINT.nora} youPaint={ERA_PAINT.you} dust={0} cobweb={0} />
       <InBed f={F.nora} side={-1} bed={F.dress.beds.nora} t={t} hide={hide} />
       <InBed f={F.you} side={1} bed={F.dress.beds.you} t={t} hide={hide} />

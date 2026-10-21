@@ -28,9 +28,9 @@ const H = 1920;
 
 // ------------------------------------------------------------------------------------------- rigs
 /** A warm practical (2700 K) that casts shadows, aimed at the piece. */
-const WarmSpot: React.FC<{ at: THREE.Vector3; c: THREE.Vector3 }> = ({ at, c }) => {
+const WarmSpot: React.FC<{ at: THREE.Vector3; c: THREE.Vector3; color?: string; k?: number }> = ({ at, c, color = "#FFC98A", k = 3.2 }) => {
   const s = useMemo(() => {
-    const l = new THREE.SpotLight("#FFC98A", 3.2, 7, 1.1, 0.8, 1.4);
+    const l = new THREE.SpotLight(color, k, 12, 1.1, 0.8, 1.4);
     l.castShadow = true;
     l.shadow.mapSize.set(1024, 1024);
     l.shadow.bias = -0.0004;
@@ -48,7 +48,7 @@ const WarmSpot: React.FC<{ at: THREE.Vector3; c: THREE.Vector3 }> = ({ at, c }) 
     </>
   );
 };
-const Rig: React.FC<{ mode: "night" | "day"; c: THREE.Vector3; r: number; warm?: THREE.Vector3 | null; sun?: THREE.Vector3 }> = ({ mode, c, r, warm, sun }) => {
+const Rig: React.FC<{ mode: "night" | "day"; c: THREE.Vector3; r: number; warm?: THREE.Vector3 | null; sun?: THREE.Vector3; street?: boolean }> = ({ mode, c, r, warm, sun, street }) => {
   const L = useMemo(() => {
     const d = new THREE.DirectionalLight();
     d.castShadow = true;
@@ -75,6 +75,7 @@ const Rig: React.FC<{ mode: "night" | "day"; c: THREE.Vector3; r: number; warm?:
       <primitive object={L.t} />
       <hemisphereLight args={mode === "day" ? ["#CFE0F4", "#7A6A58", 1.25] : ["#3B4C78", "#1A1612", 0.9]} />
       {mode === "night" && warm ? <WarmSpot at={warm} c={c} /> : null}
+      {mode === "night" && street ? <WarmSpot at={c.clone().add(V(-1.6, 4.2, 5.5))} c={c} color="#CFDDF5" k={9} /> : null}
     </>
   );
 };
@@ -162,6 +163,7 @@ type Piece = {
   q1Label?: string;
   q2Label?: string;
   bg?: [string, string];
+  street?: boolean;
 };
 
 const doorPiece: Piece = {
@@ -265,7 +267,7 @@ const hallPiece: Piece = {
   r: 2.2,
   warm: V(0.6, 1.9, 1.0),
   over: over(V(0, 0.9, -0.1), 6.6),
-  q1: q34(V(-0.1, 1.1, -0.2), V(0.55, 1.15, 1.3), 4.8),
+  q1: q34(V(-0.15, 1.45, -0.2), V(0.55, 1.0, 1.3), 5.6),
   q2: q34(V(0.0, 0.2, -0.25), V(0.2, 0.75, 1.0), 2.0),
   q2Label: "3/4 close (nightlight, dog bed) · day",
 };
@@ -314,10 +316,10 @@ const porchCams = {
   q1: q34(V(0.2, 0.15, 1.3), V(1.1, 0.8, 1.3), 3.6),
   q2: q34(V(-0.5, 0.0, 1.7), V(-0.5, 0.35, 1.0), 2.2),
 };
-const porchAutumn: Piece = { name: "Porch roof: dry leaves (autumn), gutter, downspout", set: porchSet({ leaves: 34 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, ...porchCams, q2Label: "3/4 low (gutter, outlet, leaves in the trough) · day" };
-const porchStorm: Piece = { name: "Porch roof: storm (wet shingles, splashes, gutter overflow, rain on glass)", set: porchSet({ rain: 1, wet: 1, overflow: 0.8, winRain: 1 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, ...porchCams };
-const porchSnowA: Piece = { name: "Porch roof: first snow (0.3) · C9 lights off", set: porchSet({ snow: 0.3, lights: 0, winSnow: 0.3 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, ...porchCams };
-const porchSnowB: Piece = { name: "Porch roof: deep snow (1.0) · C9 lights on, icicles", set: porchSet({ snow: 1, lights: 1, winSnow: 1 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, ...porchCams };
+const porchAutumn: Piece = { name: "Porch roof: dry leaves (autumn), gutter, downspout", set: porchSet({ leaves: 34 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, street: true, ...porchCams, q2Label: "3/4 low (gutter, outlet, leaves in the trough) · day" };
+const porchStorm: Piece = { name: "Porch roof: storm (wet shingles, splashes, gutter overflow, rain on glass)", set: porchSet({ rain: 1, wet: 1, overflow: 0.8, winRain: 1 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, street: true, ...porchCams };
+const porchSnowA: Piece = { name: "Porch roof: first snow (0.3) · C9 lights off", set: porchSet({ snow: 0.3, lights: 0, winSnow: 0.3 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, street: true, ...porchCams };
+const porchSnowB: Piece = { name: "Porch roof: deep snow (1.0) · C9 lights on, icicles", set: porchSet({ snow: 1, lights: 1, winSnow: 1 }), c: V(0, 0.3, 1.0), r: 2.2, warm: null, street: true, ...porchCams };
 
 type Page = { pieces: Piece[] } | { situ: "2004" | "2025" } | { close: true };
 const PAGES: Page[] = [
@@ -435,7 +437,7 @@ const CLOSE: Close[] = [
         <Floor w={2} d={2} />
       </group>
     ),
-    cam: q34(V(0.36, 1.0, 0.1), V(0.9, 0.3, 1.0), 1.5),
+    cam: q34(V(0.37, 1.0, 0.07), V(-0.25, 0.12, 1.0), 0.95),
     mode: "day",
     c: V(0.3, 1, 0.3),
     r: 1.4,
@@ -535,7 +537,7 @@ const pieceViews = (p: Piece, top: number, t: number): ViewDef[] => {
   const node = (mode: "night" | "day") => (
     <>
       {p.set(mode, t)}
-      <Rig mode={mode} c={p.c} r={p.r} warm={p.warm === undefined ? V(p.c.x, p.c.y + 1.2, p.c.z + 0.5) : p.warm} />
+      <Rig mode={mode} c={p.c} r={p.r} warm={p.warm === undefined ? V(p.c.x, p.c.y + 1.2, p.c.z + 0.5) : p.warm} street={p.street} />
     </>
   );
   return [

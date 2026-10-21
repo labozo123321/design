@@ -1,3 +1,4 @@
+import { floorboardsMat } from "./props/house";
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { canvasTex, mat, rand } from "../roadster/materials";
@@ -222,7 +223,7 @@ const Walls: React.FC<{ paint: HousePaint }> = ({ paint: p }) => {
 /** The floors: carpet in the rooms (by era), oak boards in the hallway, the stairwell going down beyond it. */
 const Floors: React.FC<{ paint: HousePaint }> = ({ paint: p }) => {
   const O = ROOM.outer;
-  const hall = oak("hall", "#A8784A", [1.2, 0.5]);
+  const hall = floorboardsMat(2 * (O + ROOM.wallT), HALL.z0 - HALL.z1);
   const slab = paint("#6E665C");
   return (
     <group>
@@ -252,20 +253,10 @@ const Beyond: React.FC = () => {
       </group>
     );
   });
-  const balusters = Array.from({ length: 22 }, (_, i) => -O + 0.15 + i * ((2 * O - 0.3) / 21)).filter((x) => Math.abs(x) < 0.62 || Math.abs(x) > 0.7);
   return (
     <group>
       {/* the hallway's far edge: a landing nosing and the banister over the stairwell */}
       <Slab a={[-O, -0.25, z0 - 0.06]} b={[O, 0, z0]} mats={tr} cast={false} />
-      <Slab a={[-O, 0.86, z0 - 0.05]} b={[O, 0.92, z0 + 0.02]} mats={oak("rail", "#7A4E2C", [2, 0.1])} />
-      {balusters.map((x, i) => (
-        <mesh key={i} position={[x, 0.43, z0 - 0.015]} material={tr} castShadow>
-          <boxGeometry args={[0.035, 0.86, 0.035]} />
-        </mesh>
-      ))}
-      {[-O + 0.05, O - 0.05].map((x, i) => (
-        <Slab key={`np${i}`} a={[x - 0.05, 0, z0 - 0.07]} b={[x + 0.05, 1.05, z0 + 0.03]} mats={tr} />
-      ))}
       {steps}
       {/* the stairwell's walls going down, and the dark below */}
       <Slab a={[-O, -3.0, z0 - 3.6]} b={[-0.55, 0, z0 - 0.06]} mats={paint("#3A3632")} cast={false} />

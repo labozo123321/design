@@ -1085,20 +1085,6 @@ export const snowBump = () =>
     false,
     [6, 6],
   );
-/** The fine edge of thin snow cover (an alpha map: high = holds snow longest). */
-export const snowEdgeTex = () =>
-  pixelTex(
-    "b-snowEdge",
-    256,
-    256,
-    (x, y) => {
-      const v = 160 + 95 * fbm(x / 256, y / 256, 16, 3, 7);
-      return [cl255(v), cl255(v), cl255(v)];
-    },
-    false,
-    [10, 10],
-  );
-
 // ======================================================================================= glass
 /** Frosted glass (a dome): a soft milky gradient with fine etched stipple and a faint swirl. */
 export const frostTex = () =>

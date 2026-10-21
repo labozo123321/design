@@ -28,6 +28,8 @@ type Cell = {
   /** a film preset (relative to the cell origin) instead of the framing */
   cam?: Preset;
   floor?: number;
+  /** a custom view direction (from the target toward the camera) */
+  dir?: [number, number, number];
 };
 
 const TILT = THREE.MathUtils.degToRad(18);
@@ -64,6 +66,24 @@ const cellsFor = (page: number, f: number): { title: string; cols: number; rowsN
       node: (t, fr) => <Beagle at={new THREE.Vector3()} yaw={yaw} pose={{ kind: "trot", t, phase: fr / 20 }} puppy={puppy} />,
     });
     return { title: "gait (3 strides over 60 frames)", cols: 2, rowsN: 2, cells: [mk(false, "side", 0), mk(true, "side", 0), mk(false, "top", Math.PI / 2), mk(true, "top", Math.PI / 2)] };
+  }
+  if (page === 3) {
+    const A = (pose: BeaglePose, yaw = 0) => () => <Beagle at={new THREE.Vector3()} yaw={yaw} pose={pose} />;
+    const P = (pose: BeaglePose, yaw = 0, inBed = false) => () => (
+      <group>
+        {inBed ? <PuppyBed /> : null}
+        <Beagle at={new THREE.Vector3()} yaw={yaw} pose={pose} puppy inBed={inBed} />
+      </group>
+    );
+    const cells: Cell[] = [
+      { id: "faceA", label: "adult face", r: 0.12, c: [0, 0.47, -0.34], view: "q", dir: [0.5, 0.18, -1], node: A({ kind: "stand", t: 0.2 }) },
+      { id: "faceP", label: "puppy face", r: 0.085, c: [0, 0.26, -0.2], view: "q", dir: [0.5, 0.18, -1], node: P({ kind: "stand", t: 0.2 }) },
+      { id: "tailA", label: "adult tail (side)", r: 0.18, c: [0, 0.4, 0.22], view: "side", node: A({ kind: "stand", t: 0.2 }) },
+      { id: "flipA", label: "adult ear flipped (lie, head up)", r: 0.14, c: [0, 0.3, -0.36], view: "q", dir: [0.6, 0.7, -0.4], node: A({ kind: "lie", t: 0.2, headUp: 1, earFlip: 1 }) },
+      { id: "flopFace", label: "adult flop face (eyes closing)", r: 0.15, c: [-0.1, 0.1, -0.3], view: "top", node: A({ kind: "flop", t: 0.2, blink: 0.8, faceUp: 0.55 }) },
+      { id: "curlP", label: "puppy curled in bed (film angle)", r: 0.16, c: [0, 0.12, 0], view: "top", node: P({ kind: "curl", t: 0.2 }, 0.4, true) },
+    ];
+    return { title: "close-ups", cols: 2, rowsN: 3, cells };
   }
   if (page === 2) {
     const scene = (t: number, fr: number) => {
@@ -183,7 +203,7 @@ const MultiView: React.FC<{ cells: Placed[]; t: number; f: number }> = ({ cells,
         target.copy(c.cam.target).add(c.origin);
         R = 3.2;
       } else {
-        const dir = DIRS[c.view];
+        const dir = c.dir ? new THREE.Vector3(...c.dir).normalize() : DIRS[c.view];
         const aspect = w / h;
         const vh = THREE.MathUtils.degToRad(15);
         const hh = Math.atan(Math.tan(vh) * aspect);
@@ -249,7 +269,7 @@ export const BeagleTest: React.FC = () => {
   let placed: Placed[];
   let title = page.title;
   if (ip.ids) {
-    const all = [0, 1, 2].flatMap((p) => cellsFor(p, frame).cells);
+    const all = [0, 1, 2, 3].flatMap((p) => cellsFor(p, frame).cells);
     const sel = ip.ids.map((id) => all.find((e) => e.id === id)!).filter(Boolean);
     const cols = ip.cols ?? 2;
     const rowsN = Math.ceil(sel.length / cols);
@@ -258,7 +278,7 @@ export const BeagleTest: React.FC = () => {
     placed = sel.map((c, i) => ({ ...c, origin: new THREE.Vector3((i % 6) * SP, 0, Math.floor(i / 6) * SP), rect: [(i % cols) * cw, Math.floor(i / cols) * ch, cw, ch] }));
     title = "selection";
   } else if (ip.focus) {
-    const all = [0, 1, 2].flatMap((p) => cellsFor(p, frame).cells);
+    const all = [0, 1, 2, 3].flatMap((p) => cellsFor(p, frame).cells);
     const c = all.find((e) => e.id === ip.focus) ?? all[0];
     const cell = { ...c, view: ip.view ?? c.view };
     placed = [{ ...cell, origin: new THREE.Vector3(), rect: [0, 0, W, H] }];
