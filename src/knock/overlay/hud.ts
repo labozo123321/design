@@ -1,5 +1,6 @@
 import { KNOCKS, FPS, clamp, smooth, smoother, lerp } from "../script";
 import type { Side } from "../script";
+import { lapseDay } from "../direct";
 
 /**
  * The HUD's state at any video time, as a pure function of t (seconds). The overlay draws it; the picture
@@ -150,6 +151,9 @@ export const yourAge = (n: number) => ageOn(n, 1998, 3, 14);
 
 /** a clock that flickers through a range of minutes, a new reading every 3 frames (time-lapses) */
 const flick = (lo: number, hi: number, seed: number) => (t: number) => fmtClock(lo + Math.floor(hash(Math.floor((t * FPS) / 3) + seed) * (hi - lo + 1)));
+/** a time-lapse's clock: the night's range on the night frames, a daytime on the day frames (the empty,
+ *  sunlit rooms) */
+const lapseClock = (night: (t: number) => string, seed: number) => (t: number) => (lapseDay(t) ? flick(hm(7, 12), hm(17, 48), seed + 11)(t) : night(t));
 const nightOfOdo = (t: number) => FIRST_NIGHT + Math.max(0, Math.floor(odoValue(t) + 1e-6) - 1);
 /** the drift's night counter: 'LAST KNOCK · 1 NIGHT AGO' at 36.3, holding at 134 (Sat Jan 4, 2014) for mom's
  *  treadmill, then up to 1,093 (Aug 20, 2016) by 41.6 */
@@ -175,17 +179,17 @@ const at = (n: number) => () => n;
 const say = (s: string) => () => s;
 const CAL: CalSeg[] = [
   { t0: -1e9, t1: 8.0, night: at(FIRST_NIGHT), clock: say("9:02 PM"), date: "WED · NOV 3" },
-  { t0: 8.0, t1: 10.4, night: nightOfOdo, clock: flick(hm(20, 31), hm(21, 48), 11), lapse: true },
+  { t0: 8.0, t1: 10.4, night: nightOfOdo, clock: lapseClock(flick(hm(20, 31), hm(21, 48), 11), 11), lapse: true },
   { t0: 10.4, t1: 13.9, night: at(day(2007, 4, 19)), clock: say("9:15 PM") },
-  { t0: 13.9, t1: 15.0, night: nightOfOdo, clock: flick(hm(20, 31), hm(21, 48), 57), lapse: true },
+  { t0: 13.9, t1: 15.0, night: nightOfOdo, clock: lapseClock(flick(hm(20, 31), hm(21, 48), 57), 57), lapse: true },
   // 2:14 AM, the night of Fri Jul 17, 2009 (the ages are the same either side of midnight)
   { t0: 15.0, t1: 22.5, night: at(day(2009, 7, 17)), clock: say("2:14 AM") },
   { t0: 22.5, t1: 28.0, night: at(day(2011, 10, 11)), clock: say("11:52 PM") },
   { t0: 28.0, t1: 36.0, night: at(LAST_NIGHT), clock: say("11:58 PM"), date: "FRI · AUG 23" },
-  { t0: 36.0, t1: 37.0, night: (t) => LAST_NIGHT + driftNights(t), since: driftNights, clock: flick(hm(21, 40), hm(23, 58), 91), lapse: true },
+  { t0: 36.0, t1: 37.0, night: (t) => LAST_NIGHT + driftNights(t), since: driftNights, clock: lapseClock(flick(hm(21, 40), hm(23, 58), 91), 91), lapse: true },
   // mom's treadmill, real time, a January afternoon
   { t0: 37.0, t1: 38.8, night: at(day(2014, 1, 4)), since: at(134), clock: say("3:40 PM") },
-  { t0: 38.8, t1: 42.0, night: (t) => LAST_NIGHT + driftNights(t), since: driftNights, clock: flick(hm(21, 40), hm(23, 58), 133), lapse: true },
+  { t0: 38.8, t1: 42.0, night: (t) => LAST_NIGHT + driftNights(t), since: driftNights, clock: lapseClock(flick(hm(21, 40), hm(23, 58), 133), 133), lapse: true },
   { t0: 42.0, t1: 44.0, night: at(day(2017, 3, 14)), since: at(day(2017, 3, 14) - LAST_NIGHT), clock: say("12:01 AM") },
   { t0: 44.0, t1: 45.6, night: at(day(2020, 6, 9)), since: at(day(2020, 6, 9) - LAST_NIGHT), clock: say("11:58 PM") },
   { t0: 45.6, t1: 47.5, night: at(day(2024, 3, 14)), since: at(day(2024, 3, 14) - LAST_NIGHT), clock: say("4:37 PM") },

@@ -119,8 +119,8 @@ const knockArm = (t: number, side: -1 | 1, w0: number, w1: number, rest: Reach, 
   const m = knockMotion(t, ks);
   if (m.up <= 0.001) return { rest };
   const wall = knockPoint(side, dz).add(V3(0, dy, 0));
-  const to = knockReach(side, wall, 0, fist);
-  to.at.add(V3(-side * m.gap, 0, 0));
+  // (the strike: in to the wall, a little recoil away from it between knocks)
+  const to = knockReach(side, wall, m.gap, fist);
   return { rest, to, k: smoother(m.up) };
 };
 
@@ -266,27 +266,30 @@ const b1 = (t: number): Frame => {
   };
 };
 
-/** A hand holding a phone up over the face (an offset from the eyes, toward the camera and a little to
- * the open side so it never meets the wall); down: lowered to the mattress beside the face. */
+/** A hand holding a phone up in front of the chin, screen to the eyes (an offset from the eyes: toward the
+ * camera, toward the feet, a little to the open side so it never meets the wall, and low enough that the
+ * hand never hides the face from above); down: lowered to the mattress beside the face. */
 const phoneHand = (sib: Sib, side: -1 | 1, down = 0): Reach => {
   void sib;
   return {
     eye: true,
-    at: V3(side * (0.07 + 0.08 * down), 0.2 - 0.17 * down, 0.12 + 0.05 * down),
+    at: V3(side * (0.1 + 0.05 * down), 0.1 - 0.08 * down, 0.18 + 0.02 * down),
     hand: { curl: [0.9, 1.0, 1.05, 1.1], spread: 0.05, thumbOut: 0.6, thumbCurl: 0.3 },
     palm: V3(0, -1, 0),
     pole: V3(side, -0.2, 0.6),
   };
 };
 
-/** The open palm laid flat on the wall (world). */
+/** The open palm laid flat on the wall (world), in front of the chest: the forearm stands up off the
+ * mattress, the fingers up the wall from the wrist. */
 const palmOnWall = (side: -1 | 1, dz = 0.02): Reach => ({
-  // (the wrist just off the wall, on the sleeper's side of it: the fingers lie up the wall from there)
-  at: knockPoint(side, dz).add(V3(side * 0.022, 0.03, 0)),
+  // (the wrist just off the wall, on the sleeper's side of it, low: the fingers lie up the wall from there)
+  at: knockPoint(side, dz).add(V3(side * 0.022, -0.06, 0.12)),
   hand: { curl: [0.1, 0.1, 0.12, 0.15], spread: 0.15, thumbOut: 0.5, thumbCurl: 0.1 },
   // (the palm faces the wall: toward the middle of the house)
   palm: V3(-side, 0, 0),
-  pole: V3(0, -0.5, 1),
+  // (the elbow down on the mattress, out from the wall)
+  pole: V3(side * 0.6, -1, 0.2),
 });
 
 const NEUTRAL_GRADE: Omit<Look, "time"> = { exposure: 1.3, sat: 0.95, con: 1.04, tint: [1.0, 0.99, 0.97], shadow: [0.9, 0.95, 1.1], vig: 0.34, grain: 0.016 };
@@ -321,7 +324,8 @@ const b5 = (t: number): Frame => {
     lie: {
       roll: 0.62,
       near: palm > 0 ? { rest: restOnCovers(n, "near", -1, 0.5), to: palmOnWall(-1), k: palm } : nKnocks,
-      far: { rest: gripEdge(n, "far", -1, 0.86) },
+      // (the other arm inside the bag, along her side)
+      far: null,
       e: {
         eyeYaw: -0.15,
         eyePitch: -0.05,
@@ -389,8 +393,9 @@ const b8 = (t: number): Frame => {
         side: -1,
         covers: 0.66,
         phone: { on: 1 - 0.4 * lower },
+        // (nearly on her back by the wall, the phone held up over her chest; when she stops, she looks up)
         lie: {
-          roll: 0.6 - 0.25 * lower,
+          roll: 0.2,
           spot: { x: -0.27, top: 0.45, pillowZ: -3.3, pillowH: 0.12 },
           near: { rest: restOnCovers(n, "near", -1, 0.4) },
           far: { rest: phoneHand(n, -1, lower) },
@@ -409,7 +414,7 @@ const b8 = (t: number): Frame => {
         phone: t < 50.6 ? { on: 1 } : { on: 0, down: true },
         lie: {
           roll: 0.6,
-          near: { rest: yRestNear, to: (() => { const r = knockReach(1, knockPoint(1, 0), 0); r.at.add(V3(0.022, 0, 0)); return r; })(), k: smoother(hover) },
+          near: { rest: yRestNear, to: knockReach(1, knockPoint(1, 0), 0.035 + 0.008 * Math.sin(t * 5.3)), k: smoother(hover) },
           far: t < 50.6 ? { rest: phoneHand(y, 1, smooth(50.3, 50.6, t)) } : { rest: restOnCovers(y, "far", 1, 0.3) },
           e: { eyePitch: t < 51.4 ? -0.15 : 0.05, eyeYaw: t > 51.4 ? -0.2 : 0, brow: 0.1, smile: 0 },
         },
@@ -473,21 +478,19 @@ const b9 = (t: number): Frame => {
   const tremble = smooth(56.9, 57.1, t) * (1 - smooth(58.2, 58.4, t));
   const nKnocks = knockArm(t, -1, 58.3, 59.1, restOnCovers(n, "near", -1, 0.4));
   const nFast = knockArm(t, -1, 60.7, 62.1, restOnCovers(n, "near", -1, 0.4));
-  const wipe = smooth(60.7, 60.95, t) * (1 - smooth(61.35, 61.6, t));
-  const eyeWipe: Reach = (() => {
-    const k = n.k;
-    const eyeH = 1.555 * k + Math.abs(n.who.shape.chinY);
-    return { body: true, at: V3(0.06, eyeH - 0.06, -0.12), hand: { curl: [0.6, 0.7, 0.8, 0.9], spread: 0.05, thumbOut: 0.4, thumbCurl: 0.4 }, palm: V3(0.3, 0, 1), pole: V3(1, -0.5, 0.3) };
-  })();
+  // (laughing, her free hand flat on her chest, over her heart, the phone let go on the mattress)
+  const wipe = smooth(60.6, 60.9, t) * (1 - smooth(63.4, 63.8, t));
+  const eyeWipe: Reach = { body: true, at: V3(0.02, 1.27 * n.k, -(0.12 * n.k + 0.055)), hand: { curl: [0.25, 0.3, 0.35, 0.4], spread: 0.1, thumbOut: 0.35, thumbCurl: 0.2 }, palm: V3(0, 0, 1), pole: V3(1, -0.6, 0.2) };
   const pat = smooth(64.45, 64.7, t) * (1 - smooth(65.1, 65.4, t));
   const onBack = smooth(65.3, 65.9, t);
   const nora: SibFrame = {
     s: n,
     side: -1,
     covers: 0.66,
-    phone: t < 64.3 ? { on: 0.6 } : undefined,
+    phone: t < 60.7 ? { on: 0.6 } : t < 64.3 ? { on: 0, down: true } : undefined,
     lie: {
-      roll: 0.4 * (1 - onBack),
+      // (on your first knock she turns toward the wall)
+      roll: (0.2 + 0.2 * smooth(55.1, 55.5, t)) * (1 - onBack),
       slide: 0.04 * smooth(64.4, 64.7, t),
       spot: { x: -0.27, top: 0.45, pillowZ: -3.3, pillowH: 0.12 },
       near: t < 60.0 ? nKnocks : nFast,
@@ -543,11 +546,12 @@ const b9 = (t: number): Frame => {
         // drop the pillow on the rug, kneel, lie down on your back beside the mattress
         const end = standAt(y, path[path.length - 1], V3(0, 0, 1), base);
         const spot: Spot = { x: -1.38, top: 0.012, pillowZ: -3.25, pillowH: 0.12 };
-        const down = lieToPosed(y, 1, { roll: 0, spot, e: { smile: 0.5 }, near: null, far: null });
+        // (side: the room you lie in, hers; the bed-side logic keeps a sleeper off its own room's wall)
+        const down = lieToPosed(y, -1, { roll: 0, spot, e: { smile: 0.5 }, near: null, far: null });
         const kneel: Posed = { ...base, hip: V3(-1.4, 0.42, -2.6), q: facing(V3(0, -0.2, -1)), feet: [V3(-1.5, 0.05, -2.2), V3(-1.3, 0.05, -2.2)] };
         const sitF: Posed = { ...base, hip: V3(-1.38, 0.13, -2.55), q: facing(V3(0, 0, 1), V3(0, 1, -0.25)), feet: [V3(-1.46, 0.05, -1.75), V3(-1.3, 0.05, -1.75)] };
         carry = t < arrive + 0.35 ? "pillow" : null;
-        const lyingThere: Floor = { s: y, side: 1, covers: null, spot, pillow: true, body: false, lie: { roll: 0, spot, e: { smile: 0.45, eyePitch: 0.35 }, near: null, far: null } };
+        const lyingThere: Floor = { s: y, side: -1, covers: null, spot, pillow: true, body: false, lie: { roll: 0, spot, e: { smile: 0.45, eyePitch: 0.35 }, near: null, far: null } };
         if (t < arrive + 0.35) p = end;
         else if (t < arrive + 0.75) p = blendPosed(end, kneel, (t - arrive - 0.35) / 0.4);
         else if (t < arrive + 1.1) p = blendPosed(kneel, sitF, (t - arrive - 0.75) / 0.35);
@@ -819,13 +823,14 @@ const b3 = (t: number): Frame => {
       const end = standAt(n, path[path.length - 1], V3(0, 0, 1), { ...nBase, ...bundleArms });
       const down = lieToPosed(n, 1, { roll: -0.9, spot, e: {}, near: null, far: null });
       const kneel: Posed = { ...nBase, hip: V3(1.42, 0.42, -2.6), q: facing(V3(0, -0.2, -1)), feet: [V3(1.32, 0.05, -2.2), V3(1.52, 0.05, -2.2)] };
-      carry = t < arrive + 0.2 ? "bundle" : null;
+      // (she keeps hold of the bundle until she's down, then pulls the quilt up over herself from her feet)
+      carry = t < arrive + 0.95 ? "bundle" : null;
       if (t < arrive + 0.2) p = end;
       else if (t < arrive + 0.55) p = blendPosed(end, kneel, (t - arrive - 0.2) / 0.35);
       else if (t < arrive + 0.95) p = blendPosed(kneel, { ...down, ...nBase }, (t - arrive - 0.55) / 0.4);
       else p = null;
       if (t >= arrive + 0.2)
-        floor.push({ s: n, side: 1, covers: p === null ? 0.82 : null, spot, pillow: true, body: p === null, look: "nora2007", lie: { roll: -0.9, spot, e: { lidL: 1, lidR: 1 }, near: null, far: null } });
+        floor.push({ s: n, side: 1, covers: p === null ? 0.14 + 0.68 * smoother((t - arrive - 0.95) / 0.5) : null, spot, pillow: true, body: p === null, look: "nora2007", lie: { roll: -0.9, spot, e: { lidL: 1, lidR: 1 }, near: null, far: null } });
     }
     if (p && t < 18.4) carry = null;
     if (p) walkers.push({ key: "nora", s: n, p, carry });
@@ -1024,40 +1029,41 @@ const momAt = (t: number): Posed => {
     const slap = smooth(37.85, 37.93, t);
     return { ...p, far: { ...p.far!, to: { at: TREAD.console.clone().add(V3(-0.06, 0.03, -0.02)), hand: { curl: [0.1, 0.1, 0.15, 0.2], spread: 0.1, thumbOut: 0.5, thumbCurl: 0.1 }, palm: V3(0, -1, 0), pole: V3(1, 0, -0.5) }, k: slap }, e: { ...base.e, brow: 0.5 } };
   }
-  if (t < 38.2) {
-    // carried back on the slowing belt, off its end, arms out for balance
-    const p = onBelt(37.85 + (t - 37.97) * 0.55, -1.0 * smoother((t - 37.97) / 0.23));
+  if (t < 38.27) {
+    // carried back on the slowing belt, off its end, arms out for balance (to just where her stagger starts)
+    const p = onBelt(37.85 + (t - 37.97) * 0.55, (TREAD.z0 - 0.06 - zOn) * smoother((t - 37.97) / 0.3));
     const flail = (sd: number): ArmSpec => ({ rest: { body: true, at: V3(sd * 0.48 * k, 1.28 * k, -0.1 * k), hand: { curl: [0.2, 0.2, 0.25, 0.3], spread: 0.3, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, -1, 0), pole: V3(0, -1, 0.3) } });
     return { ...p, near: flail(-1), far: flail(1), e: { smile: 0.2, jaw: 0.45, brow: 0.9, lidL: 0, lidR: 0 } };
   }
-  // two staggering steps back onto the carpet, then over backwards onto the floor, a starfish
-  // (she lands a little askew, her head by the back wall, her feet well clear of the treadmill's end)
-  const landed0 = lieToPosed(s, -1, { roll: 0, spot: { x: TREAD.x + 0.1, top: 0.16, pillowZ: -3.45, pillowH: 0 }, prop: -0.16, e: {}, near: null, far: null });
-  const pivot = V3(TREAD.x + 0.1, 0, -3.45);
-  const yaw = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), -0.34);
+  // two staggering steps back onto the carpet, then over sideways onto the floor, a starfish across the
+  // room just behind the treadmill (her head toward the outer wall, her feet toward the shared one), well
+  // clear of the treadmill's end and of the HUD at the top of the frame
+  const pivot = V3(-2.0, 0, -2.35);
+  const landed0 = lieToPosed(s, -1, { roll: 0, spot: { x: pivot.x, top: 0.16, pillowZ: pivot.z, pillowH: 0 }, prop: -0.16, e: {}, near: null, far: null });
+  const yaw = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), Math.PI / 2 - 0.12);
   const turn = (p: THREE.Vector3) => p.clone().sub(pivot).applyQuaternion(yaw).add(pivot);
   const landed = { ...landed0, hip: turn(landed0.hip), q: yaw.clone().multiply(landed0.q), feet: [turn(landed0.feet[0]), turn(landed0.feet[1])] as [THREE.Vector3, THREE.Vector3] };
   const R = V3(-1, 0, 0).applyQuaternion(yaw);
   const star: Posed = {
     ...landed,
     feet: [landed.feet[0].clone().addScaledVector(R, -0.24), landed.feet[1].clone().addScaledVector(R, 0.24)],
-    near: { rest: { at: turn(V3(TREAD.x + 0.1 + 0.62, 0.05, -3.25)), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
-    far: { rest: { at: turn(V3(TREAD.x + 0.1 - 0.62, 0.05, -3.25)), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
+    near: { rest: { at: turn(V3(pivot.x + 0.55, 0.05, pivot.z - 0.02)), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
+    far: { rest: { at: turn(V3(pivot.x - 0.55, 0.05, pivot.z - 0.02)), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
     nearSide: -1,
     e: { smile: 1, jaw: 0.4 + 0.12 * Math.sin(t * 22), squint: 0.45, lidL: 0.35, lidR: 0.35, brow: 0.35 },
     headPitch: 0,
   };
   const path = [V3(TREAD.x, 0, TREAD.z0 - 0.06), V3(TREAD.x, 0, -2.2)];
-  if (t < 38.42) {
-    const w = walkAlong(s, path, (t - 38.2) * 2.1, { ...base, e: { smile: 0.3, jaw: 0.3, brow: 0.8 } });
+  if (t < 38.47) {
+    const w = walkAlong(s, path, (t - 38.27) * 1.6, { ...base, e: { smile: 0.3, jaw: 0.3, brow: 0.8 } });
     const flail = (sd: number): ArmSpec => ({ rest: { body: true, at: V3(sd * 0.5 * k, 1.32 * k, 0.02 * k), hand: { curl: [0.2, 0.2, 0.25, 0.3], spread: 0.3, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, -1, 0), pole: V3(0, -1, 0.3) } });
     return { ...w, q: facing(dir), near: flail(-1), far: flail(1) };
   }
   const st = standAt(s, path[1], dir, base);
-  const fall = smooth(38.42, 38.66, t);
+  const fall = smooth(38.47, 38.7, t);
   const p = blendPosed({ ...st, near: star.near, far: star.far }, star, fall);
   // a little bounce when she lands
-  if (t > 38.66) p.hip = p.hip.clone().add(V3(0, 0.025 * Math.exp(-(t - 38.66) * 14) * Math.abs(Math.sin((t - 38.66) * 30)), 0));
+  if (t > 38.7) p.hip = p.hip.clone().add(V3(0, 0.025 * Math.exp(-(t - 38.7) * 14) * Math.abs(Math.sin((t - 38.7) * 30)), 0));
   return { ...p, e: fall < 0.5 ? { smile: 0.4, jaw: 0.5, brow: 0.9 } : star.e };
 };
 
@@ -1067,27 +1073,28 @@ const momAt = (t: number): Posed => {
 const b6 = (t: number): Frame => {
   const c = cycle(t, 36.0, 3);
   const night = c.night;
-  const youThere = t < 40.4;
+  // (in step with the HUD's calendar: you leave for college at its August 2016, 41.6)
+  const youThere = t < 41.55;
   const yAge = t < 38.8 ? 15 : 16;
   const walkers: Walker[] = [];
   const momTime = t >= 37.0 && t < 38.8;
   let you: SibFrame | null = night && youThere && !momTime ? sleeper(YOU[yAge], 1, c.i + 70, { roll: -0.6 }) : null;
   if (momTime) you = null;
   let era: Era = t < 37.0 ? "2013" : "2014";
-  if (t >= 40.4) era = "2016";
+  if (t >= 41.55) era = "2016";
   if (momTime) walkers.push({ key: "mom", s: MOM, p: momAt(t) });
   return {
     t,
     nora: null,
     you,
     walkers,
-    dress: { era, day: !night || momTime, belt: momTime ? momBelt(t) : 0, trex: 0, jolt: 0, stars: t < 40 ? 40 - Math.floor((t - 36) * 4) : 18, starGlow: night ? 0.3 : 0, laundry: smooth(38.8, 40.4, t), dormBoxes: t > 39.6 && t < 40.4, beds: { nora: { kind: "none", look: "nora2007" }, you: { kind: "twin", look: t < 40.4 ? "you2011" : "guest" } } },
+    dress: { era, day: !night || momTime, belt: momTime ? momBelt(t) : 0, trex: 0, jolt: 0, stars: t < 40 ? 40 - Math.floor((t - 36) * 4) : 18, starGlow: night ? 0.3 : 0, laundry: smooth(38.8, 40.4, t), dormBoxes: t > 41.05 && t < 41.55, beds: { nora: { kind: "none", look: "nora2007" }, you: { kind: "twin", look: t < 41.55 ? "you2011" : "guest" } } },
     light: momTime
       ? { hall: 0, street: 0, moon: 0, nightlight: 0, fill: 0.5, sun: 0.85, sunAz: 0.3 + 0.05 * (t - 37) }
       : night
         ? { hall: 0, street: 0.6, moon: 0.4, nightlight: 0, fill: 0.7 }
         : { hall: 0, street: 0, moon: 0, nightlight: 0, fill: 0.4, sun: 1, sunAz: (c.u - 0.62) / 0.38 },
-    cam: momTime ? { target: V3(-1.2, 0.45, -1.75), dist: 5.6 } : PRESETS.wide,
+    cam: momTime ? { target: V3(-1.2, 0.45, -1.72), dist: 6.0 } : PRESETS.wide,
     look: { ...mixLook(NEUTRAL_GRADE, SLATE, smooth(36, 42, t)), ...(night && !momTime ? {} : { exposure: 1.0 }), flash: [36.0, 37.0, 38.8].some((x) => Math.abs(t - x) < 0.05) ? 0.55 : 0 },
     bloom: 0.5,
     aperture: 0,
@@ -1100,7 +1107,9 @@ const b6 = (t: number): Frame => {
  * get shorter (the overlay's chat card). */
 const b7 = (t: number): Frame => {
   const c = cycle(t, 42.0, 1.4);
-  const dusk = 0.5 + 0.5 * Math.sin(c.u * Math.PI * 2);
+  // the light keeps to the HUD's clock: the two birthday texts at midnight (2017, 2020) in the dark, the
+  // last one (2024, 4:37 PM) by day, a slow drift in each
+  const dusk = t < 45.6 ? 0.12 + 0.1 * Math.sin(c.u * Math.PI * 2) : 0.85 + 0.1 * Math.sin(c.u * Math.PI * 2);
   return {
     t,
     nora: null,
@@ -1113,6 +1122,15 @@ const b7 = (t: number): Frame => {
     aperture: 0.004,
     seam: 0,
   };
+};
+
+/** In a time-lapse, whether this frame is one of the day frames (the HUD's clock shows a daytime then);
+ * null outside the time-lapses. */
+export const lapseDay = (t: number): boolean | null => {
+  if (t >= 8.0 && t < 10.4) return !cycle(t, 8.0).night;
+  if (t >= 13.9 && t < 15.0) return !cycle(t, 13.9).night;
+  if ((t >= 36.0 && t < 37.0) || (t >= 38.8 && t < 42.0)) return !cycle(t, 36.0, 3).night;
+  return null;
 };
 
 // ------------------------------------------------------------------------------------------- the film

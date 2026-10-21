@@ -119,10 +119,12 @@ export const bodyCapsules = (s: Sib, f: ReturnType<typeof lieFrame>, knees: numb
     { a: w(V(0, hipY - 0.02, 0.0)), b: w(V(0, hipY + 0.44 * k, 0.0)), r: 0.14 * k },
     { a: w(V(-0.1 * k, hipY - 0.05, 0)), b: w(V(0.1 * k, hipY - 0.05, 0)), r: 0.125 * k },
   ];
+  // (the Figure's bones: a bust figure's legs are a little shorter, so its knees bend further)
+  const [thigh, shin] = s.outfit.bust ? [0.425 * k, 0.41 * k] : [0.45 * k, 0.43 * k];
   for (const sd of [-1, 1]) {
     const hip = V(sd * 0.095 * k, hipY - 0.02, 0);
     const foot = footAt(k, sd, knees);
-    const knee = ik(hip, foot, 0.45 * k, 0.43 * k, V(sd * 0.02, 0, -1));
+    const knee = ik(hip, foot, thigh, shin, V(sd * 0.02, 0, -1));
     caps.push({ a: w(hip), b: w(knee), r: 0.085 * k });
     caps.push({ a: w(knee), b: w(foot), r: 0.07 * k });
     // the foot itself, pointing up out of the line of the leg
@@ -340,7 +342,8 @@ export const armCapsules = (a: Arm | undefined, sd: number, k: number, toW: (p: 
   return [
     { a: toW(S), b: toW(E), r: 0.05 * k },
     { a: toW(E), b: toW(W), r: 0.042 * k },
-    { a: toW(W), b: toW(W.clone().addScaledVector(fore, 0.12 * k)), r: 0.045 * k },
+    // (the whole hand to the curled fingertips, so none of it comes through)
+    { a: toW(W), b: toW(W.clone().addScaledVector(fore, 0.16 * k)), r: 0.058 * k },
   ];
 };
 
@@ -364,12 +367,14 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
   );
 };
 
-/** A knock: the knuckles of a loose fist on the wall's face beside the pillow (a small recoil after). */
+/** A knock: the back of a fist's knuckles on the wall's face beside the pillow, the palm turned to the
+ * sleeper (so from above the fist reads side-on, against the wall, below the chin rather than over the face);
+ * the wrist a little toward the feet of the contact, the fist reaching up to it. recoil: away from the wall. */
 export const knockReach = (side: -1 | 1, at: THREE.Vector3, recoil: number, fist = false): Reach => ({
-  at: at.clone().add(V(-side * (0.018 + recoil * 0.012), 0, 0)),
-  hand: fist ? { ...GRIP, curl: [1.4, 1.45, 1.45, 1.45] } : { ...GRIP, curl: [1.25, 1.35, 1.4, 1.4] },
-  palm: V(0, -1, 0),
-  pole: V(0, 0.4, 1),
+  at: at.clone().add(V(side * (0.01 + recoil), -0.01, 0.06)),
+  hand: fist ? { curl: [1.6, 1.65, 1.65, 1.65], spread: 0, thumbOut: 0.12, thumbCurl: 0.95 } : { curl: [1.5, 1.58, 1.6, 1.6], spread: 0, thumbOut: 0.15, thumbCurl: 0.9 },
+  palm: V(side, -0.35, 0).normalize(),
+  pole: V(side * 0.35, -0.2, 1),
 });
 
 export const wallFace = (side: -1 | 1) => side * WALL.half;

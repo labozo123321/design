@@ -442,19 +442,20 @@ const noteGeometry = (open: number) => {
   g.computeVertexNormals();
   return g;
 };
-const noteMats = (text: string, ink: string) =>
-  once(`noteMats-${text}-${ink}`, () => [
-    new THREE.MeshStandardMaterial({ map: noteTex("in", text, ink), roughness: 0.82, alphaTest: 0.5, side: THREE.FrontSide }),
-    new THREE.MeshStandardMaterial({ map: noteTex("out", text, ink), roughness: 0.85, alphaTest: 0.5, side: THREE.BackSide }),
+// (aged: years in the wall have yellowed the paper and greyed it with dust)
+const noteMats = (text: string, ink: string, aged = false) =>
+  once(`noteMats-${text}-${ink}-${aged}`, () => [
+    new THREE.MeshStandardMaterial({ map: noteTex("in", text, ink), color: aged ? "#D9CBA8" : "#FFFFFF", roughness: aged ? 0.92 : 0.82, alphaTest: 0.5, side: THREE.FrontSide }),
+    new THREE.MeshStandardMaterial({ map: noteTex("out", text, ink), color: aged ? "#CDBF9E" : "#FFFFFF", roughness: aged ? 0.94 : 0.85, alphaTest: 0.5, side: THREE.BackSide }),
   ]);
 
-export type FoldedNoteProps = { open?: number; text?: string; ink?: string };
+export type FoldedNoteProps = { open?: number; text?: string; ink?: string; aged?: boolean };
 /** The folded lined-paper note (0.1 x 0.07 folded): 'sorry —N' in purple marker inside the lower leaf, the
  * letters' tops toward the fold. Origin on the floor at the middle of the fold; the leaf lies toward +z. */
-export const FoldedNote: React.FC<FoldedNoteProps> = ({ open = 0, text = "sorry —N", ink = "#6A3FB0" }) => {
+export const FoldedNote: React.FC<FoldedNoteProps> = ({ open = 0, text = "sorry —N", ink = "#6A3FB0", aged = false }) => {
   const q = Math.round(clamp01(open) * 400) / 400;
   const g = useMemo(() => geo(`note-${q}`, () => noteGeometry(q)), [q]);
-  const [mi, mo] = noteMats(text, ink);
+  const [mi, mo] = noteMats(text, ink, aged);
   return (
     <group>
       <mesh geometry={g} material={mi} />

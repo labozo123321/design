@@ -2110,7 +2110,16 @@ export const AirMattress: React.FC<{ sheet?: boolean; quilt?: boolean; quiltMate
           <mesh geometry={g.hem} material={sheetM} />
         </>
       )}
-      {quilt && <mesh geometry={g.quilt} material={quiltMaterial ?? patchworkQuiltMat({ uvSize: [0.92, 0.42] })} />}
+      {/* (the folded quilt as a soft rounded block: the swept version mapped and lit badly) */}
+      {quilt && (
+        <mesh
+          geometry={geo("amQuiltBlock", () => new RoundedBoxGeometry(0.85, 0.07, 0.42, 4, 0.03))}
+          material={quiltMaterial ?? patchworkQuiltMat({ uvSize: [0.92, 0.42] })}
+          position={[0, AM.H + 0.0035 + 0.035, AM.L / 2 - 0.06 - 0.21 - 0.02]}
+          castShadow
+          receiveShadow
+        />
+      )}
     </group>
   );
 };

@@ -60,7 +60,8 @@ const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: numb
   return (
     <>
       <group position={[(r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2]}>
-        <AirMattress sheet quilt={!f} sheetTone="cream" />
+        {/* (its folded quilt is her old patchwork, the one she'll sleep under) */}
+        <AirMattress sheet quilt={!f && !props.hide.includes("airquilt")} sheetTone="cream" quiltMaterial={BEDS.air.cover} />
       </group>
       <InBed1 {...props} bed={{ ...bed, kind: "none" }} airSpec={spec} />
     </>
@@ -128,7 +129,8 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
 const Phone: React.FC<{ f: SibFrame; side: -1 | 1; b: ReturnType<typeof lieBody> }> = ({ f, b }) => {
   const ph = f.phone!;
   const far = f.lie.far;
-  const hand = far ? (far.to && (far.k ?? 0) > 0.5 ? far.to : far.rest) : null;
+  // (put down, it stays where the resting hand left it while the hand goes elsewhere)
+  const hand = far ? (!ph.down && far.to && (far.k ?? 0) > 0.5 ? far.to : far.rest) : null;
   if (!hand) return null;
   const at = hand.body ? hand.at.clone().applyQuaternion(b.f.q).add(b.f.pos) : hand.eye ? b.eye.clone().add(hand.at) : hand.at.clone();
   if (ph.down) {
@@ -171,10 +173,26 @@ const Phone: React.FC<{ f: SibFrame; side: -1 | 1; b: ReturnType<typeof lieBody>
   );
 };
 
+/** Something held to the chest kept on its own side of the shared wall (a sleeper rolled toward the wall
+ * holds it toward the wall as they rise): pushed back from the wall's face by however far its corners would
+ * reach into it below the wall's top. */
+const clearOfWallHeld = (at: THREE.Vector3, q: THREE.Quaternion, half: [number, number, number]) => {
+  const room = at.x < 0 ? -1 : 1;
+  let pen = 0;
+  for (const sx of [-1, 1])
+    for (const sy of [-1, 1])
+      for (const sz of [-1, 1]) {
+        const c = new THREE.Vector3(sx * half[0], sy * half[1], sz * half[2]).applyQuaternion(q).add(at);
+        if (c.y < WALL.cut + 0.02) pen = Math.max(pen, WALL.half + 0.012 - room * c.x);
+      }
+  return pen > 0 ? at.clone().add(new THREE.Vector3(room * pen, 0, 0)) : at;
+};
+
 /** Someone up and about, and what they carry (a pillow held to the chest). */
 const Up: React.FC<{ w: Walker; t: number }> = ({ w, t }) => {
   const k = w.s.k;
-  const chest = w.p.hip.clone().add(new THREE.Vector3(0, 0.4 * k, 0).applyQuaternion(w.p.q)).add(new THREE.Vector3(0, 0, -0.17).applyQuaternion(w.p.q));
+  const chest0 = w.p.hip.clone().add(new THREE.Vector3(0, 0.4 * k, 0).applyQuaternion(w.p.q)).add(new THREE.Vector3(0, 0, -0.17).applyQuaternion(w.p.q));
+  const chest = w.carry ? clearOfWallHeld(chest0, w.p.q, w.carry === "bundle" ? [0.3, 0.3, 0.14] : [0.25, 0.17, 0.075]) : chest0;
   return (
     <>
       <PosedSib s={w.s} p={w.p} t={t} />
@@ -330,9 +348,9 @@ const NoteInHand: React.FC<{ f: SibFrame }> = ({ f }) => {
 };
 
 /** The note: falling down the slot, or lying on the plate. */
-const Note: React.FC<{ n: NonNullable<ReturnType<typeof frameAt>["note"]> }> = ({ n }) => (
+const Note: React.FC<{ n: NonNullable<ReturnType<typeof frameAt>["note"]>; aged?: boolean }> = ({ n, aged }) => (
   <group position={n.pos} rotation={n.rot}>
-    <FoldedNote open={n.open} />
+    <FoldedNote open={n.open} aged={aged} />
   </group>
 );
 
@@ -359,6 +377,8 @@ const debugCam = (cam?: string) => {
   if (cam === "sideN") return at([-2.3, 1.5, -0.9], [-0.45, 0.55, -2.7]);
   if (cam === "feetY") return at([1.6, 1.1, -0.9], [0.5, 0.55, -1.9]);
   if (cam === "sideY") return at([2.3, 1.5, -0.9], [0.45, 0.55, -2.7]);
+  if (cam === "legsN") return at([-0.45, 1.7, -1.0], [-0.45, 0.5, -2.1]);
+  if (cam === "legsY") return at([0.45, 1.7, -1.0], [0.45, 0.5, -2.1]);
   return null;
 };
 
@@ -368,11 +388,11 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   const t = ghost ?? tc;
   const F = ghost === undefined ? frameAt(t) : { ...frameAt(ghost), cam: frameAt(tc).cam, macro: 0 };
   const macro = (F.macro ?? 0) > 0 && !cam;
-  // (the payoff's macro pushes slowly down the slot toward the note)
-  // (the payoff's macro descends the slot to the note, turning a quarter as it goes so the writing comes upright)
+  // (the payoff's macro descends the slot toward the note)
   const push = t > 50 ? Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0;
   const my = MACRO.y - 0.7 * push;
-  const c = debugCam(cam) ?? (macro ? macroCam(my, push * push * (3 - 2 * push)) : cameraFor(F.cam));
+  // (the payoff's macro is already turned at the cut, so the note reads upright from its first frame)
+  const c = debugCam(cam) ?? (macro ? macroCam(my, t > 50 ? 1 : 0) : cameraFor(F.cam));
   // inside the cavity the seam's bloom is all around the lens: a fraction of it reads as the same glow
   if (ghost === undefined) setRipples(ringsAt(t), F.seam * (macro ? 0.07 : 0.45), -3.15);
   const focus = macro ? (F.note ? Math.max(0.1, my - F.note.pos.y) : my - 0.05) : F.cam.dist;
@@ -401,7 +421,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
         <OnFloor key={i} f={f} t={t} />
       ))}
       <Dressing d={F.dress} t={t} light={F.light} camDist={macro ? 0 : F.cam.dist} />
-      {F.note ? <Note n={F.note} /> : null}
+      {F.note ? <Note n={F.note} aged={t > 40} /> : null}
       {F.noteHand && F.nora ? <NoteInHand f={F.nora} /> : null}
       {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} collar={F.dog.collar} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
