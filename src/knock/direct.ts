@@ -27,7 +27,7 @@ export type SibFrame = {
 };
 
 export type Era = "2004a" | "2004b" | "2007" | "2009" | "2011" | "2013" | "2014" | "2016" | "2025";
-export type BedState = { kind: "twin" | "air" | "none"; look: string; bare?: boolean; spec?: "air-mid" | "air-wall"; thrown?: number };
+export type BedState = { kind: "twin" | "air" | "none"; look: string; bare?: boolean; spec?: "air-mid" | "air-wall"; thrown?: number; noPillow?: boolean };
 export type Dressing = {
   era: Era;
   /** the time-lapse's day (empty, beds made) */
@@ -764,7 +764,8 @@ const b3 = (t: number): Frame => {
       far: { rest: { body: true, at: V3(0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } },
     };
     const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, near: null, far: null });
-    const sitUp: Posed = { ...nBase, hip: V3(-0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(-0.6, 0.56, -1.95), V3(-0.42, 0.56, -1.95)] };
+    // (her feet stop short of the quilt she's thrown down to the foot of the bed)
+    const sitUp: Posed = { ...nBase, hip: V3(-0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(-0.6, 0.56, -2.04), V3(-0.42, 0.56, -2.04)] };
     const edge: Posed = { ...nBase, ...bundleArms, hip: V3(-0.86, 0.6, -2.95), q: facing(V3(-1, 0, 0.35)), feet: [V3(-1.26, 0.06, -2.85), V3(-1.22, 0.06, -3.1)] };
     const path = [V3(-1.18, 0, -3.0), V3(-1.5, 0, -3.35), V3(-1.52, 0, -3.95), V3(-1.15, 0, -4.32), V3(1.15, 0, -4.32), V3(1.52, 0, -3.95), V3(1.52, 0, -3.35), V3(1.42, 0, -2.75)];
     const stand = standAt(n, path[0], V3(-0.5, 0, -1), { ...nBase, ...bundleArms });
@@ -792,6 +793,7 @@ const b3 = (t: number): Frame => {
       if (t >= arrive + 0.2)
         floor.push({ s: n, side: 1, covers: p === null ? 0.82 : null, spot, pillow: true, body: p === null, look: "nora2007", lie: { roll: -0.9, spot, e: { lidL: 1, lidR: 1 }, near: null, far: null } });
     }
+    if (p && t < 18.4) carry = null;
     if (p) walkers.push({ key: "nora", s: n, p, carry });
   }
   const cam = t < 18.0 ? PRESETS.medium : camBetween(t, 18.0, 19.4, PRESETS.medium, PRESETS.wide);
@@ -801,10 +803,11 @@ const b3 = (t: number): Frame => {
     you,
     walkers,
     floor,
-    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", bare: t >= 18.0 }, you: { kind: "twin", look: "you2009" } } },
+    // (her quilt stays thrown back on the bed while she sits up; at 18.4 she gathers it and her pillow)
+    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 18.0 ? 1 : 0, bare: t >= 18.4, noPillow: t >= 18.4 }, you: { kind: "twin", look: "you2009" } } },
     light: { hall: 0.12, street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
     cam,
-    look: { exposure: 1.3, sat: 0.92, con: 1.05, tint: [0.92, 0.95, 1.1], shadow: [0.85, 0.9, 1.2], vig: 0.36, grain: 0.017, flash: lightning * 0.04 },
+    look: { exposure: 1.3, sat: 0.92, con: 1.05, tint: [0.92, 0.95, 1.1], shadow: [0.85, 0.9, 1.2], vig: 0.36, grain: 0.017 },
     bloom: 0.55,
     aperture: 0,
     seam: 0,

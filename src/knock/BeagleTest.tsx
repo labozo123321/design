@@ -110,13 +110,19 @@ const cellsFor = (page: number, f: number): { title: string; cols: number; rowsN
   for (const row of rows(f))
     for (const puppy of [false, true])
       for (const view of ["top", "q"] as View[]) {
-        const r = row.r[puppy ? 1 : 0];
+        const r = row.r[puppy ? 1 : 0] * (view === "top" ? 1.12 : 1);
         const inBed = !!row.bed && puppy;
+        // frame the dog's middle: along its length from its feet origin, turned with it
+        const yaw = view === "top" ? row.yawTop : row.yawQ;
+        const k = puppy ? 0.6 : 1;
+        const along = inBed ? 0 : row.id === "curl" ? 0.06 * k : row.id === "flop" ? -0.05 * k : row.id.startsWith("lie") ? -0.14 * k : -0.09 * k;
+        const cx = Math.sin(yaw) * along;
+        const cz = Math.cos(yaw) * along;
         cells.push({
           id: `${row.id}-${puppy ? "p" : "a"}-${view}`,
           label: `${puppy ? "puppy" : "adult"} · ${row.label}`,
           r,
-          c: [0, r * (row.id.startsWith("stand") || row.id === "trot" ? 0.55 : 0.35), 0],
+          c: [cx, r * (row.id.startsWith("stand") || row.id === "trot" ? 0.55 : 0.3), cz],
           view,
           node: (t) => (
             <group>
@@ -237,12 +243,21 @@ const MultiView: React.FC<{ cells: Placed[]; t: number; f: number }> = ({ cells,
 
 export const BeagleTest: React.FC = () => {
   const frame = useCurrentFrame();
-  const ip = getInputProps() as { page?: number; focus?: string; view?: View };
+  const ip = getInputProps() as { page?: number; focus?: string; view?: View; ids?: string[]; cols?: number };
   const t = frame / 30;
   const page = cellsFor(ip.page ?? 0, frame);
   let placed: Placed[];
   let title = page.title;
-  if (ip.focus) {
+  if (ip.ids) {
+    const all = [0, 1, 2].flatMap((p) => cellsFor(p, frame).cells);
+    const sel = ip.ids.map((id) => all.find((e) => e.id === id)!).filter(Boolean);
+    const cols = ip.cols ?? 2;
+    const rowsN = Math.ceil(sel.length / cols);
+    const cw = W / cols;
+    const ch = H / rowsN;
+    placed = sel.map((c, i) => ({ ...c, origin: new THREE.Vector3((i % 6) * SP, 0, Math.floor(i / 6) * SP), rect: [(i % cols) * cw, Math.floor(i / cols) * ch, cw, ch] }));
+    title = "selection";
+  } else if (ip.focus) {
     const all = [0, 1, 2].flatMap((p) => cellsFor(p, frame).cells);
     const c = all.find((e) => e.id === ip.focus) ?? all[0];
     const cell = { ...c, view: ip.view ?? c.view };

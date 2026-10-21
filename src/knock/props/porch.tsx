@@ -742,7 +742,15 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
         const u = k / nz;
         const z = zb + (zf - zb) * u;
         const hump = Math.pow(Math.sin(Math.PI * u), 0.5) * (mound * (0.8 + 0.4 * hash3(Math.floor(x * 12), seed, 9)) + 0.004);
-        const y = fill + hump;
+        let y = fill + hump;
+        // under the shingles' overhang (the back of the trough) the snow stays below their underside
+        const zw = F.gutter.z + z;
+        const zEdge = F.P(0, F.Stot, -0.002).z;
+        if (zw < zEdge + 0.004) {
+          const sOf = Math.min(F.Stot, (zw + 0.002 * F.sinA) / F.cosA);
+          const yUnder = -sOf * F.sinA - 0.002 * F.cosA - F.gutter.y;
+          y = Math.min(y, yUnder - 0.0025);
+        }
         r.push(gb.v(V(x, F.gutter.y + y, F.gutter.z + z), V(0, 1, 0), x * 2, z * 2));
       }
       rowsG.push(r);

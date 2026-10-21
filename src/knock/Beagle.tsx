@@ -119,8 +119,8 @@ const UP = V(0, 1, 0);
 
 // =============================================================================================== anatomy
 type Variant = { s: number; leg: number; len: number; girth: number; legGirth: number; head: number; muzzle: number; paw: number; ear: number; eye: number; pup: number; h: number };
-const ADULT: Variant = { s: 1, leg: 1, len: 1, girth: 1, legGirth: 1, head: 1, muzzle: 1, paw: 1, ear: 1, eye: 1, pup: 0, h: 0.0034 };
-const PUPPY: Variant = { s: 0.6, leg: 0.84, len: 0.9, girth: 1.12, legGirth: 1.2, head: 1.32, muzzle: 0.6, paw: 1.34, ear: 1.14, eye: 1.16, pup: 1, h: 0.0024 };
+const ADULT: Variant = { s: 1, leg: 1, len: 1, girth: 1, legGirth: 1, head: 1.07, muzzle: 1, paw: 1, ear: 1, eye: 1, pup: 0, h: 0.0034 };
+const PUPPY: Variant = { s: 0.6, leg: 0.8, len: 0.9, girth: 1.12, legGirth: 1.2, head: 1.32, muzzle: 0.6, paw: 1.34, ear: 1.14, eye: 1.16, pup: 1, h: 0.0024 };
 
 // bones
 const PEL = 0;
@@ -375,7 +375,11 @@ const anatomy = (v: Variant) => {
   }
 
   // ---- eyes (carved sockets) and the rest of the head's landmarks
-  const eyes = [-1, 1].map((sd) => ({ c: Hd(sd * 0.029, 0.479, -0.331), gaze: V(sd * 0.36, 0.08, -1).normalize(), r: 0.0108 * hs * v.eye }));
+  const eyes = [-1, 1].map((sd) => {
+    const gaze = V(sd * 0.33, 0.1, -1).normalize();
+    const r = 0.0122 * hs * v.eye;
+    return { c: Hd(sd * 0.0295, 0.4805, -0.3325).addScaledVector(gaze, r * 0.12), gaze, r };
+  });
   for (const e of eyes) {
     const P = ell("socket", e.c, V(1, 1, 1).multiplyScalar(e.r * 1.1), 0.003 * kh, -3, 1);
     P.kind = 2;
@@ -401,20 +405,20 @@ const anatomy = (v: Variant) => {
     head: H,
     chestBottom: rib.cy - rib.ry,
     tailRoot: B(0, 0.333, 0.212),
-    tail: { len: 0.255 * s * lerp(1, 0.95, v.pup), r0: 0.0175 * s * lerp(1, 1.15, v.pup), r1: 0.0068 * s * lerp(1, 1.2, v.pup) },
+    tail: { len: 0.235 * s * lerp(1, 0.95, v.pup), r0: 0.021 * s * lerp(1, 1.12, v.pup), r1: 0.0074 * s * lerp(1, 1.2, v.pup) },
     eyes,
     ears: [-1, 1].map((sd) => ({
-      root: Hd(sd * 0.043, 0.489, -0.271),
-      dir: V(sd * 0.46, -0.88, -0.1).normalize(),
-      nrm: V(sd * 0.88, 0.46, 0).normalize(),
-      len: 0.132 * hs * v.ear,
-      wid: 0.072 * hs * v.ear,
+      root: Hd(sd * 0.044, 0.493, -0.276),
+      dir: V(sd * 0.52, -0.84, -0.12).normalize(),
+      nrm: V(sd * 0.84, 0.52, 0).normalize(),
+      len: 0.13 * hs * v.ear,
+      wid: 0.084 * hs * v.ear,
       th: 0.0042 * hs,
       cup: 0.0065 * hs,
     })),
     nose: { c: Hd(0, 0.456, -0.4115, true), r: HR(0.0215, 0.0158, 0.0138) },
     collar: { c: neckA.clone().lerp(neckB, 0.42), axis: neckB.clone().sub(neckA).normalize(), w: 0.017 * s * lerp(1, 1.05, v.pup), th: 0.0042 * s },
-    lip: [-1, 1].map((sd) => [Hd(0, 0.447, -0.416, true), Hd(0, 0.431, -0.41, true), Hd(sd * 0.011, 0.425, -0.402, true), Hd(sd * 0.02, 0.419, -0.384, true), Hd(sd * 0.026, 0.419, -0.356, true), Hd(sd * 0.0285, 0.424, -0.33)]),
+    lip: [-1, 1].map((sd) => [Hd(sd * 0.003, 0.426, -0.41, true), Hd(sd * 0.011, 0.421, -0.403, true), Hd(sd * 0.019, 0.417, -0.388, true), Hd(sd * 0.025, 0.418, -0.366, true), Hd(sd * 0.0285, 0.4235, -0.343, true)]),
     canon,
     zStop: Hd(0, 0.45, -0.335).z,
     stride: 0.42 * s * v.len * lerp(1, 0.95, v.pup),
@@ -923,7 +927,7 @@ const buildStatic = (v: Variant): Static => {
       }
       samples.push(q);
     }
-    const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(samples), 40, 0.00105 * s * v.head, 6, false);
+    const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(samples), 40, 0.0008 * s * v.head, 6, false);
     rigid(tube, HEAD, COL.lid, 4);
   }
 
@@ -1316,7 +1320,7 @@ const collarTex = () =>
     [1, 1],
   );
 const collarMat = () => mat("beagle-collar", () => new THREE.MeshPhysicalMaterial({ map: collarTex(), roughness: 0.55, sheen: 0.4, sheenColor: new THREE.Color("#FF8C8C") }));
-const lipMat = () => mat("beagle-lip", () => new THREE.MeshStandardMaterial({ color: "#2B1D18", roughness: 0.55 }));
+const lipMat = () => mat("beagle-lip", () => new THREE.MeshStandardMaterial({ color: "#4A342B", roughness: 0.6 }));
 const earMats = (pup: number) => [
   mat(`beagle-earOut-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, map: strandMap(), roughness: 0.62, sheen: 0.6, sheenRoughness: 0.42, sheenColor: new THREE.Color("#D8B48C"), side: THREE.DoubleSide })),
   mat(`beagle-earIn-${pup}`, () => new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.55, sheen: 0.35, sheenColor: new THREE.Color("#F2C2B4"), side: THREE.DoubleSide })),
@@ -1533,7 +1537,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
     rootRot: new THREE.Quaternion(),
     spine: [Q(), Q(), Q(), Q(), Q(-0.04), Q(0, turn * 0.4, tilt * 0.3), Q(0.1 + nod, turn * 0.6, tilt * 0.7)],
     legs: [0, 1, 2, 3].map((li) => restLeg(li)),
-    tail: { up: 1.0, side: 0.25 * wag * Math.sin(t * 15), curl: 0.5, sideCurl: 0, droop: 0.05 },
+    tail: { up: 0.95, side: 0.25 * wag * Math.sin(t * 15), curl: 0.85, sideCurl: 0, droop: 0.04 },
     earFlip,
     earLift: [0, 0],
     earSwing: 0,
@@ -1581,7 +1585,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       rootRot: Q(0.012 * Math.sin(4 * Math.PI * ph), 0.025 * s1, 0.03 * s1),
       spine: [Q(0, -0.012 * s1), Q(0, -0.012 * s1), Q(0, 0.01 * s1), Q(-0.01), Q(-0.1 + 0.02 * c2), Q(0.02, turn * 0.4 - 0.02 * s1, tilt * 0.3), Q(0.2 + nod - 0.03 * c2, turn * 0.6, tilt * 0.7 - 0.02 * s1)],
       legs,
-      tail: { up: 1.15, side: 0.22 * Math.sin(2 * Math.PI * ph) + 0.3 * wag * Math.sin(t * 15), curl: 0.55, sideCurl: 0, droop: 0.03 },
+      tail: { up: 1.05, side: 0.22 * Math.sin(2 * Math.PI * ph) + 0.3 * wag * Math.sin(t * 15), curl: 0.9, sideCurl: 0, droop: 0.03 },
       earLift: [0.22 * Math.sin(4 * Math.PI * (ph - D / 2) + 1.3) + 0.1, 0.22 * Math.sin(4 * Math.PI * (ph - D / 2) + 1.3) + 0.1].map((x) => x * lerp(1, 1.3, pup)) as [number, number],
       earSwing: -0.25,
     };
@@ -1618,7 +1622,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       rootRot,
       spine,
       legs,
-      tail: { up: -0.12, side: 0.25 + 0.3 * wag * Math.sin(t * 12), curl: 0, sideCurl: 1.1, droop: 0.85 },
+      tail: { up: -0.1, side: 0.3 + 0.3 * wag * Math.sin(t * 12), curl: 0, sideCurl: 1.2, droop: 1 },
       blink: P.blink ?? Math.max(awakeBlink, lerp(0.3, 0, h)),
       breathRate: lerp(0.7, 1.0, pup),
       sink: 0.009 * s,
@@ -1633,10 +1637,10 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       rootRot: Q(0, 0, roll),
       spine: [Q(0.03), Q(0.03), Q(0.02), Q(0.02), Q(0.12), Q(0.08, turn * 0.4, -0.35 * f + tilt * 0.3), Q(-0.12 + nod, turn * 0.6, -0.85 * f + tilt * 0.7)],
       legs: [
-        { fk: [0.05, 0.42, -0.08, 0.15, 0.35], spread: 0.05 },
-        { fk: [0.1, 0.7, 0.35, -0.55, -0.15], spread: -0.28 },
-        { fk: [-0.45, 0.3, -0.15, 0.3], spread: 0.05 },
-        { fk: [0.12, -0.5, 0.45, 0.2], spread: -0.3 },
+        { fk: [0.05, 0.22, -0.05, 0.1, 0.3], spread: 0.05 },
+        { fk: [0.15, 0.95, 0.45, -0.55, -0.2], spread: -0.62 },
+        { fk: [-0.62, 0.38, -0.12, 0.3], spread: 0.05 },
+        { fk: [0.28, -0.5, 0.45, 0.2], spread: -0.58 },
       ],
       tail: { up: 0.05, side: -0.1, curl: 0, sideCurl: 0.35, droop: 1 },
       earLift: [0, 0],
@@ -1648,9 +1652,11 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
   // curl: rolled onto its left side, the spine bent round in the floor's plane, legs tucked, nose to tail
   const rho = 1.15;
   const axis = V(Math.sin(rho), Math.cos(rho), 0).normalize();
-  const bends = [0.36, 0.44, 0.47, 0.48, 0.5, 0.42, 0.3];
-  const spine = bends.map((b) => QA(axis, -b));
-  spine[6] = spine[6].clone().multiply(Q(0.05 + nod, turn * 0.5, -0.55 + tilt));
+  // the bend round in the floor's plane, plus a flex that straightens the neck's natural rise into line
+  const bends = [0.42, 0.5, 0.52, 0.52, 0.52, 0.45, 0.3];
+  const flex = [0, 0, 0, -0.25, -0.5, -0.3, 0.45];
+  const spine = bends.map((b, i) => QA(axis, -b).multiply(Q(flex[i])));
+  spine[6] = spine[6].clone().multiply(Q(nod, turn * 0.5, -0.55 + tilt));
   return {
     ...base,
     rootPos: pv[0].clone().add(V(0, -pv[0].y + 0.09 * s, 0)),
@@ -1662,7 +1668,7 @@ const specFor = (S: Static, kind: BeaglePoseKind, P: BeaglePose): Spec => {
       { fk: [1.05, -1.55, 1.3, 0.3], spread: 0.05 },
       { fk: [1.15, -1.65, 1.35, 0.3], spread: -0.1 },
     ],
-    tail: { up: 0.05, side: -0.35, curl: 0, sideCurl: -1.5, droop: 1 },
+    tail: { up: 0.0, side: 1.0, curl: 0, sideCurl: 3.2, droop: 1 },
     earLift: [0, 0],
     blink: P.blink ?? 1,
     breathRate: lerp(0.5, 0.75, pup),
@@ -1983,7 +1989,7 @@ const solveEar = (S: Static, inst: Inst, F: Frame, e: number, flip: number, lift
   const mid: THREE.Vector3[] = [];
   for (let i = 0; i < N; i++) {
     const sv = i / (N - 1);
-    const w = E.wid * (sv < 0.6 ? 0.46 + 0.54 * Math.sin((Math.PI / 2) * (sv / 0.6)) : Math.sqrt(Math.max(0, 1 - ((sv - 0.6) / 0.4) ** 2.2)) * 0.97 + 0.03);
+    const w = E.wid * (sv < 0.6 ? 0.6 + 0.4 * Math.sin((Math.PI / 2) * (sv / 0.6)) : Math.sqrt(Math.max(0, 1 - ((sv - 0.6) / 0.4) ** 2.2)) * 0.97 + 0.03);
     for (let j = 0; j < M; j++) {
       const u = -1 + (2 * j) / (M - 1);
       const q = pts[i].clone().addScaledVector(Bn[i], (u * w) / 2 + w * 0.08).addScaledVector(Nn[i], -E.cup * (1 - sv) * u * u);
@@ -2038,22 +2044,24 @@ const solveTail = (S: Static, inst: Inst, F: Frame, tl: TailSpec, t: number) => 
   const N = TAIL_N;
   const l = J.tail.len / (N - 1);
   const nrmB = inst.body.attributes.normal.array as Float32Array;
-  // in the pelvis' rest frame
-  let dir = V(0, Math.sin(tl.up), Math.cos(tl.up)).applyAxisAngle(UP, -tl.side);
+  // the base direction in the pelvis' frame; the bends then happen in the world (so a lying dog's tail curves
+  // along the floor): the curl about the horizontal axis across the tail (lifting it forward over the back),
+  // the side curl about the vertical, gravity accumulated segment by segment
+  let d = V(0, Math.sin(tl.up), Math.cos(tl.up)).applyQuaternion(Xp.q).applyAxisAngle(UP, tl.side).normalize();
   const pts: THREE.Vector3[] = [xfApply(Xp, J.tailRoot)];
   const sway = 0.04 * Math.sin(t * 1.3);
+  const down = V(0, -1, 0);
+  const latP = X_AX.clone().applyQuaternion(Xp.q);
   for (let i = 1; i < N; i++) {
-    const lat = dir.clone().cross(UP);
-    if (lat.lengthSq() < 1e-6) lat.set(1, 0, 0);
+    const lat = d.clone().cross(UP);
+    if (lat.lengthSq() < 1e-4) lat.copy(latP).negate();
     lat.normalize();
-    dir = dir.clone().applyAxisAngle(lat, tl.curl / (N - 1)).applyAxisAngle(UP, (tl.sideCurl + sway) / (N - 1)).normalize();
-    const w = dir.clone().applyQuaternion(Xp.q);
-    // droop toward the floor
-    const dk = tl.droop * (0.25 + 0.75 * (i / N));
-    w.multiplyScalar(1 - dk * 0.5).add(V(0, -dk * 0.5, 0)).normalize();
-    pts.push(pts[i - 1].clone().addScaledVector(w, l));
+    d.applyAxisAngle(lat, tl.curl / (N - 1)).applyAxisAngle(UP, (tl.sideCurl + sway) / (N - 1)).normalize();
+    const k = tl.droop * (0.12 + 0.3 * (i / N));
+    d.multiplyScalar(1 - k).addScaledVector(down, k).normalize();
+    pts.push(pts[i - 1].clone().addScaledVector(d, l));
   }
-  const radius = (sv: number) => lerp(J.tail.r0, J.tail.r1, sv ** 0.9) * (sv > 0.92 ? Math.sqrt(Math.max(0.05, 1 - ((sv - 0.92) / 0.08) ** 2)) : 1);
+  const radius = (sv: number) => lerp(J.tail.r0, J.tail.r1, sv ** 0.65) * (sv > 0.92 ? Math.sqrt(Math.max(0.05, 1 - ((sv - 0.92) / 0.08) ** 2)) : 1);
   for (let it = 0; it < 4; it++) {
     for (let i = 2; i < N; i++) {
       const q = pts[i];

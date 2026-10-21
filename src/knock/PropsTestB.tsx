@@ -630,7 +630,8 @@ const runVerify = (scene: THREE.Scene) => {
         if (triTri(t, u)) {
           const key = [t.g, u.g].sort().join(" x ");
           const h = hits.get(key);
-          const at = `${t.g}@${cen(t)}|${u.g}@${cen(u)}`;
+          const vv = (q: Tri) => [q.a, q.b, q.c].map((p) => `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`).join(";");
+          const at = VERIFY.endsWith("+") ? `${t.g}[${vv(t)}]|${u.g}[${vv(u)}]` : `${t.g}@${cen(t)}|${u.g}@${cen(u)}`;
           if (h) {
             h.n++;
             if (h.at.length < 4 && h.n % 7 === 1) h.at.push(at);
@@ -682,6 +683,8 @@ const VerifyScene: React.FC<{ what: string }> = ({ what }) => {
     );
   if (what === "porchA") return <Porch leaves={110} lights={1} overflow={1} time={1.3} />;
   if (what === "porchB") return <Porch snow={0.3} lights={1} />;
+  if (what === "porchC+") return <Porch snow={1} lights={1} />;
+  if (what === "porchA-") return <Porch leaves={110} lights={1} time={1.3} />;
   if (what === "porchC") return <Porch snow={1} lights={1} />;
   if (what === "hall")
     return (

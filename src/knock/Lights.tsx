@@ -69,7 +69,7 @@ export const NightLights: React.FC<{ t: number; hall: number; street?: number; m
     sm.position.set(0, 0.78, -3.18);
     return { st, mn, hl, nl, lt, sn, hd, sm };
   }, []);
-  L.lt.intensity = 1.1 * lightning;
+  L.lt.intensity = 0.8 * lightning;
   L.sn.intensity = 3.2 * sun;
   {
     const a = (sunAz - 0.5) * 2.2;

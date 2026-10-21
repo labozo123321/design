@@ -63,8 +63,19 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
     if (airSpec) return <Bed side={side} look={look} kind="none" spec={airSpec} pillowAt={pillowAt} covers={null} />;
     if (bed.kind === "none") return null;
     // a made bed, or (someone just got out) the covers thrown back to the foot
-    const zTop = (spec?.z0 ?? -3.6) + 0.55 + (bed.thrown ?? 0) * 0.85;
-    return <Bed side={side} look={look} kind={bed.kind} spec={spec} bare={bed.bare} pillowAt={pillowAt} covers={bed.bare ? null : { zTop, caps: [], loft: bed.thrown ? 0.05 * bed.thrown : undefined }} />;
+    const zTop = (spec?.z0 ?? -3.6) + 0.55 + (bed.thrown ?? 0) * 1.17;
+    return (
+      <Bed
+        side={side}
+        look={look}
+        kind={bed.kind}
+        spec={spec}
+        bare={bed.bare}
+        pillow={!bed.noPillow}
+        pillowAt={pillowAt}
+        covers={bed.bare ? null : { zTop, caps: [], loft: bed.thrown ? 0.05 * bed.thrown : undefined }}
+      />
+    );
   }
   const b = lieBody(f.s, side, f.lie);
   const zTop = f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers;
@@ -375,7 +386,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           nightlight={F.light.nightlight}
           fill={F.light.fill}
           strings={F.light.strings ?? 0}
-          lightning={F.light.lightning ?? 0}
+          lightning={hide.includes("noLightning") ? 0 : F.light.lightning ?? 0}
           sun={F.light.sun ?? 0}
           sunAz={F.light.sunAz ?? 0.5}
           headlight={F.light.headlight ?? -1}

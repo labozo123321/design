@@ -348,11 +348,11 @@ export const Door: React.FC<DoorProps> = ({ w = DOOR.x1 - DOOR.x0, h = DOOR.h, w
       </mesh>
       {/* the stops, against the slab's back face */}
       {[-1, 1].map((s) => (
-        <mesh key={`s${s}`} position={[s * (jambIn - STOP_T / 2), (h - JAMB) / 2, zs0 + SLAB_T + STOP_W / 2]} material={paint} castShadow receiveShadow>
+        <mesh key={`s${s}`} position={[s * (jambIn - STOP_T / 2), (h - JAMB) / 2, zs0 + SLAB_T + 0.0005 + STOP_W / 2]} material={paint} castShadow receiveShadow>
           <boxGeometry args={[STOP_T, h - JAMB, STOP_W]} />
         </mesh>
       ))}
-      <mesh position={[0, h - JAMB - STOP_T / 2, zs0 + SLAB_T + STOP_W / 2]} material={paint} castShadow receiveShadow>
+      <mesh position={[0, h - JAMB - STOP_T / 2, zs0 + SLAB_T + 0.0005 + STOP_W / 2]} material={paint} castShadow receiveShadow>
         <boxGeometry args={[2 * jambIn - 2 * STOP_T, STOP_T, STOP_W]} />
       </mesh>
       {/* the strike plate on the latch jamb */}
@@ -842,6 +842,7 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
             </mesh>
             {rn > 0.01 ? (
               <mesh
+                name="v:rain"
                 geometry={rainPaneGeo(pw, ph, hash3(seed, i, 1), hash3(seed, i, 2))}
                 position={[(p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, p.zg + 0.0026]}
                 material={rainMat(rn, time)}
@@ -851,8 +852,8 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
             {sn > 0.01 ? (
               <mesh
                 name="v:snowFillet"
-                geometry={snowFilletGeo(pw - 0.003, p.ledge[1] - p.ledge[0] + 0.002, 0.004 + 0.012 * sn, 0.01 + 0.05 * sn, seed * 7 + i)}
-                position={[p.x0 + 0.0015, p.y0 + 0.0003, p.zg + 0.0016]}
+                geometry={snowFilletGeo(pw - 0.003, p.ledge[1] - p.ledge[0] + 0.0002, 0.004 + 0.012 * sn, 0.01 + 0.05 * sn, seed * 7 + i)}
+                position={[p.x0 + 0.0015, p.y0 + 0.0003, p.zg + 0.0034]}
                 material={snowMat()}
                 castShadow
                 receiveShadow
