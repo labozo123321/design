@@ -640,7 +640,8 @@ const noteAt = (t: number): Frame["note"] => {
       0.645 + (NOTE_REST.y - 0.645) * Math.pow(u, 1.35),
       -2.99 + (NOTE_REST.z + 2.99) * smooth(0, 0.3, u) + 0.018 * Math.sin(t * 6.5) * a * smooth(0, 0.3, u),
     ),
-    open: 0.12 + 0.38 * smooth(12.95, 13.05, t),
+    // (it lands and springs open: the top leaf stands up, the writing on the bottom leaf faces the lens)
+    open: 0.12 + 0.88 * smooth(12.95, 13.1, t),
     rot: new THREE.Euler(0.5 * Math.sin(t * 7) * a, Math.PI / 2 + 0.1 * Math.sin(t * 4) * a, 0.3 * Math.sin(t * 5) * a, "YXZ"),
   };
 };
@@ -1108,7 +1109,7 @@ const b7 = (t: number): Frame => {
 export const frameAt = (t: number): Frame => {
   const f = frame(t);
   // the note stays where it fell
-  if (f.note === undefined && t >= 13.05) f.note = noteAt(13.05);
+  if (f.note === undefined && t >= 13.05) f.note = noteAt(13.2);
   return f;
 };
 const frame = (t: number): Frame => {

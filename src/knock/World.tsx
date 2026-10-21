@@ -246,9 +246,11 @@ const OnFloor: React.FC<{ f: Floor; t: number }> = ({ f, t }) => {
 /** The wall's own eye: inside the cavity's top, between the two studs by Nora's pillow, looking straight
  * down the slot (the frame's up toward the back wall). */
 const MACRO = { x: 0, y: 1.07, z: -3.04, fov: 58 };
-const macroCam = (y = MACRO.y) => {
+const macroCam = (y = MACRO.y, roll = 0) => {
   const pos = new THREE.Vector3(MACRO.x, y, MACRO.z);
-  const m = new THREE.Matrix4().lookAt(pos, new THREE.Vector3(MACRO.x, 0, MACRO.z - 0.0001), new THREE.Vector3(0, 0, -1));
+  // roll 0: the frame's up toward the back wall; 1: toward Nora's side (where the note's writing faces)
+  const up = new THREE.Vector3(-Math.sin((roll * Math.PI) / 2), 0, -Math.cos((roll * Math.PI) / 2));
+  const m = new THREE.Matrix4().lookAt(pos, new THREE.Vector3(MACRO.x, 0, MACRO.z - 0.0001), up);
   return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m), fov: MACRO.fov, near: 0.01 };
 };
 
@@ -343,8 +345,10 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   const F = ghost === undefined ? frameAt(t) : { ...frameAt(ghost), cam: frameAt(tc).cam, macro: 0 };
   const macro = (F.macro ?? 0) > 0 && !cam;
   // (the payoff's macro pushes slowly down the slot toward the note)
-  const my = MACRO.y - (t > 50 ? 0.7 * Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0);
-  const c = debugCam(cam) ?? (macro ? macroCam(my) : cameraFor(F.cam));
+  // (the payoff's macro descends the slot to the note, turning a quarter as it goes so the writing comes upright)
+  const push = t > 50 ? Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0;
+  const my = MACRO.y - 0.7 * push;
+  const c = debugCam(cam) ?? (macro ? macroCam(my, push * push * (3 - 2 * push)) : cameraFor(F.cam));
   // inside the cavity the seam's bloom is all around the lens: a fraction of it reads as the same glow
   if (ghost === undefined) setRipples(ringsAt(t), F.seam * (macro ? 0.07 : 0.45), -3.15);
   const focus = macro ? (F.note ? Math.max(0.1, my - F.note.pos.y) : my - 0.05) : F.cam.dist;

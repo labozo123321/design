@@ -639,7 +639,7 @@ const Sticker: React.FC<GlowProps & { kind: "star" | "moon" }> = ({ kind, size, 
       new THREE.MeshStandardMaterial({
         color: "#E3EED6",
         emissive: new THREE.Color(GLOW),
-        emissiveMap: phosphorTex(),
+        emissiveMap: withRepeat(phosphorTex(), 1, 1),
         roughness: 0.6,
         transparent: true,
         // the glow lands on #CFFFD9 when rendered straight (a post pipeline's output pass still grades it)

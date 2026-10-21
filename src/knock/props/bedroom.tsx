@@ -2031,7 +2031,8 @@ const amGeos = () =>
     const capTop = capGeo(per, -AM.rt, AM.H, true);
     const capBot = capGeo(per, -AM.rb, 0, false);
     const ring = (o: number, y: number) => new THREE.CatmullRomCurve3(per.p.map(([x, z], k) => V(x + per.n[k][0] * o, y, z + per.n[k][1] * o)), true, "centripetal");
-    const seams = mergeGeometries([new THREE.TubeGeometry(ring(0.0015, AM.H - AM.rt), 400, 0.0042, 6, true), new THREE.TubeGeometry(ring(0.0012, AM.rb), 400, 0.0038, 6, true)]);
+    const seamTop = new THREE.TubeGeometry(ring(0.0015, AM.H - AM.rt), 400, 0.0042, 6, true);
+    const seamBot = new THREE.TubeGeometry(ring(0.0012, AM.rb), 400, 0.0038, 6, true);
     // the fitted sheet: over the top rounding and down the side to the hem, 3 mm proud, loose at the corners
     const sheetProf = offsetProfile([...side.filter((p) => p[1] >= AM.hem), ...top.slice(1)], 0.003);
     const hemIdx = 0;
@@ -2041,7 +2042,8 @@ const amGeos = () =>
       return 0.0035 * near * t * t * (0.5 + 0.5 * Math.sin(per.s[k] * 70)) + 0.0012 * t * (0.5 + 0.5 * Math.sin(per.s[k] * 23));
     };
     const sheetSide = ringSurface(per, [[sheetProf[0][0] - 0.0005, sheetProf[0][1] - 0.004], ...sheetProf], (k, j) => wr(k, Math.max(0, j - 1)));
-    const sheetCap = capGeo(per, -AM.rt, AM.H + 0.003, true);
+    const lastP = sheetProf[sheetProf.length - 1];
+    const sheetCap = capGeo(per, lastP[0], lastP[1], true);
     const hem = new THREE.TubeGeometry(
       new THREE.CatmullRomCurve3(per.p.map(([x, z], k) => {
         const o = sheetProf[hemIdx][0] + wr(k, 0) + 0.0012;
@@ -2055,9 +2057,9 @@ const amGeos = () =>
     // the folded quilt at the foot: a stadium section 0.42 x 0.07 swept 0.92 across
     const qz = AM.L / 2 - 0.06 - 0.21 - 0.02;
     const qy = AM.H + 0.0035 + 0.035;
-    const quilt = sweepGeometry(new THREE.LineCurve3(V(-0.46, qy, qz), V(0.46, qy, qz)), ellipseStadium(0.21, 0.035), 24, V(0, 0, 1));
-    planarUV(quilt, "x", "z", -0.46, 0.46, qz - 0.21, qz + 0.21);
-    return { sideG, topG, capTop, capBot, seams, sheetSide, sheetCap, hem, quilt, per };
+    const quilt = sweepGeometry(new THREE.LineCurve3(V(-0.425, qy, qz), V(0.425, qy, qz)), ellipseStadium(0.21, 0.035), 24, V(0, 0, 1));
+    planarUV(quilt, "x", "z", -0.425, 0.425, qz - 0.21, qz + 0.21);
+    return { sideG, topG, capTop, capBot, seamTop, seamBot, sheetSide, sheetCap, hem, quilt, per };
   });
 /** a stadium profile with many points on the round ends */
 const ellipseStadium = (a: number, b: number) => {
@@ -2092,7 +2094,8 @@ export const AirMattress: React.FC<{ sheet?: boolean; quilt?: boolean; quiltMate
       <mesh geometry={g.capBot} material={m.vinyl} />
       <mesh geometry={g.topG} material={m.flock} />
       <mesh geometry={g.capTop} material={m.flock} />
-      <mesh geometry={g.seams} material={m.seam} />
+      {sheet ? null : <mesh geometry={g.seamTop} material={m.seam} />}
+      <mesh geometry={g.seamBot} material={m.seam} />
       {/* built-in pump panel and its dial */}
       <group position={[0.24, pumpY, pumpZ + pumpO - 0.004]}>
         <mesh geometry={geo("amPump", () => new RoundedBoxGeometry(0.17, 0.11, 0.02, 3, 0.008))} material={mat("k-pump", () => new THREE.MeshPhysicalMaterial({ color: "#3A3D44", roughness: 0.45, clearcoat: 0.4 }))} />

@@ -16,7 +16,7 @@ import {
   LavenderRug,
   MiniFridge,
   MovingBox,
-  PillowStack,
+  DecorativePillow,
   PineSprig,
   SoccerBall,
   ToyBoxContents,
@@ -34,6 +34,16 @@ import {
  * boxes in 2016, the guest room's decorative pillows. Mom's treadmill (2014 on) is a placeholder until the
  * house props are in.
  */
+
+/** [which pillow, x, z, yaw]: two rows of three, each flat on the carpet, none touching. */
+const GUEST_PILLOWS: [number, number, number, number][] = [
+  [2, 1.36, -0.4, 0.1],
+  [0, 1.95, -0.42, -0.15],
+  [1, 1.36, -1.0, -0.2],
+  [3, 1.95, -1.02, 0.18],
+  [5, 1.4, -1.6, 0.05],
+  [4, 1.97, -1.6, 1.3],
+];
 
 const ERA_ORDER = ["2004a", "2004b", "2007", "2009", "2011", "2013", "2014", "2016", "2025"];
 const at = (era: string) => ERA_ORDER.indexOf(era);
@@ -71,13 +81,15 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
   const guest = e >= at("2016");
   // her moon nightlight is plugged in until she leaves
   const nightlight = e <= at("2011") || !!d.moveOut;
-  const stars = useMemo(() => Math.max(0, Math.round(d.stars)), [d.stars]);
+  // (the full field is 40 stars and the moon)
+  const stars = useMemo(() => (d.stars >= 40 ? 41 : Math.max(0, Math.round(d.stars))), [d.stars]);
   return (
     <Shadowed>
       {/* your shelf, the T-rex, and what joins it */}
       <group position={[SHELF.at.x, SHELF.at.y + d.jolt * 0.004, SHELF.at.z]} rotation={[0, Math.PI / 2, 0]}>
         <CornerShelf />
-        <group position={[-0.03, 0, 0.036]} rotation={[0, -Math.PI / 2, 0]}>
+        {/* (a little smaller than the prop's default, so when it topples it comes to rest on the board) */}
+        <group position={[-0.03, 0, 0.036]} rotation={[0, -Math.PI / 2, 0]} scale={0.78}>
           <TRex tip={tip} dir={1} />
         </group>
         {d.era === "2011" ? (
@@ -91,7 +103,7 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
           </group>
         ) : null}
         {d.era === "2025" ? (
-          <group position={[0.08, 0, 0.128]} rotation={[0, Math.PI / 2, 0]} scale={0.55}>
+          <group position={[0.08, 0, 0.115]} rotation={[0, Math.PI / 2, 0]} scale={0.45}>
             <PineSprig />
           </group>
         ) : null}
@@ -166,7 +178,8 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
             <boxGeometry args={[0.38, 0.4, 0.36]} />
             <meshStandardMaterial color="#EDE8DF" roughness={0.6} />
           </mesh>
-          <group position={[0, 0.4, 0.02]}>
+          {/* (turned to face the room: its cord runs back off the stand to the outlet behind) */}
+          <group position={[0, 0.4, 0.02]} rotation={[0, Math.PI, 0]}>
             <DinoLamp on={0} />
           </group>
         </group>
@@ -223,12 +236,14 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
         </>
       ) : null}
 
-      {/* the guest room's six decorative pillows, stacked on the floor by the bed */}
-      {guest ? (
-        <group position={[1.55, 0, ROOM.back + 0.45]} rotation={[0, 0.2, 0]}>
-          <PillowStack />
-        </group>
-      ) : null}
+      {/* the guest room's six decorative pillows, set out on the floor under the windows */}
+      {guest
+        ? GUEST_PILLOWS.map(([i, x, z, yaw]) => (
+            <group key={i} position={[x, 0, z]} rotation={[0, yaw, 0]}>
+              <DecorativePillow index={i} />
+            </group>
+          ))
+        : null}
 
       {/* mom's treadmill in Nora's room from 2014, slowly buried in laundry */}
       {["2014", "2016", "2025"].includes(d.era) ? (

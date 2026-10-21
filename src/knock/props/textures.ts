@@ -298,7 +298,7 @@ export const drawMarker = (g: CanvasRenderingContext2D, text: string, x: number,
       });
       g.beginPath();
       g.moveTo(pts[0][0], pts[0][1]);
-      if (pts.length === 2) g.lineTo(pts[1][0], pts[1][1]);
+      if (pts.length <= 5) for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
       else {
         for (let i = 1; i < pts.length - 1; i++) {
           const mx = (pts[i][0] + pts[i + 1][0]) / 2;
@@ -1671,7 +1671,8 @@ export const starQuiltMat = (o: BeddingOpts = {}) =>
           const y = ((j + (r() - 0.5) * 0.5) / 9) * h;
           const s = 12 + r() * 16;
           g.fillStyle = cols[Math.floor(r() * cols.length)];
-          for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) star5(g, x + dx, y + dy, s, s * 0.45, r() * 1.2);
+          const rot = r() * 1.2;
+          for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) star5(g, x + dx, y + dy, s, s * 0.45, rot);
         }
       // stitch dashes along the diamond lines (4 per tile)
       g.strokeStyle = "rgba(230,215,255,0.55)";
@@ -1907,7 +1908,8 @@ export const racecarDuvetMat = (o: BeddingOpts = {}) =>
       // stars and flags
       for (let i = 0; i < 26; i++) {
         g.fillStyle = r() < 0.5 ? "#F5D547" : "#FFFFFF";
-        star5(g, r() * w, r() * h, 9 + r() * 7, 4 + r() * 3, r());
+        const [sx, sy, so, si, sr] = [r() * w, r() * h, 9 + r() * 7, 4 + r() * 3, r()];
+        for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) star5(g, sx + dx, sy + dy, so, si, sr);
       }
       const flag = (x: number, y: number, s: number) => {
         g.fillStyle = "#EEE";
