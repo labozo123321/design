@@ -31,7 +31,9 @@ export const Overlay: React.FC<{ frame: number }> = ({ frame }) => {
   const h = hudState(t);
   // a gentle darkening behind the HUD so its thin numerals hold over the lit hallway at the top of frame
   // (deeper while the picture is day-lit); it comes in after the hallway light clicks off at 3.0
-  const scrim = (0.3 + 0.15 * dayLit(t)) * smooth(3.0, 3.5, t);
+  // (and in 2025's close shots, where the wall's pale cut top runs right behind the clock)
+  const close25 = smooth(50.6, 51.2, t) * (1 - smooth(63.6, 64.2, t));
+  const scrim = (0.3 + 0.22 * dayLit(t) + 0.18 * close25) * smooth(3.0, 3.5, t);
   // on the picture's white flash cuts the HUD's dark backing would print as a smudge: let the flash through
   const flash = FLASHES.some(([a, b]) => t >= a - 1e-6 && t < b);
   return (

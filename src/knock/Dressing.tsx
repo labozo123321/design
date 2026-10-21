@@ -130,7 +130,7 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
         </group>
       ) : e < at("2025") ? (
         <group position={[-1.45, 0, -2.45]} rotation={[0, Math.PI / 2, 0]}>
-          <DarkerCarpetPatch strength={0.8} />
+          <DarkerCarpetPatch strength={0.35} />
         </group>
       ) : (
         <group position={[-1.42, 0, -2.5]} rotation={[0, Math.PI / 2 + 0.07, 0]}>
@@ -161,7 +161,7 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
           <group position={[-2.02, 0, -0.95]} rotation={[0, 0.12, 0]}>
             <MovingBox text={"NORA'S STUFF — KEEP OUT"} seed={3} />
           </group>
-          <group position={[-1.55, 0, -0.5]} rotation={[0, -0.2, 0]}>
+          <group position={[-1.55, 0, -0.72]} rotation={[0, -0.2, 0]}>
             <MovingBox text={"NORA'S STUFF — KEEP OUT"} w={0.42} h={0.3} d={0.34} seed={5} />
           </group>
           <group position={[2.0, 0, -0.85]} rotation={[0, 0.3, 0]}>
@@ -221,16 +221,16 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
         </>
       ) : null}
 
-      {/* 2016: your boxes (no names on them) */}
+      {/* 2016: your boxes (no names on them), stacked in the open floor at the foot of your bed */}
       {d.dormBoxes ? (
         <>
-          <group position={[1.7, 0, -0.85]} rotation={[0, -0.1, 0]}>
+          <group position={[1.3, 0, -1.15]} rotation={[0, -0.1, 0]}>
             <MovingBox text={"DORM — BOOKS"} seed={21} />
           </group>
-          <group position={[2.05, 0, -1.45]} rotation={[0, 0.2, 0]}>
+          <group position={[1.85, 0, -1.25]} rotation={[0, 0.2, 0]}>
             <MovingBox text={"DORM — FRAGILE"} w={0.4} h={0.32} d={0.34} seed={22} />
           </group>
-          <group position={[1.42, 0, -0.42]}>
+          <group position={[1.15, 0, -0.62]}>
             <BoxedDeskLamp />
           </group>
         </>

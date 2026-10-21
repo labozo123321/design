@@ -43,6 +43,9 @@ export type Lie = {
   knees?: number;
   /** foam earplugs in the left and right ears */
   plugs?: [boolean, boolean];
+  /** the near and far hands not drawn (set by the bed: hands lying under the covers, whose fingertips would
+   *  otherwise come through) */
+  hideHands?: [boolean, boolean];
   /** slide along the bed toward the wall (+) or away (-), metres */
   slide?: number;
   /** lying somewhere other than the twin bed: the head's x (on the back), the surface height, the pillow */
@@ -169,9 +172,10 @@ export const HeadBits: React.FC<{ s: Sib; t: number; plugs?: [boolean, boolean] 
       {s.cut ? <CardHair sh={sh} cut={s.cut} color={s.cutColor ?? s.who.hair.color} params={{ t }} /> : null}
       {s.glasses ? <Glasses sh={sh} kind={s.glasses} color={s.glassesColor ?? "#222"} /> : null}
       {s.clip ? (
-        // the yellow plastic clip at the crown, slightly off centre: it reads from above at every age
+        // the yellow plastic clip at the crown, slightly off centre: it reads from above at every age (lying
+        // along the hair, not standing up out of it)
         <group position={clip.p} quaternion={clip.q}>
-          <mesh rotation={[0, 0.5, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0.5]} position={[0, 0.002, 0]}>
             <capsuleGeometry args={[0.0055, 0.036, 4, 10]} />
             <meshPhysicalMaterial color="#F6C531" roughness={0.3} clearcoat={0.7} />
           </mesh>
@@ -286,6 +290,9 @@ export const clearOfWall = (a: Arm, sd: number, k: number, room: -1 | 1, toWorld
       [mid.clone().addScaledVector(handX, 0.05 * k), 0.02 * k],
       [mid.clone().addScaledVector(handX, -0.05 * k), 0.02 * k],
       [mid.clone().addScaledVector(handZ, 0.03 * k), 0.015 * k],
+      // the back of the hand and a fist's knuckles (a knock turns them to the wall)
+      [mid.clone().addScaledVector(handZ, -0.025 * k), 0.016 * k],
+      [W.clone().addScaledVector(fore, reach * 0.9).addScaledVector(handZ, -0.02 * k), 0.016 * k],
       // the thumb, out from the heel of the hand on its own side (the Hand mirrors it for a left hand)
       [W.clone().addScaledVector(fore, 0.03 * k).addScaledVector(handX, sd * 0.07 * k), 0.016 * k],
       [W.clone().addScaledVector(fore, 0.05 * k).addScaledVector(handX, sd * 0.095 * k), 0.012 * k],
@@ -369,9 +376,15 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     headYaw: st.headYaw,
     headPitch: st.headPitch,
     feet: [footAt(s.k, -1, b.knees), footAt(s.k, 1, b.knees)],
+    ankles: true,
   };
-  if (nearArm) pose[nearSide] = nearArm;
-  if (farArm) pose[farSide] = farArm;
+  // (a hand under the covers isn't drawn; an arm left to the Figure hangs where armCapsules says it does)
+  const hanging = (sd: number): Arm => ({ at: V(sd * 0.24 * s.k, 0.82 * s.k, -0.04 * s.k), hand: RELAX });
+  const hide = st.hideHands ?? [false, false];
+  const nearA = nearArm ?? (hide[0] ? hanging(nearSide === "armL" ? -1 : 1) : undefined);
+  const farA = farArm ?? (hide[1] ? hanging(farSide === "armL" ? -1 : 1) : undefined);
+  if (nearA) pose[nearSide] = hide[0] ? { ...nearA, hidden: true } : nearA;
+  if (farA) pose[farSide] = hide[1] ? { ...farA, hidden: true } : farA;
   // Figure's look is a world point relative to its own `at`/yaw: we hand it body coordinates with at = 0
   return (
     <group position={f.pos} quaternion={f.q}>

@@ -49,11 +49,14 @@ export type Outfit = {
   boutonniere?: boolean;
 };
 
-export type Arm = { at: THREE.Vector3; hand: HandPose; palm?: THREE.Vector3; pole?: THREE.Vector3 };
+export type Arm = { at: THREE.Vector3; hand: HandPose; palm?: THREE.Vector3; pole?: THREE.Vector3; /** the hand not drawn (it's somewhere unseen, e.g. under a duvet) */ hidden?: boolean };
 export type Prop = "phone" | "bouquet" | "book" | "tray" | "bottle" | "controller" | "spatula" | "ringbox" | null;
 
 export type Pose = {
   sit?: boolean;
+  /** a rounded ankle where the shin meets the shoe (lying down, seen end-on from above, the shin's taper
+   *  would otherwise show as a point with the shoe beyond it) */
+  ankles?: boolean;
   /** torso pitched forward (+) */
   lean?: number;
   /** torso rolled to its right (+) */
@@ -1213,7 +1216,7 @@ export const Figure: React.FC<{
           <Limb a={W.clone().addScaledVector(fore, -0.03 * k)} b={W.clone().addScaledVector(fore, 0.005)} geo={lathe("wcuff", [[0, 0.01], [0.031, 0], [0.031, -0.035], [0, -0.036]])} len={0.036} mat={cloth(outfit.shirt ?? "#FFFFFF", 0.7)} k={k} />
         ) : null}
         <group position={W} quaternion={hq}>
-          <Hand pose={a.hand} tone={tone} side={side} scale={k * 0.97} />
+          {a.hidden ? null : <Hand pose={a.hand} tone={tone} side={side} scale={k * 0.97} />}
           {hold ? <PropMesh kind={hold} k={k} t={t} /> : null}
         </group>
       </group>
@@ -1249,6 +1252,11 @@ export const Figure: React.FC<{
           <sphereGeometry args={[1, 12, 8]} />
         </mesh>
         <Limb a={K} b={A} geo={lathe("wsh", SHIN)} len={0.43} mat={legMat} k={k} />
+        {pose.ankles ? (
+          <mesh position={A.clone().add(new THREE.Vector3(0, -0.012 * k, -0.006 * k))} material={legMat} scale={[0.037 * k, 0.04 * k, 0.037 * k]}>
+            <sphereGeometry args={[1, 12, 8]} />
+          </mesh>
+        ) : null}
         <Shoe at={A} side={side} k={k} o={outfit} />
       </group>
     );

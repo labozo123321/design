@@ -129,6 +129,7 @@ export const PosedSib: React.FC<{ s: Sib; p: Posed; t: number }> = ({ s, p, t })
     lean: p.lean,
     twist: p.twist,
     feet: [toBody(p.feet[0], root, p.q), toBody(p.feet[1], root, p.q)],
+    ankles: true,
   };
   // (out of whichever room's side of the wall the hips are in)
   const room = (p.hip.x < 0 ? -1 : 1) as -1 | 1;

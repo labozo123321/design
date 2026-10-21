@@ -40,13 +40,36 @@ const BEDS: Record<string, BedLook> = {
 };
 const AIR_MID: BedSpec = { x0: -1.78, x1: -0.79, z0: -3.25, z1: -1.35, top: 0.45 };
 
+/** A hand (its capsule) lying under the covers: over the bed (not reaching down beside it or up off it),
+ * low, and wholly past the covers' top edge toward the feet. */
+const handIsUnder = (hand: Capsule, zTop: number | null, top: number, eyeX: number) =>
+  zTop !== null &&
+  Math.min(hand.a.y, hand.b.y) > top - 0.04 &&
+  Math.abs((hand.a.x + hand.b.x) / 2 - eyeX) < 0.55 &&
+  Math.max(hand.a.y, hand.b.y) < top + 0.36 &&
+  Math.min(hand.a.z, hand.b.z) > zTop + 0.02;
+
 /** What the covers lie over: the body, and the parts of the arms that lie low against it (a raised arm
- * doesn't tent the covers; one resting under them can't come through). */
-const coverCaps = (f: SibFrame, side: -1 | 1, body: Capsule[], top: number): Capsule[] => {
+ * doesn't tent the covers; one resting under them can't come through). A hand counts only when it's wholly
+ * under them (and then isn't drawn): one lying at their edge stays on top, the cloth below it, so no
+ * curled fingertip can come up through the cloth. */
+const coverCaps = (f: SibFrame, side: -1 | 1, body: Capsule[], top: number, zTop: number | null): Capsule[] => {
   const A = lyingArms(f.s, side, f.lie);
   const low = (c: Capsule) => Math.max(c.a.y, c.b.y) < top + 0.36;
-  const arms = [...armCapsules(A.near, A.nearSide === "armL" ? -1 : 1, f.s.k, A.toW), ...armCapsules(A.far, A.farSide === "armL" ? -1 : 1, f.s.k, A.toW)];
-  return [...body, ...arms.filter(low)];
+  const arm = (a: Parameters<typeof armCapsules>[0], key: "armL" | "armR") => {
+    const [upper, fore, hand] = armCapsules(a, key === "armL" ? -1 : 1, f.s.k, A.toW);
+    return handIsUnder(hand, zTop, top, A.b.eye.x) ? [upper, fore, hand] : [upper, fore];
+  };
+  return [...body, ...[...arm(A.near, A.nearSide), ...arm(A.far, A.farSide)].filter(low)];
+};
+
+/** Which hands (near, far) lie under the covers: low, and wholly past the covers' top edge toward the feet.
+ * Those aren't drawn (the covers already drape over them), so no fingertip can come through the cloth. */
+const handsUnder = (f: SibFrame, side: -1 | 1, zTop: number | null, top: number): [boolean, boolean] => {
+  if (zTop === null) return [false, false];
+  const A = lyingArms(f.s, side, f.lie);
+  const under = (a: Parameters<typeof armCapsules>[0], key: "armL" | "armR") => handIsUnder(armCapsules(a, key === "armL" ? -1 : 1, f.s.k, A.toW)[2], zTop, top, A.b.eye.x);
+  return [under(A.near, A.nearSide), under(A.far, A.farSide)];
 };
 
 /** One sibling in their bed: the body, and the bed with covers shaped over it and the pillow dented. */
@@ -91,11 +114,11 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
   }
   const b = lieBody(f.s, side, f.lie);
   const zTop = f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers;
-  const caps = coverCaps(f, side, b.caps, spec?.top ?? BED.top);
+  const caps = coverCaps(f, side, b.caps, spec?.top ?? BED.top, zTop);
   return (
     <>
       {hide.includes(side < 0 ? "nora" : "you") ? null : (
-        <LyingSib s={f.s} side={side} st={{ ...f.lie, ...(hide.includes("noNear") ? { near: null } : {}), ...(hide.includes("noFar") ? { far: null } : {}) }} t={t} />
+        <LyingSib s={f.s} side={side} st={{ ...f.lie, hideHands: handsUnder(f, side, zTop, spec?.top ?? BED.top), ...(hide.includes("noNear") ? { near: null } : {}), ...(hide.includes("noFar") ? { far: null } : {}) }} t={t} />
       )}
       <Bed
         side={side}
@@ -225,10 +248,9 @@ const pillowGeo = (() => {
     return g;
   };
 })();
+// (the guest bed's own pillow, the one that ends up on her rug)
 const CarriedPillow: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion }> = ({ at, q }) => (
-  <mesh position={at} quaternion={q} geometry={pillowGeo()} castShadow>
-    <meshStandardMaterial color="#EFE9DE" roughness={0.92} />
-  </mesh>
+  <mesh position={at} quaternion={q} geometry={pillowGeo()} material={BEDS.guest.pillowcase ?? BEDS.guest.sheet} castShadow />
 );
 /** Her pillow and quilt bundled in her arms: the quilt in loose folds around the pillow, a corner trailing. */
 const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = ({ at, q, t }) => (
@@ -242,7 +264,7 @@ const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = 
       [0.0, -0.1, -0.06, 0.16, 0.07, 0.065],
       [0.17, -0.19 - 0.02 * Math.sin(t * 7), -0.03, 0.05, 0.13, 0.025],
     ].map(([x, y, z, a, b, c], i) => (
-      <mesh key={i} position={[x, y, z]} scale={[a, b, c]} material={patchworkQuiltMat({ uvSize: [0.5, 0.5] })} castShadow>
+      <mesh key={i} position={[x, y, z]} scale={[a, b, c]} material={BEDS.nora2007.cover} castShadow>
         <sphereGeometry args={[1, 20, 14]} />
       </mesh>
     ))}
@@ -253,12 +275,13 @@ const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = 
  * they're down. */
 const OnFloor: React.FC<{ f: Floor; t: number }> = ({ f, t }) => {
   const b = f.body ? lieBody(f.s, f.side, f.lie) : null;
-  const caps = b ? coverCaps(f, f.side, b.caps, f.spot.top) : [];
+  const zTopF = b && f.covers !== null ? b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers : null;
+  const caps = b ? coverCaps(f, f.side, b.caps, f.spot.top, zTopF) : [];
   // (her quilt reaches less far behind her, so it stops short of your bed's side)
   const spec = { x0: f.spot.x - 0.3, x1: f.spot.x + 0.42, z0: f.spot.pillowZ - 0.25, z1: f.spot.pillowZ + 1.7, top: f.spot.top };
   return (
     <>
-      {b ? <LyingSib s={f.s} side={f.side} st={f.lie} t={t} /> : null}
+      {b ? <LyingSib s={f.s} side={f.side} st={{ ...f.lie, hideHands: handsUnder(f, f.side, f.covers === null ? null : b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers, f.spot.top) }} t={t} /> : null}
       <Bed
         side={f.side}
         look={f.look ? BEDS[f.look] ?? BEDS.guest : BEDS.guest}
@@ -377,6 +400,7 @@ const debugCam = (cam?: string) => {
   if (cam === "sideN") return at([-2.3, 1.5, -0.9], [-0.45, 0.55, -2.7]);
   if (cam === "feetY") return at([1.6, 1.1, -0.9], [0.5, 0.55, -1.9]);
   if (cam === "sideY") return at([2.3, 1.5, -0.9], [0.45, 0.55, -2.7]);
+  if (cam === "rugN") return at([-0.5, 0.75, -1.0], [-1.38, 0.08, -1.95]);
   if (cam === "legsN") return at([-0.45, 1.7, -1.0], [-0.45, 0.5, -2.1]);
   if (cam === "legsY") return at([0.45, 1.7, -1.0], [0.45, 0.5, -2.1]);
   return null;

@@ -110,11 +110,32 @@ const coverHeights = (x0: number, x1: number, zTop: number, z1: number, nx: numb
 /** The covers: top surface + the outer and foot skirts + the turned-down band, as one geometry. */
 const coverGeometry = (side: -1 | 1, r: BedSpec, zTop: number, caps: Capsule[], loft: number, drape: number, inset = 0) => {
   // the wall side is tucked against the wall; the outer side hangs over
-  const xWall = side < 0 ? r.x1 - 0.004 - inset * 0.3 : r.x0 + 0.004 + inset * 0.3;
-  const xOut = side < 0 ? r.x0 - 0.02 + inset : r.x1 + 0.02 - inset;
+  let xWall = side < 0 ? r.x1 - 0.004 - inset * 0.3 : r.x0 + 0.004 + inset * 0.3;
+  let xOut = side < 0 ? r.x0 - 0.02 + inset : r.x1 + 0.02 - inset;
+  let z1 = r.z1 + 0.02 - inset * 0.6;
+  if (inset > 0 && caps.length) {
+    // a sleeping bag: drawn in round the body, but always roomy enough for all of it (feet, knees, shoulders)
+    let lo = Infinity;
+    let hi = -Infinity;
+    let zz = -Infinity;
+    for (const c of caps)
+      for (const p of [c.a, c.b]) {
+        lo = Math.min(lo, p.x - c.r);
+        hi = Math.max(hi, p.x + c.r);
+        zz = Math.max(zz, p.z + c.r);
+      }
+    const clampX = (x: number) => Math.min(r.x1 + 0.02, Math.max(r.x0 - 0.02, x));
+    if (side < 0) {
+      xOut = Math.min(xOut, clampX(lo - 0.06));
+      xWall = Math.max(xWall, Math.min(r.x1 - 0.004, hi + 0.04));
+    } else {
+      xOut = Math.max(xOut, clampX(hi + 0.06));
+      xWall = Math.min(xWall, Math.max(r.x0 + 0.004, lo - 0.04));
+    }
+    z1 = Math.max(z1, Math.min(r.z1 + 0.02, zz + 0.08));
+  }
   const x0 = Math.min(xWall, xOut);
   const x1 = Math.max(xWall, xOut);
-  const z1 = r.z1 + 0.02 - inset * 0.6;
   const nx = 26;
   const nz = 44;
   const h = coverHeights(x0, x1, zTop, z1, nx, nz, caps, loft, r.top);

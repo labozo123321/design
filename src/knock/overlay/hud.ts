@@ -194,10 +194,11 @@ const CAL: CalSeg[] = [
   { t0: 44.0, t1: 45.6, night: at(day(2020, 6, 9)), since: at(day(2020, 6, 9) - LAST_NIGHT), clock: say("11:58 PM") },
   { t0: 45.6, t1: 47.5, night: at(day(2024, 3, 14)), since: at(day(2024, 3, 14) - LAST_NIGHT), clock: say("4:37 PM") },
   { t0: 47.5, t1: 49.0, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("8:12 PM"), date: "WED · DEC 24" },
-  { t0: 49.0, t1: 55.0, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:47 PM"), date: "WED · DEC 24" },
-  { t0: 55.0, t1: 63.0, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:49 PM"), date: "WED · DEC 24" },
-  { t0: 63.0, t1: 66.5, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:50 PM"), date: "WED · DEC 24" },
-  { t0: 66.5, t1: 1e9, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:51 PM"), date: "WED · DEC 24" },
+  // (the minute turns over in the silence after your knock, not on it)
+  { t0: 49.0, t1: 56.6, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:47 PM"), date: "WED · DEC 24" },
+  { t0: 56.6, t1: 63.0, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:48 PM"), date: "WED · DEC 24" },
+  { t0: 63.0, t1: 66.5, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:49 PM"), date: "WED · DEC 24" },
+  { t0: 66.5, t1: 1e9, night: at(XMAS), since: at(XMAS - LAST_NIGHT), clock: say("11:50 PM"), date: "WED · DEC 24" },
 ];
 const calSeg = (t: number) => CAL.find((s) => t >= s.t0 && t < s.t1) ?? CAL[CAL.length - 1];
 
@@ -372,8 +373,11 @@ export type HudState = {
 };
 
 const PITCH_PX = 76;
+/** the HUD steps back while someone walks the hallway at the top of the frame (it lies under the HUD band in
+ *  the wide): her storm walk in 2009, and yours at the end, until the end card brings the odometer back */
+const walkDim = (t: number) => smooth(18.85, 19.15, t) * (1 - smooth(20.45, 20.75, t)) + smooth(62.6, 62.95, t) * (1 - smooth(67.25, 67.55, t));
 export const hudState = (t: number): HudState => {
-  const alpha = smooth(2.6, 3.2, t);
+  const alpha = smooth(2.6, 3.2, t) * (1 - 0.82 * walkDim(t));
   const sides = 1 - smooth(67.5, 67.9, t);
   const endK = smoother((t - 67.5) / 0.6);
   const b = baseAt(t);
