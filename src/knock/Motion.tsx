@@ -57,7 +57,7 @@ export const blendPosed = (a: Posed, b: Posed, k: number): Posed => {
 
 /** Walking along a path (world points on the floor) at distance d (m) from its start: the hips over the
  * path with a bob, facing along it, each foot planted while the other swings. */
-export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<Posed, "hip" | "q" | "feet">): Posed => {
+export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<Posed, "hip" | "q" | "feet">, strideK = 0.62): Posed => {
   // the point and heading at distance d
   let rem = Math.max(0, d);
   let p = path[0].clone();
@@ -78,7 +78,8 @@ export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<P
     rem -= L;
   }
   const k = s.k;
-  const stride = 0.62 * k;
+  // (one full cycle, two steps; hurrying across a dark house, the steps are long)
+  const stride = strideK * k;
   const ph = (d / stride) * Math.PI * 2;
   const right = new THREE.Vector3(-dir.z, 0, dir.x);
   const foot = (sd: number, phase: number) => {

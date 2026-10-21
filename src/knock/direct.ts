@@ -535,7 +535,7 @@ const b9 = (t: number): Frame => {
       const total = path.reduce((a, q, i) => (i ? a + q.distanceTo(path[i - 1]) : 0), 0);
       const d = Math.min(total, (t - walkT0) * speed);
       const arrive = walkT0 + total / speed;
-      if (t < arrive) p = walkAlong(y, path, d, base);
+      if (t < arrive) p = walkAlong(y, path, d, base, WALK_STRIDE);
       else {
         // drop the pillow on the rug, kneel, lie down on your back beside the mattress
         const end = standAt(y, path[path.length - 1], V3(0, 0, 1), base);
@@ -644,6 +644,9 @@ const noteAt = (t: number): Frame["note"] => {
     rot: new THREE.Euler(0.5 * Math.sin(t * 7) * a, Math.PI / 2 + 0.1 * Math.sin(t * 4) * a, 0.3 * Math.sin(t * 5) * a, "YXZ"),
   };
 };
+
+/** The stride (one cycle of two steps, in body heights) of the two hurried night walks across the house. */
+export const WALK_STRIDE = 1.15;
 
 /** A steady pseudo-random number in [0, 1) for an index (and a salt). */
 const hash01 = (i: number, salt = 0) => {
@@ -800,7 +803,7 @@ const b3 = (t: number): Frame => {
     if (t < 18.3) p = blendPosed({ ...lying, ...nBase }, sitUp, (t - 18.0) / 0.3);
     else if (t < 18.45) p = blendPosed(sitUp, edge, (t - 18.3) / 0.15);
     else if (t < walkT0) p = blendPosed(edge, stand, (t - 18.45) / (walkT0 - 18.45));
-    else if (t < arrive) p = walkAlong(n, path, (t - walkT0) * speed, { ...nBase, ...bundleArms });
+    else if (t < arrive) p = walkAlong(n, path, (t - walkT0) * speed, { ...nBase, ...bundleArms }, WALK_STRIDE);
     else {
       // drop the pillow and quilt, down onto the rug on her side, her back to your bed
       const end = standAt(n, path[path.length - 1], V3(0, 0, 1), { ...nBase, ...bundleArms });
