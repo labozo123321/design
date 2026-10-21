@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
   GB,
   beltTex,
@@ -182,7 +181,7 @@ const chrome = () => mat("b-tm-chrome", () => new THREE.MeshStandardMaterial({ c
 const steelTube = () => mat("b-tm-steel", () => new THREE.MeshPhysicalMaterial({ color: "#B9BDC2", metalness: 0.6, roughness: 0.32, clearcoat: 0.5, clearcoatRoughness: 0.2, envMap: envB(), envMapIntensity: 0.8 }));
 const rubber = () => mat("b-tm-rubber", () => new THREE.MeshStandardMaterial({ color: "#151517", roughness: 0.85 }));
 const grip = () => mat("b-tm-grip", () => new THREE.MeshStandardMaterial({ map: gripTex(), roughness: 0.8 }));
-const foam = () => mat("b-tm-foam", () => new THREE.MeshStandardMaterial({ color: "#1A1B1D", roughness: 0.95, bumpMap: withRepeat(gripTex(), 3, 1), bumpScale: 0.4 }));
+const foam = () => mat("b-tm-foam", () => new THREE.MeshStandardMaterial({ color: "#1A1B1D", roughness: 0.95, bumpMap: withRepeat(gripTex(), 3, 1), bumpScale: 0.08 }));
 const redKey = () => mat("b-tm-red", () => new THREE.MeshPhysicalMaterial({ color: "#D0251E", roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.15 }));
 const hoodDecal = () => mat("b-tm-hoodDecal", () => new THREE.MeshPhysicalMaterial({ map: hoodTex(), roughness: 0.5, clearcoat: 0.15 }));
 const consoleMat = (on: boolean) =>
@@ -456,6 +455,7 @@ export const Treadmill: React.FC<TreadmillProps> = ({ belt = 0, laundry = 0, on 
   const faceMid = V(0, (FACE.a.x + FACE.b.x) / 2, (FACE.a.y + FACE.b.y) / 2);
   const faceQ = useMemo(() => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(V(1, 0, 0), up, n)), [up, n]);
   const keyAt = faceMid.clone().addScaledVector(up, -0.046).add(V(0.1, 0, 0));
+  const keyQ = useMemo(() => new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), n), [n]);
   const R = TREADMILL.rail;
   const rails = useMemo(
     () => ({
@@ -525,7 +525,7 @@ export const Treadmill: React.FC<TreadmillProps> = ({ belt = 0, laundry = 0, on 
       <mesh position={faceMid.clone().addScaledVector(n, 0.0009)} quaternion={faceQ} material={consoleMat(on)}>
         <planeGeometry args={[0.64, 0.24]} />
       </mesh>
-      <mesh geometry={keyGeo()} position={keyAt.clone().addScaledVector(n, 0.0009)} quaternion={useMemo(() => new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), n), [n])} material={redKey()} castShadow />
+      <mesh geometry={keyGeo()} position={keyAt.clone().addScaledVector(n, 0.0009)} quaternion={keyQ} material={redKey()} castShadow />
       <mesh geometry={cordGeo(keyAt)} material={redKey()} castShadow />
       <mesh position={[keyAt.x, R.y + R_BAR + 0.006, TREADMILL.crossbar.z]} material={redKey()} castShadow>
         <boxGeometry args={[0.024, 0.012, 0.034]} />
@@ -544,4 +544,3 @@ export const Treadmill: React.FC<TreadmillProps> = ({ belt = 0, laundry = 0, on 
   );
 };
 
-export { mergeGeometries };

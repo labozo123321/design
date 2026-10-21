@@ -451,7 +451,7 @@ const blockTex = (ch: string, c: string) =>
 export const ToyBoxContents: React.FC = () => {
   const blocks: [string, string, P3, number][] = [
     ["A", "#C8402F", [-0.12, 0.025, -0.08], 0.2],
-    ["B", "#2F6EC8", [-0.06, 0.025, -0.1], -0.3],
+    ["B", "#2F6EC8", [-0.045, 0.025, -0.11], -0.3],
     ["C", "#2F9A4A", [-0.11, 0.075, -0.075], 0.5],
     ["D", "#E0A12A", [0.16, 0.025, 0.11], 0.1],
   ];
@@ -1225,8 +1225,6 @@ export const Phone: React.FC<PhoneProps> = ({ w = 0.071, l = 0.146, t = 0.0078, 
   const body = mat(`k-phone-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2 }));
   const tex = screen ?? phoneScreenTex(screenKind);
   const sm = useMemo(() => {
-    const st = tex.clone();
-    st.needsUpdate = true;
     return new THREE.MeshPhysicalMaterial({ color: "#040506", roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.03, emissive: new THREE.Color("#ffffff"), emissiveMap: tex, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   }, [tex]);
   sm.emissiveIntensity = 1.25 * clamp01(bright);

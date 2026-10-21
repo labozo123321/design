@@ -27,7 +27,7 @@ export const bedRect = (side: -1 | 1): BedSpec => {
   return { x0, x1: x0 + BED.w, z0: ROOM.back, z1: ROOM.back + BED.len, top: BED.top };
 };
 /** The air mattress (2025): against the wall where her bed was, a little lower, no frame. */
-export const airRect = (): BedSpec => ({ x0: -WALL.half - 0.99, x1: -WALL.half - 0.004, z0: ROOM.back + 0.04, z1: ROOM.back + 0.04 + 1.9, top: 0.45 });
+export const airRect = (): BedSpec => ({ x0: -WALL.half - 1.006, x1: -WALL.half - 0.016, z0: ROOM.back + 0.04, z1: ROOM.back + 0.04 + 1.9, top: 0.45 });
 
 const quiltingTex = () =>
   canvasTex(
@@ -199,6 +199,7 @@ const pillowGeometry = (r: BedSpec, rest: HeadRest, puff: number, pz = PILLOW.z,
   const nx = 28;
   const nz = 18;
   const pos: number[] = [];
+  const uvs: number[] = [];
   const idx: number[] = [];
   const top = (u: number, v: number) => {
     // a cushion: full in the middle, pinched at the seams
@@ -221,6 +222,7 @@ const pillowGeometry = (r: BedSpec, rest: HeadRest, puff: number, pz = PILLOW.z,
         y = Math.max(r.top + 0.01, y);
       }
       pos.push(x, y, z);
+      uvs.push(u, v);
     }
   for (let j = 0; j < nz - 1; j++)
     for (let i = 0; i < nx - 1; i++) {
@@ -233,6 +235,7 @@ const pillowGeometry = (r: BedSpec, rest: HeadRest, puff: number, pz = PILLOW.z,
     for (let i = 0; i < nx; i++) {
       const o = (j * nx + i) * 3;
       pos.push(pos[o], r.top + 0.002, pos[o + 2]);
+      uvs.push(uvs[(j * nx + i) * 2], uvs[(j * nx + i) * 2 + 1]);
     }
   for (let j = 0; j < nz - 1; j++)
     for (let i = 0; i < nx - 1; i++) {
@@ -241,6 +244,7 @@ const pillowGeometry = (r: BedSpec, rest: HeadRest, puff: number, pz = PILLOW.z,
     }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;

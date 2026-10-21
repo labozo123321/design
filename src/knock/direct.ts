@@ -35,6 +35,8 @@ export type Dressing = {
   /** the pile on mom's treadmill (0..1); the boxes for your move (2016) */
   laundry?: number;
   dormBoxes?: boolean;
+  /** 2013: her dorm boxes, fridge and lamp waiting by the door the night before she leaves */
+  moveOut?: boolean;
   /** your forearm cast (2006) */
   cast?: boolean;
   /** the T-rex on your shelf: how far it has toppled; the shelf's jolt */
@@ -348,7 +350,7 @@ const b5 = (t: number): Frame => {
     t,
     nora,
     you,
-    dress: { era: "2013", trex: 0, jolt: 0, stars: 40, starGlow: 0.45, beds: { nora: { kind: "twin", look: "bare", bare: true }, you: { kind: "twin", look: "you2011" } } },
+    dress: { era: "2013", moveOut: true, trex: 0, jolt: 0, stars: 40, starGlow: 0.45, beds: { nora: { kind: "twin", look: "bare", bare: true }, you: { kind: "twin", look: "you2011" } } },
     light: { hall: 0, street: 0.35, moon: 1, nightlight: 0, fill: 0.85 },
     cam: camBetween(t, 28, 36, PRESETS.medium, PRESETS.two),
     look: mixLook(WARM, NEUTRAL_GRADE, smooth(28, 33, t)),

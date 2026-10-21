@@ -99,7 +99,7 @@ const WallStub: React.FC<{ w?: number; h?: number; y0?: number }> = ({ w = 0.5, 
   <mesh geometry={geo(`pt-1-${w}-${h}`, () => new THREE.BoxGeometry(w, h, 0.12))} material={wallMat} position={[0, y0 + h / 2, -0.06]} />
 );
 /** The cavity around the outlet box: two studs, the drywall skins (one with the box's cut-out), the plate. */
-const CavityStandIn: React.FC = () => {
+const CavityStandIn: React.FC<{ cutaway?: boolean }> = ({ cutaway = false }) => {
   // local frame of the outlet: x along the wall, z out of Nora's wall face; studs at x = +0.14 and -0.26
   const sk = 0.016;
   const top = 0.52;
@@ -111,11 +111,15 @@ const CavityStandIn: React.FC = () => {
         <mesh key={x} geometry={geo(`pt-2`, () => new THREE.BoxGeometry(0.038, top - bottom, 0.089))} material={studMat} position={[x, (top + bottom) / 2, -sk - 0.0445]} />
       ))}
       <mesh geometry={geo(`pt-3`, () => new THREE.BoxGeometry(0.6, 0.038, 0.089))} material={studMat} position={[-0.06, -0.542 - 0.019, -sk - 0.0445]} />
-      {/* Nora's skin with the cut-out, built from four pieces */}
+      {/* Nora's skin with the cut-out, built from four pieces (left off in the cutaway) */}
+      {!cutaway && (
+        <>
       <mesh geometry={geo(`pt-4`, () => new THREE.BoxGeometry(0.6, top - hole.y1, sk))} material={wallMat} position={[-0.06, (top + hole.y1) / 2, -sk / 2]} />
       <mesh geometry={geo(`pt-5`, () => new THREE.BoxGeometry(0.6, hole.y0 - bottom, sk))} material={wallMat} position={[-0.06, (hole.y0 + bottom) / 2, -sk / 2]} />
       <mesh geometry={geo(`pt-6`, () => new THREE.BoxGeometry(hole.x0 + 0.36, hole.y1 - hole.y0, sk))} material={wallMat} position={[(hole.x0 - 0.36) / 2, 0, -sk / 2]} />
       <mesh geometry={geo(`pt-7`, () => new THREE.BoxGeometry(0.24 - hole.x1, hole.y1 - hole.y0, sk))} material={wallMat} position={[(hole.x1 + 0.24) / 2, 0, -sk / 2]} />
+        </>
+      )}
       {/* the far skin */}
       <mesh geometry={geo(`pt-8`, () => new THREE.BoxGeometry(0.6, top - bottom, sk))} material={wallMat} position={[-0.06, (top + bottom) / 2, -0.105 - sk / 2]} />
     </group>
@@ -289,6 +293,7 @@ const pagesFor = (t: number): { title: string; cols: number; rows: number; view:
     { id: "outletSide", label: "crooked gap (side)", r: 0.07, c: [0, 0.33, 0.01], noFloor: true, dir: [1, 0.15, 0.25], node: <group><WallStub w={0.3} h={0.5} y0={0.05} /><group position={[0, 0.3, 0]}><Outlet crooked nightlight={false} /></group></group> },
     { id: "gapTop", label: "crooked gap (from above)", r: 0.035, c: [0, 0.355, 0.0], noFloor: true, dir: [0.25, 1, 0.35], node: <group><WallStub w={0.3} h={0.33} y0={0.05} /><group position={[0, 0.3, 0]}><Outlet crooked nightlight /></group></group> },
     { id: "boxClose", label: "OutletBox close", r: 0.16, noFloor: true, look: { pos: [-0.02, 0.2, -0.06], target: [0.03, -0.25, -0.06], up: [1, 0, 0], fov: 60 }, node: <group><CavityStandIn /><OutletBox leak={0.6} /></group> },
+    { id: "boxCut", label: "OutletBox cutaway (cables, staples)", r: 0.36, c: [0.03, -0.27, -0.06], noFloor: true, dir: [-0.35, 0.25, 1], node: <group><CavityStandIn cutaway /><OutletBox /></group> },
     { id: "plugSq", label: "Earplug squeeze 0 / 1", r: 0.04, c: [0, 0, 0], noFloor: true, node: <group><group position={[-0.012, 0, 0]}><Earplug /></group><group position={[0.012, 0, 0]}><Earplug squeeze={1} /></group></group> },
     { id: "tin6", label: "EarplugTin count 6", r: 0.05, c: [0, 0.01, 0], node: <EarplugTin count={6} lid="none" /> },
     { id: "tinOff", label: "Nightlight off (night)", r: 0.09, c: [0.01, 0.31, 0.02], noFloor: true, ...night, node: <group><WallStub w={0.3} h={0.5} y0={0.05} /><group position={[0, 0.3, 0]}><Outlet crooked nightlight on={0} /></group></group> },

@@ -642,12 +642,14 @@ const Sticker: React.FC<GlowProps & { kind: "star" | "moon" }> = ({ kind, size, 
         emissiveMap: phosphorTex(),
         roughness: 0.6,
         transparent: true,
+        // the glow lands on #CFFFD9 when rendered straight (a post pipeline's output pass still grades it)
+        toneMapped: false,
       }),
     [],
   );
-  const hm = useMemo(() => new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(GLOW), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }), []);
+  const hm = useMemo(() => new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(GLOW), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }), []);
   const g = clamp01(glow);
-  m.emissiveIntensity = 1.1 * g;
+  m.emissiveIntensity = 0.95 * g;
   m.opacity = clamp01(opacity);
   m.depthWrite = opacity > 0.99;
   hm.opacity = 0.32 * g * halo * clamp01(opacity);

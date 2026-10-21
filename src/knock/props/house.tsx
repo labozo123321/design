@@ -44,7 +44,7 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // ------------------------------------------------------------------------------------------- materials
 /** Satin white trim and door paint (a fine roller stipple). */
 export const satinWhite = (color = "#F3F1EA") =>
-  mat(`b-satin-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.18, clearcoatRoughness: 0.4, bumpMap: stippleBump(), bumpScale: 0.25 }));
+  mat(`b-satin-${color}`, () => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.18, clearcoatRoughness: 0.4, bumpMap: stippleBump(), bumpScale: 0.03 }));
 export const brassB = () => mat("b-brass", () => new THREE.MeshStandardMaterial({ color: "#C9A057", metalness: 1, roughness: 0.27, envMap: envB(), envMapIntensity: 1.1 }));
 const nickelB = () => mat("b-nickel", () => new THREE.MeshStandardMaterial({ color: "#C8C7C1", metalness: 1, roughness: 0.34, envMap: envB(), envMapIntensity: 1 }));
 const oakRail = () =>
@@ -70,7 +70,7 @@ const glassRefl = (k: number) =>
       }),
   );
 const snowMat = () =>
-  mat("b-snowMat", () => new THREE.MeshPhysicalMaterial({ map: snowTex(), bumpMap: snowBump(), bumpScale: 0.6, color: "#FFFFFF", roughness: 0.78, sheen: 0.4, sheenColor: new THREE.Color("#DDE8FF") }));
+  mat("b-snowMat", () => new THREE.MeshPhysicalMaterial({ map: snowTex(), bumpMap: snowBump(), bumpScale: 0.08, color: "#FFFFFF", roughness: 0.78, sheen: 0.4, sheenColor: new THREE.Color("#DDE8FF") }));
 
 // ======================================================================================= mouldings
 /** Door and window casing: 65 mm, a bead on the inner edge, a flat slope, a step and a rounded back band
@@ -94,7 +94,6 @@ const CASING: Prof = [
   [0.0012, 0.0108],
   [0, 0.0088],
 ];
-const CASING_T = 0.0175;
 
 /** The casing around an opening on a wall face: legs from y0 to the head, mitred. hw is the inner edge's
  * half width, h its height. face -1 projects toward -z (the default), +1 toward +z. */
@@ -1096,6 +1095,11 @@ export const CeilingFixture: React.FC<CeilingFixtureProps> = ({ on = 1, cut = tr
         </>
       ) : null}
       {[-1, 1].map((s) => (
+        <mesh key={`bk${s}`} position={[s * 0.02, -0.027, 0]} material={nickelB()}>
+          <boxGeometry args={[0.006, 0.03, 0.012]} />
+        </mesh>
+      ))}
+      {[-1, 1].map((s) => (
         <group key={s} position={[s * 0.026, -0.042, 0]} rotation={[0, 0, -s * (Math.PI / 2 + 0.44)]}>
           <mesh position={[0, 0.012, 0]} material={whitePlastic()}>
             <cylinderGeometry args={[0.0135, 0.0135, 0.024, 14]} />
@@ -1607,7 +1611,7 @@ const bedBaseGeo = () =>
 const plushMat = (color: string) =>
   mat(`b-plushMat-${color}`, () => {
     const t = plushTex("bed", color);
-    return new THREE.MeshPhysicalMaterial({ map: t.map, bumpMap: t.bump, bumpScale: 1.2, roughness: 0.95, sheen: 0.8, sheenRoughness: 0.6, sheenColor: new THREE.Color(color).lerp(new THREE.Color("#FFFFFF"), 0.3) });
+    return new THREE.MeshPhysicalMaterial({ map: t.map, bumpMap: t.bump, bumpScale: 0.12, roughness: 0.95, sheen: 0.8, sheenRoughness: 0.6, sheenColor: new THREE.Color(color).lerp(new THREE.Color("#FFFFFF"), 0.3) });
   });
 const baseMat = (color: string) => mat(`b-bedBaseMat-${color}`, () => new THREE.MeshStandardMaterial({ map: canvasWeaveTex("bed", color), roughness: 0.9 }));
 

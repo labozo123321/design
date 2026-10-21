@@ -1145,11 +1145,11 @@ export const rainGlass = (amount: number, time: number) => {
           const X = x + dx;
           const Y = y + dy;
           if (X < -20 || X > W + 20 || Y < -20 || Y > H + 20) continue;
-          g.fillStyle = `rgba(20,26,34,${0.32 * k})`;
+          g.fillStyle = `rgba(30,38,48,${0.14 * k})`;
           g.beginPath();
           g.ellipse(X, Y, rx, ry, 0, 0, Math.PI * 2);
           g.fill();
-          g.fillStyle = `rgba(210,225,240,${0.42 * k})`;
+          g.fillStyle = `rgba(225,236,248,${0.5 * k})`;
           g.beginPath();
           g.ellipse(X + rx * 0.1, Y + ry * 0.25, rx * 0.62, ry * 0.5, 0, 0, Math.PI * 2);
           g.fill();

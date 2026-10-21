@@ -4,7 +4,7 @@ import { FPS } from "./script";
 import { cameraFor } from "./layout";
 import { House } from "./House";
 import { SharedWall } from "./SharedWall";
-import { Bed, airRect, plainSheet, type BedLook, type BedSpec } from "./Beds";
+import { Bed, airRect, type BedLook, type BedSpec } from "./Beds";
 import { KnockPost } from "./Post";
 import { Rig } from "./KnockVideo";
 import { ringsAt, setRipples } from "./ripple";
@@ -15,31 +15,52 @@ import { frameAt, type BedState, type Floor, type SibFrame, type Walker } from "
 import { glow } from "../home/materials";
 import { Dressing } from "./Dressing";
 import { FoldedNote } from "./props/wall";
+import { AIR_MATTRESS, AirMattress } from "./props/bedroom";
+import { guestDuvetMat, navyDuvetMat, patchworkQuiltMat, pillowcaseMat, plainSheetMat, racecarDuvetMat, sleepingBagMat, soccerDuvetMat, starQuiltMat, stripedSheetMat } from "./props/textures";
 import { WALL } from "./layout";
 
 /** Everything in the picture for one frame, as the director has it. */
 
 const ERA_PAINT = { nora: "#C9B6DC", you: "#9FB9D6", noraCarpet: "#CFC3B2", youCarpet: "#C8C0B2" };
+// (the covers' UVs run in metres; the sheet spans the mattress; the pillowcase its own 0.62 x 0.4 top)
+const M1: { uvSize: [number, number] } = { uvSize: [1, 1] };
 const BEDS: Record<string, BedLook> = {
-  nora2004: { frame: "#F2EFEA", cover: plainSheet("#8E7BB8"), sheet: plainSheet() },
-  nora2007: { frame: "#F2EFEA", cover: plainSheet("#A58CC4"), sheet: plainSheet() },
-  nora2011: { frame: "#F2EFEA", cover: plainSheet("#C9A9B8"), sheet: plainSheet() },
-  you2004: { frame: "#C99B66", cover: plainSheet("#C0392B"), sheet: plainSheet() },
-  you2007: { frame: "#C99B66", cover: plainSheet("#2E7D4F"), sheet: plainSheet() },
-  you2009: { frame: "#C99B66", cover: plainSheet("#3F6E9A"), sheet: plainSheet() },
-  you2011: { frame: "#C99B66", cover: plainSheet("#2A3A5E"), sheet: plainSheet() },
-  bare: { frame: "#F2EFEA", cover: plainSheet("#3E5E4A"), sheet: plainSheet() },
-  air: { frame: "#5E6368", cover: plainSheet("#B9A27E"), sheet: plainSheet("#EEE9DF") },
-  guest: { frame: "#C99B66", cover: plainSheet("#D8CDB8"), sheet: plainSheet("#F2EDE4") },
+  nora2004: { frame: "#F2EFEA", cover: starQuiltMat(M1), sheet: plainSheetMat("white"), pillowcase: pillowcaseMat("lilac") },
+  nora2007: { frame: "#F2EFEA", cover: patchworkQuiltMat(M1), sheet: plainSheetMat("white"), pillowcase: pillowcaseMat("lilac") },
+  nora2011: { frame: "#F2EFEA", cover: patchworkQuiltMat(M1), sheet: plainSheetMat("cream"), pillowcase: pillowcaseMat("cream") },
+  you2004: { frame: "#C99B66", cover: racecarDuvetMat(M1), sheet: plainSheetMat("white"), pillowcase: pillowcaseMat("racecar") },
+  you2007: { frame: "#C99B66", cover: soccerDuvetMat(M1), sheet: plainSheetMat("white"), pillowcase: pillowcaseMat("soccer") },
+  you2009: { frame: "#C99B66", cover: soccerDuvetMat(M1), sheet: stripedSheetMat(), pillowcase: pillowcaseMat("striped") },
+  you2011: { frame: "#C99B66", cover: navyDuvetMat(M1), sheet: stripedSheetMat(), pillowcase: pillowcaseMat("navy") },
+  bare: { frame: "#F2EFEA", cover: sleepingBagMat("#2F6F86", M1), sheet: plainSheetMat("white"), pillowcase: pillowcaseMat("cream") },
+  air: { frame: "#5E6368", cover: patchworkQuiltMat(M1), sheet: plainSheetMat("cream"), pillowcase: pillowcaseMat("cream") },
+  guest: { frame: "#C99B66", cover: guestDuvetMat(M1), sheet: plainSheetMat("cream"), pillowcase: pillowcaseMat("beige") },
 };
 const AIR_MID: BedSpec = { x0: -1.78, x1: -0.79, z0: -3.25, z1: -1.35, top: 0.45 };
 
 /** One sibling in their bed: the body, and the bed with covers shaped over it and the pillow dented. */
-const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[] }> = ({ f, side, bed, t, hide }) => {
+const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[] }> = (props) => {
+  const { f, bed } = props;
+  if (bed.kind !== "air") return <InBed1 {...props} />;
+  // the air mattress (the prop: vinyl, flocked top, fitted sheet; its folded quilt while it's still made
+  // up), with the bedding drawn over it as on the floor
+  const r = bed.spec === "air-mid" ? AIR_MID : airRect();
+  const spec = { ...r, top: AIR_MATTRESS.top };
+  return (
+    <>
+      <group position={[(r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2]}>
+        <AirMattress sheet quilt={!f} sheetTone="cream" />
+      </group>
+      <InBed1 {...props} bed={{ ...bed, kind: "none" }} airSpec={spec} />
+    </>
+  );
+};
+const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[]; airSpec?: BedSpec }> = ({ f, side, bed, t, hide, airSpec }) => {
   const look = BEDS[bed.look] ?? BEDS.nora2004;
-  const spec = bed.spec === "air-mid" ? AIR_MID : bed.kind === "air" ? airRect() : undefined;
-  const pillowAt = bed.kind === "air" ? { x: spec ? (spec.x0 + spec.x1) / 2 + 0.12 * (bed.spec === "air-mid" ? 0 : 1) : -0.5, z: bed.spec === "air-mid" ? spec!.z0 + 0.3 : -3.3 } : undefined;
+  const spec = airSpec ?? (bed.spec === "air-mid" ? AIR_MID : bed.kind === "air" ? airRect() : undefined);
+  const pillowAt = airSpec ? { x: (airSpec.x0 + airSpec.x1) / 2 + 0.12 * (bed.spec === "air-mid" ? 0 : 1), z: bed.spec === "air-mid" ? airSpec.z0 + 0.3 : -3.3 } : undefined;
   if (!f) {
+    if (airSpec) return <Bed side={side} look={look} kind="none" spec={airSpec} pillowAt={pillowAt} covers={null} />;
     if (bed.kind === "none") return null;
     // a made bed, or (someone just got out) the covers thrown back to the foot
     const zTop = (spec?.z0 ?? -3.6) + 0.55 + (bed.thrown ?? 0) * 0.85;
@@ -328,7 +349,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       {(F.floor ?? []).map((f, i) => (
         <OnFloor key={i} f={f} t={t} />
       ))}
-      <Dressing d={F.dress} t={t} />
+      <Dressing d={F.dress} t={t} light={F.light} camDist={macro ? 0 : F.cam.dist} />
       {F.note ? <Note n={F.note} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
       {(F.items ?? []).map((it, i) => (it.kind === "pillowOver" ? <PillowOver key={i} at={it.pos} q={it.q} /> : null))}
