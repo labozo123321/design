@@ -1,7 +1,7 @@
 import React from "react";
 import { DOOR, HALL, PORCH, ROOM, WINDOWS } from "./layout";
 import { Banister, CeilingFixture, Door, PuppyBed, Window } from "./props/house";
-import { Porch } from "./props/porch";
+import { ChristmasGutterLights, Porch } from "./props/porch";
 
 /**
  * The house's fittings, by era and moment: the two bedroom doors (hung in the back wall, standing open into
@@ -63,6 +63,7 @@ export const Fixtures: React.FC<{ f: FixtureState }> = ({ f }) => {
               snowCorner={f.outside.windowSnow ?? 0}
               curtains={{ color: s < 0 ? c.nora : c.you, open: 1, length: "sill" }}
               seed={i + (s > 0 ? 2 : 0)}
+              rodExtend={0.03}
             />
           </group>
         )),
@@ -73,7 +74,7 @@ export const Fixtures: React.FC<{ f: FixtureState }> = ({ f }) => {
         <CeilingFixture on={f.hall} />
       </group>
       <group position={[0, 0, HALL.z1 + 0.04]}>
-        <Banister length={2 * O} garland={f.era === "2025" ? { on: f.strings } : null} />
+        <Banister length={2 * O - 0.03} garland={f.era === "2025" ? { on: f.strings } : null} />
       </group>
       {/* Moose's puppy bed, just inside Nora's door */}
       {f.puppyBed ? (
@@ -83,6 +84,13 @@ export const Fixtures: React.FC<{ f: FixtureState }> = ({ f }) => {
       ) : null}
       {/* the porch roof outside the front windows */}
       <group position={[0, PORCH.yWall, PORCH.z0]}>
+        {/* the Christmas lights strung across the roof as well (the gutter's own string is below the frame) */}
+        {f.outside.lights !== null && f.outside.lights !== undefined ? (
+          // (on the roof's slope, lifted above the snow cover along the roof's normal)
+          <group position={[0, -0.6 * (0.62 / 1.7) + 0.12 * Math.cos(Math.atan2(0.6, 1.7)), 0.62 + 0.12 * Math.sin(Math.atan2(0.6, 1.7))]} rotation={[Math.atan2(0.6, 1.7), 0, 0]}>
+            <ChristmasGutterLights on={f.outside.lights} seed={3} />
+          </group>
+        ) : null}
         <Porch
           leaves={f.outside.leaves ?? 0}
           snow={f.outside.snow ?? 0}

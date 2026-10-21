@@ -43,6 +43,16 @@ export const tintAt = (t: number): RGB => {
   return c;
 };
 
+/** The day-lit stretches of the picture (the two childhood time-lapses and the drift, whose sun strobes the
+ *  rooms): the HUD's dark backing (top scrim, centre pad) deepens a step so the thin type holds. Hard cuts
+ *  bound each one, so the step lands on a cut. */
+export const DAY_SPANS: [number, number][] = [
+  [8.0, 10.4],
+  [13.9, 15.0],
+  [36.0, 47.5],
+];
+export const dayLit = (t: number) => (DAY_SPANS.some(([a, b]) => t >= a && t < b) ? 1 : 0);
+
 // ---------------------------------------------------------------- small helpers
 
 /** deterministic 0..1 hash of an integer */
@@ -208,6 +218,13 @@ export type Rolled = { text: string; prev: string; k: number };
 export const ROLL_FRAMES = 9;
 /** the picture's hard cuts between eras */
 const HARD_CUTS = [15.0, 22.5, 28.0, 49.0];
+/** the time i frames before t, on the frame grid (t - i / FPS can land a hair short of a segment boundary
+ *  that sits exactly on a frame, which would repeat one roll step and skip the next) */
+const framesBack = (t: number, i: number) => {
+  const f = t * FPS;
+  const r = Math.round(f);
+  return ((Math.abs(f - r) < 1e-4 ? r : f) - i) / FPS;
+};
 const rolled = (t: number, pick: (b: Base) => string): Rolled => {
   const b = baseAt(t);
   const cur = pick(b);
@@ -215,7 +232,7 @@ const rolled = (t: number, pick: (b: Base) => string): Rolled => {
   // on a hard cut in the picture the whole HUD changes with it, at once
   if (HARD_CUTS.some((c) => c > t - ROLL_FRAMES / FPS && c <= t + 1e-6)) return { text: cur, prev: cur, k: 1 };
   for (let i = 1; i <= ROLL_FRAMES; i++) {
-    const p = pick(baseAt(t - i / FPS));
+    const p = pick(baseAt(framesBack(t, i)));
     if (p !== cur) return { text: cur, prev: p, k: i / ROLL_FRAMES };
   }
   return { text: cur, prev: cur, k: 1 };
@@ -399,11 +416,11 @@ export const hudState = (t: number): HudState => {
   // the date line fades over 8 frames either side of a change (only milestone nights have one)
   const date = (() => {
     if (b.date) {
-      for (let i = 1; i <= 8; i++) if (!baseAt(t - i / FPS).date) return { text: b.date, alpha: i / 8 };
+      for (let i = 1; i <= 8; i++) if (!baseAt(framesBack(t, i)).date) return { text: b.date, alpha: i / 8 };
       return { text: b.date, alpha: 1 };
     }
     for (let i = 1; i <= 8; i++) {
-      const d = baseAt(t - i / FPS).date;
+      const d = baseAt(framesBack(t, i)).date;
       if (d) return { text: d, alpha: 1 - i / 8 };
     }
     return { text: "", alpha: 0 };

@@ -6,7 +6,8 @@ import type { RGB } from "./hud";
 
 /**
  * The end card (67.5-71.5) over the held, dimmed final wide. The HUD's centre block has already shrunk to the
- * top (Hud.tsx). 67.6 the title at y = 560; 68.1 the 1 px hairline (the wall) draws down x = 540 from y = 760
+ * top (HudBand.tsx). 67.6 the title, its two lines on y = 628..752 (the spec's y = 560 would sit on the two
+ * faces looking up from her pillows in the final wide); 68.1 the 1 px hairline (the wall) draws down x = 540 from y = 760
  * to 1180; 68.3 the kids' half to its left (right-aligned, 30 px caps, its credit at 16 px); 68.8 the adults'
  * half to its right (left-aligned); 69.4 the question at y = 1380. Each fades in over 0.4 s. The two halves are
  * two different studies, each with its own credit, and each line pairs with the other across the wall

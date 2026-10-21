@@ -1,7 +1,7 @@
 import React from "react";
 import { F } from "./fonts";
 import { Roll } from "./Roll";
-import { hexRGB, rgba, NORA_BLUE, YOUR_AMBER, TINTS } from "./hud";
+import { dayLit, hexRGB, rgba, NORA_BLUE, YOUR_AMBER, TINTS } from "./hud";
 import type { HudState, DotState, RGB } from "./hud";
 
 /**
@@ -287,6 +287,7 @@ export const Hud: React.FC<{ h: HudState }> = ({ h }) => {
   const big: React.CSSProperties = { fontFamily: F.ui, fontWeight: 200, fontSize: 84, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.005em" };
   const small: React.CSSProperties = { fontFamily: F.ui, fontWeight: 500, fontSize: 22, letterSpacing: "0.18em", fontVariantNumeric: "tabular-nums" };
   const e = h.endK;
+  const day = dayLit(h.t);
   return (
     <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, opacity: h.alpha, color: ink, textShadow: SHADOW }}>
       {h.sides > 0.001 ? (
@@ -332,7 +333,7 @@ export const Hud: React.FC<{ h: HudState }> = ({ h }) => {
             top: 276,
             width: 720,
             height: 236,
-            background: "radial-gradient(closest-side, rgba(0,0,0,0.42), rgba(0,0,0,0.24) 52%, rgba(0,0,0,0.07) 82%, rgba(0,0,0,0))",
+            background: `radial-gradient(closest-side, rgba(0,0,0,${(0.42 + 0.16 * day).toFixed(2)}), rgba(0,0,0,${(0.24 + 0.12 * day).toFixed(2)}) 52%, rgba(0,0,0,${(0.07 + 0.04 * day).toFixed(2)}) 82%, rgba(0,0,0,0))`,
           }}
         />
         <div

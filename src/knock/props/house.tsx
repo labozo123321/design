@@ -725,6 +725,9 @@ export type WindowProps = {
   snowCorner?: number;
   /** null for none (the default), or fabric panels on a rod */
   curtains?: CurtainSpec | null;
+  /** how far the curtain rod runs past the casing each side (m); keep its finial within half the spacing to
+   * the next window */
+  rodExtend?: number;
   /** 0..1 how much the glass reflects */
   reflect?: number;
   /** varies the rain pattern per window */
@@ -742,7 +745,7 @@ export type WindowProps = {
  * with a drip cap up to 2.07 m. Rain is an overlay outside each light; snow fillets sit on the outer ledges.
  * Curtains hang from a rod 8.5 cm proud of the wall at 2.075 m.
  */
-export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.sill, head = WINDOWS.head, wallT = ROOM.wallT, rain = 0, time = 0, snowCorner = 0, curtains = null, reflect = 0.5, seed = 1, color }) => {
+export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.sill, head = WINDOWS.head, wallT = ROOM.wallT, rain = 0, time = 0, snowCorner = 0, curtains = null, reflect = 0.5, seed = 1, color, rodExtend = 0.1 }) => {
   const d = useMemo(() => winDims(w, sill, head, wallT), [w, sill, head, wallT]);
   const paint = satinWhite(color);
   const T = d.T;
@@ -773,7 +776,7 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
   const cOpen = clamp01(cur?.open ?? 1);
   const rodY = 2.075;
   const rodZ = -T - 0.085;
-  const rodX = d.hw + CASING_W + 0.1;
+  const rodX = d.hw + CASING_W + rodExtend;
   return (
     <group>
       {/* jambs and head */}
@@ -940,7 +943,7 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
             receiveShadow
           />
           <mesh
-            geometry={snowStripGeo(`cap-${d.hw}-${seed}`, -(d.inX + exW + 0.012), d.inX + exW + 0.012, d.T + 0.002, d.T + 0.0395, (z) => headIn + 0.004 + exW + 0.036 * (0.02 + (z - d.T) * 0), 0.005 + 0.018 * sn, seed + 5)}
+            geometry={snowStripGeo(`cap-${d.hw}-${seed}`, -(d.inX + exW + 0.012), d.inX + exW + 0.012, d.T + 0.002, d.T + 0.033, (z) => headIn + 0.004 + exW + 0.012 + 0.004 * clamp01((z - d.T) / 0.034) + 0.0004, 0.005 + 0.018 * sn, seed + 5)}
             material={snowMat()}
             castShadow
             receiveShadow
@@ -1086,19 +1089,8 @@ export const CeilingFixture: React.FC<CeilingFixtureProps> = ({ on = 1, cut = tr
   return (
     <group>
       <mesh geometry={panGeo(cut)} material={nickelB()} castShadow />
-      {cut ? (
-        // the crossbar and the sockets, seen from above inside the cut pan
-        <>
-          <mesh position={[0, -0.012, 0]} material={nickelB()}>
-            <boxGeometry args={[0.27, 0.004, 0.022]} />
-          </mesh>
-          <mesh position={[0, -0.08, 0]} material={nickelB()}>
-            <cylinderGeometry args={[0.0032, 0.0032, 0.136, 8]} />
-          </mesh>
-        </>
-      ) : null}
       {[-1, 1].map((s) => (
-        <mesh key={`bk${s}`} position={[s * 0.02, -0.027, 0]} material={nickelB()}>
+        <mesh key={`bk${s}`} position={[s * 0.02, -0.027, 0]} material={cut ? whitePlastic() : nickelB()}>
           <boxGeometry args={[0.006, 0.03, 0.012]} />
         </mesh>
       ))}

@@ -393,7 +393,6 @@ const LAUNDRY: Item[] = [
   { at: 0.76, kind: "shirt", bar: "L", c: -0.165, shirt: "button", m: () => fab("shirtP", () => withRepeat(cottonTex("P", "#3F5F45", "plaid", "#C9B15A"), 3, 3), 0.9), hanger: "#F4F4F2", tilt: -0.04 },
   { at: 0.78, kind: "fold", x: 0.0, y: TREADMILL.beltTop, z: 0.55, size: [0.36, 0.045, 0.28], yaw: 0.12, m: () => fab("denim", () => withRepeat(denimTex(), 3, 3), 0.9, 0.2) },
   { at: 0.82, kind: "shirt", bar: "X", c: -0.05, shirt: "button", m: () => fab("shirtY", () => withRepeat(cottonTex("Y", "#E8D9A8", "stripe", "#B7924A"), 4, 4), 0.85), hanger: "#2F6FB8", tilt: -0.03 },
-  { at: 0.84, kind: "sock", x: -0.13, z: 0.491, y: TREADMILL.beltTop + 0.0454, yaw: 1.151, m: () => fab("sockG", () => withRepeat(knitTex("sockG", "#6C8F6A"), 6, 6)) },
   { at: 0.88, kind: "shirt", bar: "L", c: -0.205, shirt: "tee", m: () => fab("teeL", () => withRepeat(cottonTex("L", "#C9B6DC"), 4, 4), 0.95), hanger: "#F4F4F2", tilt: 0.02 },
   { at: 0.94, kind: "fold", x: 0.0, y: 0.2706, z: -0.69, size: [0.34, 0.03, 0.2], yaw: -0.05, m: () => fab("towelC", () => terryTex("C", "#8FB59A", "#F2F0E8")) },
 ];

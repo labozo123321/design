@@ -896,7 +896,7 @@ export const shingleTex = (key: string, W: number, S: number, courses: Course[],
     const t = tabOf(x, y);
     const hk = hash3(t.k, t.tab, 11);
     const strip = hash3(t.k, t.strip, 12);
-    let col = shade(b, 0.93 + 0.12 * hk + (strip < 0.1 ? -0.07 : 0));
+    let col = shade(b, 0.9 + 0.2 * hk + (strip < 0.1 ? -0.09 : 0));
     // granules: a speckle of darker and lighter grains, a few rust/olive ones (weathered-wood blend)
     const g = hash3(x, y, 13);
     if (g < 0.12) col = shade(col, 0.72);
@@ -905,10 +905,9 @@ export const shingleTex = (key: string, W: number, S: number, courses: Course[],
     else if (g > 0.865) col = mixC(col, [96, 100, 72], 0.5);
     // the keyway slots: the course below shows through, in shadow
     const slot = Math.min(t.inTab, 1 - t.inTab) * 0.3048;
-    if (slot < 0.0045 && t.up < 0.93) col = shade(col, 0.3);
-    // the butt edge: a thin shadow line and a lit lip
-    if (t.up < 0.035) col = shade(col, 0.55 + t.up * 8);
-    if (t.up > 0.965) col = shade(col, 1.12);
+    if (slot < 0.0025 && t.up < 0.93) col = shade(col, 0.55 + 0.4 * t.up);
+    // the butt edge: the tab above casts a soft shadow onto this one
+    if (t.up < 0.07) col = shade(col, 0.62 + 0.38 * (t.up / 0.07));
     // faint streaks down the slope and a little grime toward the eave
     const st = vnoise((x / w) * 60, 0.5, 60, 21);
     col = shade(col, 1 - 0.1 * sstep(0.62, 0.9, st) * (y / h));
@@ -1178,7 +1177,7 @@ export const rainGlass = (amount: number, time: number) => {
       const x0 = hash3(i, cyc, 52) * W;
       const speed = 150 + 160 * hash3(i, cyc, 53);
       // stick-slip progress
-      const prog = age * speed * (0.75 + 0.25 * Math.sin(age * 9 + i));
+      const prog = speed * (0.8 * age + 0.02 * (1 - Math.cos(age * 9 + i)));
       const y = prog - 20;
       if (y > H + 30) continue;
       const wob = (yy: number) => x0 + 5 * Math.sin(yy * 0.045 + i) + 3 * Math.sin(yy * 0.13 + i * 2);
@@ -1190,15 +1189,15 @@ export const rainGlass = (amount: number, time: number) => {
       g.beginPath();
       for (let yy = Math.max(-20, y - 160); yy < y; yy += 4) {
         const xx = wob(yy);
-        if (yy === Math.max(-20, y - 160)) g.moveTo(xx, H - yy);
-        else g.lineTo(xx, H - yy);
+        if (yy === Math.max(-20, y - 160)) g.moveTo(xx, yy);
+        else g.lineTo(xx, yy);
       }
       g.stroke();
       for (let yy = y - 150; yy < y - 8; yy += 14 + 10 * hash3(i, Math.floor(yy), 55)) {
         if (yy < -10) continue;
-        drop(wob(yy), H - yy, rr * 0.35, rr * 0.4, 0.7);
+        drop(wob(yy), yy, rr * 0.35, rr * 0.4, 0.7);
       }
-      drop(wob(y), H - y, rr, rr * 1.35, 1);
+      drop(wob(y), y, rr, rr * 1.35, 1);
     }
     e.tex.needsUpdate = true;
   }

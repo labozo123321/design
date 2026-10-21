@@ -879,7 +879,7 @@ export const RainSplash: React.FC<RainSplashProps> = ({ width = ROOF_DEFAULT.wid
     const rr = 0.004 + 0.02 * Math.sqrt(k);
     m.compose(base, q, V(rr * 2, rr * 2, 1));
     meshes.ring.setMatrixAt(ri, m);
-    c.setScalar(0.85 * (1 - k) * (1 - k));
+    c.setScalar(0.22 * (1 - k) * (1 - k));
     meshes.ring.setColorAt(ri, c);
     ri++;
     for (let d = 0; d < DROPS; d++) {
