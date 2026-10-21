@@ -336,6 +336,7 @@ export const Door: React.FC<DoorProps> = ({ w = DOOR.x1 - DOOR.x0, h = DOOR.h, w
   const jambIn = w / 2 - JAMB;
   return (
     <group scale={[1, 1, swing > 0 ? -1 : 1]}>
+      <group name="v:doorFrame">
       {/* the jamb */}
       {[-1, 1].map((s) => (
         <mesh key={`j${s}`} position={[s * (w / 2 - JAMB / 2), h / 2, 0]} material={paint} castShadow receiveShadow>
@@ -368,9 +369,10 @@ export const Door: React.FC<DoorProps> = ({ w = DOOR.x1 - DOOR.x0, h = DOOR.h, w
           <mesh geometry={casingGeo(jambIn + 0.006, h - JAMB + 0.006, 0, 1)} position={[0, 0, T]} material={paint} castShadow receiveShadow />
         </>
       ) : null}
+      </group>
       {/* hinge knuckles and the jamb leaves */}
       {hingeYs.map((y, i) => (
-        <group key={`h${i}`}>
+        <group key={`h${i}`} name="v:hinge">
           <mesh geometry={hingeKnuckle()} position={[hx, y, hz]} material={brass} castShadow />
           <mesh position={[hinge * (jambIn - 0.0006), y, hz + 0.0055 + 0.0115]} material={brass}>
             <boxGeometry args={[0.0012, 0.089, 0.023]} />
@@ -378,7 +380,7 @@ export const Door: React.FC<DoorProps> = ({ w = DOOR.x1 - DOOR.x0, h = DOOR.h, w
         </group>
       ))}
       {/* the slab, on its hinge axis */}
-      <group position={[hx, 0, hz]} rotation={[0, phi, 0]}>
+      <group position={[hx, 0, hz]} rotation={[0, phi, 0]} name="v:slab">
         <group position={[-hx, 0, -hz]}>
           <mesh geometry={slabGeo(sw, sh)} position={[0, FLOOR_GAP + sh / 2, zc]} material={paint} castShadow receiveShadow />
           {/* knobs and roses, both faces */}
@@ -401,7 +403,7 @@ export const Door: React.FC<DoorProps> = ({ w = DOOR.x1 - DOOR.x0, h = DOOR.h, w
           </mesh>
           {/* the slab's hinge leaves */}
           {hingeYs.map((y, i) => (
-            <mesh key={`l${i}`} position={[hinge * (sw / 2 + 0.0006), y, hz + 0.0055 + 0.0105]} material={brass}>
+            <mesh key={`l${i}`} name="v:hinge" position={[hinge * (sw / 2 + 0.0006), y, hz + 0.0055 + 0.0105]} material={brass}>
               <boxGeometry args={[0.0012, 0.089, 0.021]} />
             </mesh>
           ))}
@@ -832,10 +834,10 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
         const ph = p.y1 - p.y0;
         return (
           <group key={`p${i}`}>
-            <mesh position={[(p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, p.zg]} material={tint} renderOrder={2}>
+            <mesh name="v:glass" position={[(p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, p.zg]} material={tint} renderOrder={2}>
               <boxGeometry args={[pw + 0.006, ph + 0.006, 0.003]} />
             </mesh>
-            <mesh position={[(p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, p.zg]} material={refl} renderOrder={3}>
+            <mesh name="v:glass" position={[(p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, p.zg]} material={refl} renderOrder={3}>
               <boxGeometry args={[pw + 0.006, ph + 0.006, 0.003]} />
             </mesh>
             {rn > 0.01 ? (
@@ -848,8 +850,9 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
             ) : null}
             {sn > 0.01 ? (
               <mesh
-                geometry={snowFilletGeo(pw, p.ledge[1] - p.ledge[0] + 0.002, 0.004 + 0.012 * sn, 0.01 + 0.05 * sn, seed * 7 + i)}
-                position={[p.x0, p.y0, p.zg + 0.0016]}
+                name="v:snowFillet"
+                geometry={snowFilletGeo(pw - 0.003, p.ledge[1] - p.ledge[0] + 0.002, 0.004 + 0.012 * sn, 0.01 + 0.05 * sn, seed * 7 + i)}
+                position={[p.x0 + 0.0015, p.y0 + 0.0003, p.zg + 0.0016]}
                 material={snowMat()}
                 castShadow
                 receiveShadow
@@ -946,7 +949,7 @@ export const Window: React.FC<WindowProps> = ({ w = WINDOWS.w, sill = WINDOWS.si
       ) : null}
       {/* curtains */}
       {cur ? (
-        <group>
+        <group name="v:curtains">
           {[-1, 1].map((s) => (
             <group key={`br${s}`} position={[s * (rodX - 0.05), rodY, -T]}>
               <mesh position={[0, 0, -0.003]} material={nickelB()}>
@@ -1328,8 +1331,8 @@ export const Banister: React.FC<BanisterProps> = ({ length, newels = "both", hei
         ),
       )}
       {garland ? (
-        <group position={[(railA + railB) / 2, height, 0]}>
-          <PineGarland length={railB - railA - 0.02} on={garland.on} seed={garland.seed} />
+        <group position={[(railA + (nA ? 0.08 : 0.02) + railB - (nB ? 0.08 : 0.02)) / 2, height, 0]}>
+          <PineGarland length={railB - railA - (nA ? 0.08 : 0.02) - (nB ? 0.08 : 0.02)} on={garland.on} seed={garland.seed} />
         </group>
       ) : null}
     </group>
@@ -1380,6 +1383,7 @@ const garlandBuild = (L: number, seed: number, railW: number, railH: number) =>
     }
     // needles: rings of blades swept forward, kept out of the rail, from under it, the bulbs and the cones
     const blocked = (p: THREE.Vector3) => {
+      if (Math.abs(p.x) > L / 2 + 0.012) return true;
       const ry = p.y - cy;
       if (Math.abs(ry) < railH / 2 + 0.004 && Math.abs(p.z) < railW / 2 + 0.004) return true;
       if (ry < -railH / 2 + 0.006 && Math.abs(p.z) < 0.03) return true;
@@ -1499,7 +1503,7 @@ export const PineGarland: React.FC<PineGarlandProps> = ({ length, on = 1, seed =
   const q = useMemo(() => b.bulbDirs.map((d) => new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d)), [b]);
   const cq = useMemo(() => b.cones.map((c) => new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), c.d)), [b]);
   return (
-    <group>
+    <group name="v:garland">
       <mesh geometry={b.core} material={coreMat()} castShadow receiveShadow />
       <mesh geometry={b.needles} material={needleMat()} castShadow receiveShadow />
       <mesh geometry={b.wire} material={wireMat()} castShadow />

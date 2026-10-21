@@ -286,7 +286,7 @@ const shirtGeo = (kind: ShirtKind, r: number) =>
     const rh = r + 0.0045;
     const neckY = -rh - 0.02;
     const sl = (x: number) => neckY - 0.005 - 0.3 * Math.min(Math.abs(x), 0.22);
-    const len = kind === "tee" ? 0.68 : 0.74;
+    const len = kind === "tee" ? 0.68 : 0.71;
     const yHem = neckY - len;
     const W = (v: number) => {
       if (kind === "tee") {
@@ -380,7 +380,7 @@ const LAUNDRY: Item[] = [
   // an oatmeal cable-knit over the crossbar
   { at: 0.33, kind: "drape", key: "sweaterB", bar: "X", c: -0.19, o: { w: 0.14, r: R_BAR, flapA: 0.26, flapB: 0.32, thick: 0.011, fold: 0.008, flareA: 0.03, flareB: 0.04, widen: 0.12, seed: 11 }, m: () => fab("sweaterB", () => withRepeat(knitTex("B", "#CDBB9A", "cable"), 3, 3), 0.98, 0.6) },
   // shirts on hangers along the crossbar
-  { at: 0.42, kind: "shirt", bar: "X", c: 0.19, shirt: "button", m: () => fab("shirtW", () => withRepeat(cottonTex("W", "#EEF0F2", "oxford"), 4, 4), 0.85), hanger: "#F4F4F2", tilt: 0.04 },
+  { at: 0.42, kind: "shirt", bar: "X", c: 0.19, shirt: "button", m: () => fab("shirtW", () => withRepeat(cottonTex("W", "#EEF0F2", "oxford"), 4, 4), 0.85), hanger: "#F4F4F2", tilt: -0.04 },
   { at: 0.48, kind: "shirt", bar: "X", c: 0.13, shirt: "button", m: () => fab("shirtS", () => withRepeat(cottonTex("S", "#BFD3EA", "stripe", "#3E6FA8"), 4, 4), 0.85), hanger: "#2F6FB8", tilt: -0.03 },
   { at: 0.54, kind: "shirt", bar: "X", c: 0.07, shirt: "tee", m: () => fab("teeG", () => withRepeat(cottonTex("G", "#8F969C"), 4, 4), 0.95), hanger: "#F4F4F2", tilt: 0.02 },
   // shirts on the room-side grip
@@ -392,7 +392,7 @@ const LAUNDRY: Item[] = [
   { at: 0.73, kind: "sock", x: 0.077, z: 0.117, y: TREADMILL.beltTop, yaw: -1.674, m: () => fab("sockK", () => withRepeat(knitTex("sockK", "#2A2B2E"), 6, 6)) },
   { at: 0.76, kind: "shirt", bar: "L", c: -0.165, shirt: "button", m: () => fab("shirtP", () => withRepeat(cottonTex("P", "#3F5F45", "plaid", "#C9B15A"), 3, 3), 0.9), hanger: "#F4F4F2", tilt: -0.04 },
   { at: 0.78, kind: "fold", x: 0.0, y: TREADMILL.beltTop, z: 0.55, size: [0.36, 0.045, 0.28], yaw: 0.12, m: () => fab("denim", () => withRepeat(denimTex(), 3, 3), 0.9, 0.2) },
-  { at: 0.82, kind: "shirt", bar: "X", c: -0.05, shirt: "button", m: () => fab("shirtY", () => withRepeat(cottonTex("Y", "#E8D9A8", "stripe", "#B7924A"), 4, 4), 0.85), hanger: "#2F6FB8", tilt: 0.03 },
+  { at: 0.82, kind: "shirt", bar: "X", c: -0.05, shirt: "button", m: () => fab("shirtY", () => withRepeat(cottonTex("Y", "#E8D9A8", "stripe", "#B7924A"), 4, 4), 0.85), hanger: "#2F6FB8", tilt: -0.03 },
   { at: 0.84, kind: "sock", x: -0.13, z: 0.491, y: TREADMILL.beltTop + 0.0454, yaw: 1.151, m: () => fab("sockG", () => withRepeat(knitTex("sockG", "#6C8F6A"), 6, 6)) },
   { at: 0.88, kind: "shirt", bar: "L", c: -0.205, shirt: "tee", m: () => fab("teeL", () => withRepeat(cottonTex("L", "#C9B6DC"), 4, 4), 0.95), hanger: "#F4F4F2", tilt: 0.02 },
   { at: 0.94, kind: "fold", x: 0.0, y: 0.2706, z: -0.69, size: [0.34, 0.03, 0.2], yaw: -0.05, m: () => fab("towelC", () => terryTex("C", "#8FB59A", "#F2F0E8")) },
@@ -408,9 +408,9 @@ const Laundry: React.FC<{ k: number }> = ({ k }) => {
       {LAUNDRY.filter((it) => k >= it.at).map((it, i) => {
         if (it.kind === "drape") {
           const g = drapeGeo(it.key, it.o);
-          if (it.bar === "X") return <mesh key={i} geometry={g} position={[it.c, R.y, TREADMILL.crossbar.z]} material={it.m()} castShadow receiveShadow />;
+          if (it.bar === "X") return <mesh key={i} name={`laundry:${it.key}`} geometry={g} position={[it.c, R.y, TREADMILL.crossbar.z]} material={it.m()} castShadow receiveShadow />;
           const x = it.bar === "L" ? -R.x : R.x;
-          return <mesh key={i} geometry={g} position={[x, R.y, it.c]} rotation={[0, -Math.PI / 2, 0]} material={it.m()} castShadow receiveShadow />;
+          return <mesh key={i} name={`laundry:${it.key}`} geometry={g} position={[x, R.y, it.c]} rotation={[0, -Math.PI / 2, 0]} material={it.m()} castShadow receiveShadow />;
         }
         if (it.kind === "shirt") {
           const r = it.bar === "L" ? R_FOAM : R_BAR;
@@ -420,14 +420,14 @@ const Laundry: React.FC<{ k: number }> = ({ k }) => {
           const rot: [number, number, number] = it.bar === "X" ? [it.tilt, Math.PI / 2, 0] : [0, 0, it.tilt];
           return (
             <group key={i} position={pos} rotation={rot}>
-              <mesh geometry={s.shirt} material={it.m()} castShadow receiveShadow />
-              <mesh geometry={s.hanger} material={hangerMat(it.hanger)} castShadow />
-              <mesh geometry={s.hook} material={hangerMat(it.hanger)} castShadow />
+              <mesh name={`laundry:shirt${i}`} geometry={s.shirt} material={it.m()} castShadow receiveShadow />
+              <mesh name={`laundry:shirt${i}:hanger`} geometry={s.hanger} material={hangerMat(it.hanger)} castShadow />
+              <mesh name={`laundry:shirt${i}:hook`} geometry={s.hook} material={hangerMat(it.hanger)} castShadow />
             </group>
           );
         }
-        if (it.kind === "sock") return <mesh key={i} geometry={sockGeo()} position={[it.x, it.y + 0.0004, it.z]} rotation={[0, it.yaw, 0]} material={it.m()} castShadow receiveShadow />;
-        return <mesh key={i} geometry={foldGeo(it.size)} position={[it.x, it.y + it.size[1] / 2 + 0.0004, it.z]} rotation={[0, it.yaw, 0]} material={it.m()} castShadow receiveShadow />;
+        if (it.kind === "sock") return <mesh key={i} name={`laundry:sock${i}`} geometry={sockGeo()} position={[it.x, it.y + 0.0004, it.z]} rotation={[0, it.yaw, 0]} material={it.m()} castShadow receiveShadow />;
+        return <mesh key={i} name={`laundry:fold${i}`} geometry={foldGeo(it.size)} position={[it.x, it.y + it.size[1] / 2 + 0.0004, it.z]} rotation={[0, it.yaw, 0]} material={it.m()} castShadow receiveShadow />;
       })}
     </>
   );

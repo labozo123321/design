@@ -127,7 +127,7 @@ export type PorchRoofProps = Partial<RoofSpec> & { /** 0..1 rain-darkened and gl
  * rake ends, a fascia under the eave, a soffit, and the step flashing where it meets the wall. In the porch
  * frame (see the file note); width and depth/rise default to the house's.
  */
-export const PorchRoof: React.FC<PorchRoofProps> = ({ width = ROOF_DEFAULT.width, depth = ROOF_DEFAULT.depth, rise = ROOF_DEFAULT.rise, wet = 0, color = "#6B6560" }) => {
+export const PorchRoof: React.FC<PorchRoofProps> = ({ width = ROOF_DEFAULT.width, depth = ROOF_DEFAULT.depth, rise = ROOF_DEFAULT.rise, wet = 0, color = "#625C57" }) => {
   const F = roofFrame({ width, depth, rise });
   const geo = onceB(`b-roofGeo-${width}-${depth}-${rise}`, () => {
     const W = width / 2;
@@ -214,15 +214,15 @@ export const PorchRoof: React.FC<PorchRoofProps> = ({ width = ROOF_DEFAULT.width
     return { mid: a.clone().add(b).multiplyScalar(0.5), len: a.distanceTo(b), ang: Math.atan2(a.y - b.y, b.z - a.z), yTop: a.y + 0.075, y0: a.y - 0.004 };
   }, [F]);
   return (
-    <group>
+    <group name="v:roof">
       <mesh geometry={geo.top} material={shingleMat(F, wet, color)} castShadow receiveShadow />
       <mesh geometry={geo.trim} material={trimMat()} castShadow receiveShadow />
       <mesh geometry={geo.fascia} material={trimMat()} castShadow receiveShadow />
-      <mesh position={fl.mid} rotation={[fl.ang, 0, 0]} material={metalTrim()} castShadow receiveShadow>
-        <boxGeometry args={[width, 0.0012, fl.len]} />
+      <mesh name="v:flashing" position={fl.mid} rotation={[fl.ang, 0, 0]} material={metalTrim()} castShadow receiveShadow>
+        <boxGeometry args={[width - 0.004, 0.0012, fl.len]} />
       </mesh>
-      <mesh position={[0, (fl.yTop + fl.y0) / 2, 0.0012]} material={metalTrim()} castShadow receiveShadow>
-        <boxGeometry args={[width, fl.yTop - fl.y0, 0.0012]} />
+      <mesh name="v:flashing" position={[0, (fl.yTop + fl.y0) / 2, 0.0012]} material={metalTrim()} castShadow receiveShadow>
+        <boxGeometry args={[width - 0.004, fl.yTop - fl.y0, 0.0012]} />
       </mesh>
       {/* the drip edge's lip in front of the fascia */}
       <mesh position={[0, -rise - 0.0155, depth + 0.0207]} material={metalTrim()} castShadow>
@@ -293,9 +293,8 @@ const endCapGeo = () =>
     K_LINE.forEach(([z, y]) => s.lineTo(z, y));
     s.closePath();
     const g = new THREE.ExtrudeGeometry(s, { depth: 0.0012, bevelEnabled: false });
-    // shape (z', y') -> local (x = extrusion, y = y', z = z')
+    // shape (z', y') -> local (x = -extrusion, y = y', z = z')
     g.rotateY(-Math.PI / 2);
-    g.scale(1, 1, -1);
     return g;
   });
 const spoutProf = (): Prof => {
@@ -405,10 +404,10 @@ export const Gutter: React.FC<GutterProps> = ({ width = ROOF_DEFAULT.width, spou
     );
   }, [width]);
   return (
-    <group>
+    <group name="v:gutter">
       <mesh geometry={gutterGeo(width)} material={gutterMat()} castShadow receiveShadow />
       {[-1, 1].map((s) => (
-        <mesh key={s} geometry={endCapGeo()} position={[s * (width / 2) - (s > 0 ? 0.0012 : 0), 0, 0]} material={gutterMat()} castShadow />
+        <mesh key={s} geometry={endCapGeo()} position={[s * (width / 2) + (s > 0 ? 0.0012 : 0), 0, 0]} material={gutterMat()} castShadow />
       ))}
       {Array.from({ length: nh }, (_, i) => -width / 2 + 0.3 + i * ((width - 0.6) / Math.max(1, nh - 1))).map((x, i) => (
         <mesh key={`h${i}`} position={[x, -0.0045, 0.063]} material={gutterMat()}>
@@ -527,7 +526,7 @@ export const ChristmasGutterLights: React.FC<ChristmasGutterLightsProps> = ({ wi
     return tubeCapped(new THREE.CatmullRomCurve3(pts), 0.0019, pts.length * 3, 5);
   });
   return (
-    <group>
+    <group name="v:lights">
       <mesh geometry={wire} material={greenPlastic()} castShadow />
       {Array.from({ length: n }, (_, i) => {
         const x = x0 + i * spacing;
@@ -535,10 +534,10 @@ export const ChristmasGutterLights: React.FC<ChristmasGutterLightsProps> = ({ wi
         return (
           <group key={i} position={[x, 0, 0]}>
             {/* the clip: a hook over the bead and a cradle on the outside */}
-            <mesh position={[0, 0.0026, 0.1255]} material={greenPlastic()}>
+            <mesh position={[0, 0.0029, 0.1255]} material={greenPlastic()}>
               <boxGeometry args={[0.012, 0.0022, 0.013]} />
             </mesh>
-            <mesh position={[0, -0.006, 0.1355]} material={greenPlastic()} castShadow>
+            <mesh position={[0, -0.006, 0.1359]} material={greenPlastic()} castShadow>
               <boxGeometry args={[0.014, 0.019, 0.008]} />
             </mesh>
             <group position={[0, -0.002, 0.1475]} rotation={[tilt, 0, 0]}>
@@ -597,7 +596,7 @@ export const DryLeaves: React.FC<DryLeavesProps> = ({ width = ROOF_DEFAULT.width
     };
     const roofSurf = (x: number, s: number, cell: number) => {
       // the highest shingle within a cell either side, plus a hair
-      const hn = F.hMax(s - cell, s + cell) + 0.0016;
+      const hn = F.hMax(s - cell - 0.003, s + cell + 0.003) + 0.0016;
       return { p: F.P(x, s, hn), n: F.N };
     };
     let tries = 0;
@@ -607,7 +606,8 @@ export const DryLeaves: React.FC<DryLeavesProps> = ({ width = ROOF_DEFAULT.width
       const s = q < 0.38 ? F.S - 0.02 - 0.3 * r() * r() : q < 0.55 ? 0.04 + 0.22 * r() * r() : 0.05 + (F.S - 0.1) * r();
       const x = (r() - 0.5) * (width - 0.16);
       const size = 0.085 + 0.06 * r();
-      const rad = size * 0.6;
+      const rad = size * 0.72;
+      if (s - rad < 0.075 || s + rad > F.Stot - 0.012 || Math.abs(x) + rad > width / 2 - 0.012) continue;
       if (placed.some((p) => Math.hypot(p.x - x, p.s - s) < p.rad + rad)) continue;
       placed.push({ x, s, rad });
       const cell = Math.floor(r() * 8);
@@ -644,7 +644,7 @@ export const DryLeaves: React.FC<DryLeavesProps> = ({ width = ROOF_DEFAULT.width
     geo.computeVertexNormals();
     return geo;
   });
-  return <mesh geometry={g} material={leafMat()} castShadow receiveShadow />;
+  return <mesh name="v:leaves" geometry={g} material={leafMat()} castShadow receiveShadow />;
 };
 
 // ======================================================================================= snow
@@ -706,7 +706,7 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
       const r: number[] = [];
       for (let i = 0; i <= nx; i++) {
         const x = -W + (i / nx) * width;
-        const hs = F.h(Math.min(F.Stot - 1e-4, Math.max(1e-4, s)));
+        const hs = F.hMax(Math.max(1e-4, s - 0.004), Math.min(F.Stot - 1e-4, s + 0.004));
         const smooth = T0 + TS + depthAt(x, s);
         let top = Math.max(hs + 0.0018, smooth);
         if (j === rows.length - 1) top = hs + 0.0018;
@@ -765,16 +765,16 @@ export const SnowDrift: React.FC<SnowDriftProps> = ({ width = ROOF_DEFAULT.width
         const t = i / N;
         pts.push(new THREE.Vector2(Math.max(0.0002, rr * Math.pow(1 - t, 1.3) * (1 + 0.12 * Math.sin(t * 19))), -t * len));
       }
-      pts.unshift(new THREE.Vector2(0.0001, 0.001));
+      pts.unshift(new THREE.Vector2(0.0001, 0));
       return new THREE.LatheGeometry(pts.reverse(), 10);
     });
   return (
-    <group>
+    <group name="v:snow">
       {ak > 0.004 ? <mesh geometry={roof} material={snowRoofMat(lvl)} castShadow receiveShadow /> : null}
       {gutter && ak >= 0.15 ? <mesh geometry={gut} material={snowSolidMat()} castShadow receiveShadow /> : null}
       {gutter
         ? icicles.map((ic, i) => (
-            <mesh key={i} geometry={iceGeo(ic.len, ic.r)} position={[ic.x, F.gutter.y - 0.104 - GT, F.gutter.z + 0.03 + 0.02 * hash3(i, 2, 2)]} material={iceMat()} />
+            <mesh key={i} geometry={iceGeo(ic.len, ic.r)} position={[ic.x, F.gutter.y - 0.104 - GT / 2 - 0.0003, F.gutter.z + 0.03 + 0.02 * hash3(i, 2, 2)]} material={iceMat()} />
           ))
         : null}
     </group>

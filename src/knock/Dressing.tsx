@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { BED, OUTLET, ROOM, SHELF, TREAD, treadPlace } from "./layout";
+import { BED, OUTLET, ROOM, SHELF, treadPlace } from "./layout";
+import { Treadmill } from "./props/treadmill";
 import type { Dressing as D, LightState } from "./direct";
 import { CornerShelf, Outlet, OutletBox, PhotoStrip, Poster, Starfield } from "./props/wall";
 import {
@@ -229,27 +230,10 @@ export const Dressing: React.FC<{ d: D; t: number; light: LightState; camDist: n
         </group>
       ) : null}
 
-      {/* mom's treadmill in Nora's room from 2014 (placeholder until the prop is in) */}
+      {/* mom's treadmill in Nora's room from 2014, slowly buried in laundry */}
       {["2014", "2016", "2025"].includes(d.era) ? (
         <group position={treadPlace(d.era).at} rotation={[0, treadPlace(d.era).rotY, 0]}>
-          <mesh position={[0, TREAD.deck / 2, 0]}>
-            <boxGeometry args={[0.72, TREAD.deck, TREAD.z1 - TREAD.z0]} />
-            <meshStandardMaterial color="#2B2D31" roughness={0.6} />
-          </mesh>
-          <mesh position={[0, TREAD.deck + 0.003, -0.08]}>
-            <boxGeometry args={[0.5, 0.006, TREAD.z1 - TREAD.z0 - 0.3]} />
-            <meshStandardMaterial color="#141416" roughness={0.85} />
-          </mesh>
-          {[-0.33, 0.33].map((x) => (
-            <mesh key={x} position={[x, 0.68, (TREAD.z1 - TREAD.z0) / 2 - 0.12]} rotation={[0.18, 0, 0]}>
-              <boxGeometry args={[0.05, 1.0, 0.06]} />
-              <meshStandardMaterial color="#3A3D42" roughness={0.5} metalness={0.3} />
-            </mesh>
-          ))}
-          <mesh position={[0, TREAD.console.y, TREAD.console.z - (TREAD.z0 + TREAD.z1) / 2]} rotation={[-0.6, 0, 0]}>
-            <boxGeometry args={[0.72, 0.05, 0.26]} />
-            <meshStandardMaterial color="#2F3236" roughness={0.45} />
-          </mesh>
+          <Treadmill belt={d.belt ?? 0} laundry={d.laundry ?? (d.era === "2014" ? 0 : 1)} on={(d.belt ?? 0) > 0 && t < 38.0} />
         </group>
       ) : null}
     </Shadowed>

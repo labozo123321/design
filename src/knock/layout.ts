@@ -71,13 +71,14 @@ export const SHELF = { at: V3(WALL.half, 0.98, ROOM.back + 0.28), w: 0.22, d: 0.
 /** The cavity slot the note falls into: between the two studs either side of the outlet. */
 export const SLOT = { z0: -3.24 + 0.019, z1: -2.84 - 0.019 };
 
-/** Mom's treadmill in Nora's emptied room (2014 on): along the room, its console by the front window. */
-export const TREAD = { x: -1.25, deck: 0.19, z0: -1.65, z1: -0.25, console: V3(-1.25, 1.18, -0.42) };
-/** Where the treadmill stands by era (its local frame: belt along +z toward the console; centre of its
- * footprint): mid-room in 2014-16; by 2025, a laundry rack turned sideways under the front windows, so the
- * air mattress and the rug have the floor. */
+/** Mom's treadmill in Nora's emptied room (2014 on): along the room, facing the front window (its console
+ * there), the belt's top 18 cm up; 1.79 m long, so it runs from just inside the front wall to z -1.85. */
+export const TREAD = { x: -1.25, deck: 0.1825, z0: -1.845, z1: -0.055, console: V3(-1.25, 1.25, -0.2) };
+/** Where the treadmill stands by era (the prop's origin, the floor at the centre of its footprint, and its
+ * yaw: the prop faces -z, so turned half round its console is toward the window); by 2025 it is a laundry
+ * rack turned sideways under the front windows, so the air mattress and the rug have the floor. */
 export const treadPlace = (era: string) =>
-  era === "2025" ? { at: V3(-1.62, 0, -0.5), rotY: -Math.PI / 2 } : { at: V3(TREAD.x, 0, (TREAD.z0 + TREAD.z1) / 2), rotY: 0 };
+  era === "2025" ? { at: V3(-1.5, 0, -0.5), rotY: Math.PI / 2 } : { at: V3(TREAD.x, 0, (TREAD.z0 + TREAD.z1) / 2), rotY: Math.PI };
 
 // ---- camera presets: the target on the wall line, the distance along the 18-degree view, the fov
 export const TILT = THREE.MathUtils.degToRad(18);

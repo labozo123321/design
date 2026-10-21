@@ -408,7 +408,7 @@ export const envB = () =>
         g.fillStyle = "rgba(40,50,60,0.9)";
         g.fillRect(183, 70, 4, 52);
         g.fillRect(150, 94, 70, 4);
-        blob(390, 100, 40, 30, "rgba(255,210,150,0.8)");
+        blob(390, 104, 70, 46, "rgba(255,214,160,0.32)");
         blob(60, 40, 90, 30, "rgba(200,210,230,0.35)");
       },
       undefined,
@@ -872,7 +872,7 @@ export type Course = { s0: number; s1: number; off: number };
 /** The texture for an asphalt-shingle roof of width W by slope length S laid in `courses` (s from the top,
  * u across). Three-tab strips 0.914 m long with 0.305 m tabs; each course's keyways offset half a tab from
  * the last; each tab its own blend of granules; the odd darker strip, faint streaks. Returns colour and bump. */
-export const shingleTex = (key: string, W: number, S: number, courses: Course[], base = "#6B6560") => {
+export const shingleTex = (key: string, W: number, S: number, courses: Course[], base = "#625C57") => {
   const pxm = Math.min(380, 4096 / W);
   const w = Math.min(4096, Math.ceil(W * pxm));
   const h = Math.min(2048, Math.ceil(S * pxm));
@@ -895,7 +895,7 @@ export const shingleTex = (key: string, W: number, S: number, courses: Course[],
     const t = tabOf(x, y);
     const hk = hash3(t.k, t.tab, 11);
     const strip = hash3(t.k, t.strip, 12);
-    let col = shade(b, 0.86 + 0.24 * hk + (strip < 0.12 ? -0.12 : 0));
+    let col = shade(b, 0.93 + 0.12 * hk + (strip < 0.1 ? -0.07 : 0));
     // granules: a speckle of darker and lighter grains, a few rust/olive ones (weathered-wood blend)
     const g = hash3(x, y, 13);
     if (g < 0.12) col = shade(col, 0.72);

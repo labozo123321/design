@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
 import { ThreeCanvas } from "@remotion/three";
-import { AbsoluteFill, getInputProps, useCurrentFrame } from "remotion";
-import { createPortal, useFrame } from "@react-three/fiber";
+import { AbsoluteFill, getInputProps, useCurrentFrame, useDelayRender } from "remotion";
+import { useThree } from "@react-three/fiber";
 import { canvasTex, mat } from "../roadster/materials";
 import { paint, trim } from "../home/materials";
 import { DOOR, HALL, PORCH, PRESETS, ROOM, TILT, WINDOWS, cameraFor } from "./layout";
@@ -188,13 +188,12 @@ const doorPiece: Piece = {
 };
 
 const winXs = [-1.8, -0.6, 0.6, 1.8];
-const DBG = (getInputProps() as { dbg?: string }).dbg ?? "";
 const windowPiece: Piece = {
   name: "Window: plain | curtains | rain | snow corners (porch roof below)",
   set: (_m, t) => (
     <group>
       <WallStub x0={-2.4} x1={2.4} z0={-0.075} z1={0.075} y0={-0.3} holes={winXs.map((x) => [x - WINDOWS.w / 2, x + WINDOWS.w / 2, WINDOWS.sill, WINDOWS.head] as [number, number, number, number])} outside={siding()} />
-      {winXs.map((x, i) => DBG.includes("nowin") ? null : (
+      {winXs.map((x, i) => (
         <group key={i} position={[x, 0, 0]}>
           <Window
             seed={i + 1}
@@ -205,12 +204,10 @@ const windowPiece: Piece = {
           />
         </group>
       ))}
-      {DBG.includes("nofloor") ? null : <Floor w={4.8} d={2.2} c={V(0, 0, -1.175)} kind="#CFC3B2" />}
-      {DBG.includes("noroof") ? null : (
-        <group position={[0, PORCH.yWall, 0.075]}>
-          <PorchRoof width={4.8} depth={1.7} rise={0.6} />
-        </group>
-      )}
+      <Floor w={4.8} d={2.2} c={V(0, 0, -1.175)} kind="#CFC3B2" />
+      <group position={[0, PORCH.yWall, 0.075]}>
+        <PorchRoof width={4.8} depth={1.7} rise={0.6} />
+      </group>
     </group>
   ),
   c: V(0, 1.2, 0.2),
@@ -495,44 +492,40 @@ const CLOSE: Close[] = [
 ];
 
 // ------------------------------------------------------------------------------------------- render
-type ViewDef = { node: React.ReactNode; cam: Cam; rect: [number, number, number, number]; bg: string; label: string };
+type ViewDef = { node: React.ReactNode; cam: Cam; rect: [number, number, number, number]; bg: string; label: string; logDepth?: boolean };
 
-const camOf = (c: Cam, aspect: number) => {
-  const cam = new THREE.PerspectiveCamera(c.fov ?? 30, aspect, 0.03, 80);
-  cam.position.copy(c.pos);
-  if (c.up) cam.up.copy(c.up);
-  if (c.quat) cam.quaternion.copy(c.quat);
-  else cam.lookAt(c.target);
-  cam.updateMatrixWorld();
-  cam.updateProjectionMatrix();
-  return cam;
+/** The cell's camera (the canvas's default camera). */
+const CamRig: React.FC<{ c: Cam }> = ({ c }) => {
+  const camera = useThree((st) => st.camera) as THREE.PerspectiveCamera;
+  camera.position.copy(c.pos);
+  camera.up.copy(c.up ?? V(0, 1, 0));
+  if (c.quat) camera.quaternion.copy(c.quat);
+  else camera.lookAt(c.target);
+  camera.fov = c.fov ?? 30;
+  camera.near = 0.03;
+  camera.far = 80;
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  return null;
 };
 
-const Views: React.FC<{ views: ViewDef[]; pageKey: string }> = ({ views, pageKey }) => {
-  const scenes = useMemo(() => views.map(() => new THREE.Scene()), [pageKey, views.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cams = useMemo(() => views.map((v) => camOf(v.cam, v.rect[2] / v.rect[3])), [views]);
-  useFrame(({ gl }) => {
-    gl.autoClear = false;
-    gl.setScissorTest(true);
-    views.forEach((v, i) => {
-      const [x, y, w, h] = v.rect;
-      const yy = H - y - h;
-      gl.setViewport(x, yy, w, h);
-      gl.setScissor(x, yy, w, h);
-      gl.setClearColor(v.bg, 1);
-      gl.clear(true, true, true);
-      gl.render(scenes[i], cams[i]);
-    });
-    gl.setScissorTest(false);
-  }, 1);
-  return (
-    <>
-      {views.map((v, i) => (
-        <React.Fragment key={`${pageKey}-${i}`}>{createPortal(<>{v.node}</>, scenes[i])}</React.Fragment>
-      ))}
-    </>
-  );
-};
+/**
+ * One cell = one canvas (its own renderer). Materials are shared between cells through the module caches,
+ * and three wires a material's light uniforms to the render state of the scene it was last set up in; one
+ * renderer per cell keeps every scene's lights (and shadow maps) its own. The cells use a standard depth
+ * buffer (the stricter test for z-fighting; also, in three r186, PCF shadows from spot and point lights
+ * compare against log-encoded depth when logarithmicDepthBuffer is on). The in-situ pages use the film's
+ * settings (log depth on).
+ */
+const CellCanvas: React.FC<{ v: ViewDef }> = ({ v }) => (
+  <div style={{ position: "absolute", left: v.rect[0], top: v.rect[1], width: v.rect[2], height: v.rect[3] }}>
+    <ThreeCanvas width={v.rect[2]} height={v.rect[3]} shadows gl={{ antialias: true, logarithmicDepthBuffer: !!v.logDepth, preserveDrawingBuffer: true }} camera={{ fov: 30, position: [0, 5, 5] }}>
+      <color attach="background" args={[v.bg]} />
+      <CamRig c={v.cam} />
+      {v.node}
+    </ThreeCanvas>
+  </div>
+);
 
 const pieceViews = (p: Piece, top: number, t: number): ViewDef[] => {
   const cw = W / 2;
@@ -553,8 +546,175 @@ const pieceViews = (p: Piece, top: number, t: number): ViewDef[] => {
   ];
 };
 
+
+// ------------------------------------------------------------------------------------------- verification
+/**
+ * A measurement mode (input prop verify: "laundry"): the treadmill at full laundry is triangulated from the
+ * live scene graph and every laundry piece is tested against every other piece and against the frame
+ * (edge-triangle crossings, a 2 cm hash grid), plus the wall-side bound. The report goes to the console.
+ */
+const VERIFY = (getInputProps() as { verify?: string }).verify ?? "";
+type Tri = { a: THREE.Vector3; b: THREE.Vector3; c: THREE.Vector3; g: string };
+const segTri = (p: THREE.Vector3, q: THREE.Vector3, t: Tri) => {
+  const e1 = t.b.clone().sub(t.a);
+  const e2 = t.c.clone().sub(t.a);
+  const d = q.clone().sub(p);
+  const h = d.clone().cross(e2);
+  const det = e1.dot(h);
+  if (Math.abs(det) < 1e-12) return false;
+  const f = 1 / det;
+  const sv = p.clone().sub(t.a);
+  const u = f * sv.dot(h);
+  if (u < 0 || u > 1) return false;
+  const qv = sv.clone().cross(e1);
+  const v = f * d.dot(qv);
+  if (v < 0 || u + v > 1) return false;
+  const tt = f * e2.dot(qv);
+  return tt > 1e-6 && tt < 1 - 1e-6;
+};
+const triTri = (A: Tri, B: Tri) => segTri(A.a, A.b, B) || segTri(A.b, A.c, B) || segTri(A.c, A.a, B) || segTri(B.a, B.b, A) || segTri(B.b, B.c, A) || segTri(B.c, B.a, A);
+const runVerify = (scene: THREE.Scene) => {
+  scene.updateMatrixWorld(true);
+  const tris: Tri[] = [];
+  scene.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || !m.geometry || (m as unknown as THREE.Sprite).isSprite) return;
+    let g = "frame";
+    for (let a: THREE.Object3D | null = m; a; a = a.parent) {
+      if (a.name.startsWith("laundry:")) {
+        g = a.name.split(":")[1];
+        break;
+      }
+      if (a.name.startsWith("v:")) {
+        g = a.name;
+        break;
+      }
+    }
+    const pos = m.geometry.attributes.position as THREE.BufferAttribute;
+    const idx = m.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    const v = (i: number) => new THREE.Vector3().fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.matrixWorld);
+    for (let i = 0; i + 2 < n; i += 3) tris.push({ a: v(i), b: v(i + 1), c: v(i + 2), g });
+  });
+  const C = 0.02;
+  const grid = new Map<string, number[]>();
+  const cells = (t: Tri) => {
+    const mn = t.a.clone().min(t.b).min(t.c);
+    const mx = t.a.clone().max(t.b).max(t.c);
+    const out: string[] = [];
+    for (let x = Math.floor(mn.x / C); x <= Math.floor(mx.x / C); x++)
+      for (let y = Math.floor(mn.y / C); y <= Math.floor(mx.y / C); y++) for (let z = Math.floor(mn.z / C); z <= Math.floor(mx.z / C); z++) out.push(`${x},${y},${z}`);
+    return out;
+  };
+  tris.forEach((t, i) => {
+    for (const k of cells(t)) {
+      const l = grid.get(k);
+      if (l) l.push(i);
+      else grid.set(k, [i]);
+    }
+  });
+  const hits = new Map<string, { n: number; at: string[] }>();
+  const cen = (t: Tri) => `${((t.a.x + t.b.x + t.c.x) / 3).toFixed(3)},${((t.a.y + t.b.y + t.c.y) / 3).toFixed(3)},${((t.a.z + t.b.z + t.c.z) / 3).toFixed(3)}`;
+  let maxX = -9;
+  tris.forEach((t, i) => {
+    if (t.g === "frame") return;
+    if (!t.g.startsWith("v:")) maxX = Math.max(maxX, t.a.x, t.b.x, t.c.x);
+    const seen = new Set<number>();
+    for (const k of cells(t))
+      for (const j of grid.get(k) ?? []) {
+        if (j === i || seen.has(j)) continue;
+        seen.add(j);
+        const u = tris[j];
+        if (u.g === t.g) continue;
+        if (u.g !== "frame" && j < i) continue;
+        if (triTri(t, u)) {
+          const key = [t.g, u.g].sort().join(" x ");
+          const h = hits.get(key);
+          const at = `${t.g}@${cen(t)}|${u.g}@${cen(u)}`;
+          if (h) {
+            h.n++;
+            if (h.at.length < 4 && h.n % 7 === 1) h.at.push(at);
+          } else hits.set(key, { n: 1, at: [at] });
+        }
+      }
+  });
+  return { triangles: tris.length, laundryMaxX: +maxX.toFixed(4), hits: Object.fromEntries(hits) };
+};
+const Verify: React.FC = () => {
+  const scene = useThree((st) => st.scene);
+  const { delayRender, continueRender } = useDelayRender();
+  const [h] = React.useState(() => delayRender("verify"));
+  React.useEffect(() => {
+    const id = setTimeout(() => {
+      const r = runVerify(scene);
+      console.error("VERIFY " + JSON.stringify(r));
+      continueRender(h);
+    }, 50);
+    return () => clearTimeout(id);
+  }, [scene, h, continueRender]);
+  return null;
+};
+const VerifyScene: React.FC<{ what: string }> = ({ what }) => {
+  if (what === "door")
+    return (
+      <>
+        {[0, 0.6, 1.2, 1.6].flatMap((o, i) =>
+          ([-1, 1] as const).map((sw) => (
+            <group key={`${i}${sw}`} position={[i * 2.2, 0, sw * 3]}>
+              <Door open={o} swing={sw} hinge={i % 2 ? 1 : -1} />
+            </group>
+          )),
+        )}
+      </>
+    );
+  if (what === "garland") return <Banister length={3.2} garland={{ on: 1, seed: 2 }} />;
+  if (what === "window")
+    return (
+      <>
+        <Window rain={1} time={1} snowCorner={1} curtains={{ color: "#C9B6DC", open: 0.8 }} />
+        <group position={[2, 0, 0]}>
+          <Window curtains={{ color: "#9FB9D6", open: 0, length: "floor" }} snowCorner={0.4} />
+        </group>
+        <group position={[4, 0, 0]}>
+          <Window curtains={{ color: "#9FB9D6", open: 1 }} />
+        </group>
+      </>
+    );
+  if (what === "porchA") return <Porch leaves={110} lights={1} overflow={1} time={1.3} />;
+  if (what === "porchB") return <Porch snow={0.3} lights={1} />;
+  if (what === "porchC") return <Porch snow={1} lights={1} />;
+  if (what === "hall")
+    return (
+      <>
+        <CeilingFixture on={1} cut />
+        <group position={[1, 0, 0]}>
+          <CeilingFixture on={1} cut={false} />
+        </group>
+        <group position={[0, -2, 0]}>
+          <HallNightlight />
+        </group>
+        <group position={[2, -2, 0]}>
+          <PuppyBed />
+        </group>
+      </>
+    );
+  return <Treadmill laundry={1} />;
+};
+const VerifyPage: React.FC = () => (
+  <AbsoluteFill style={{ background: "#111" }}>
+    <ThreeCanvas width={540} height={480} gl={{ preserveDrawingBuffer: true }} camera={{ fov: 30, position: [2, 3, 3] }}>
+      <VerifyScene what={VERIFY} />
+      <Verify />
+    </ThreeCanvas>
+  </AbsoluteFill>
+);
+
 export const PropsTestB: React.FC = () => {
   const frame = useCurrentFrame();
+  if (VERIFY) return <VerifyPage />;
+  return <PropsTestBMain frame={frame} />;
+};
+const PropsTestBMain: React.FC<{ frame: number }> = ({ frame }) => {
   const page = Math.min(PAGES.length - 1, Math.floor(frame / 8));
   const t = frame / 30;
   const pg = PAGES[page];
@@ -567,7 +727,7 @@ export const PropsTestB: React.FC = () => {
       const c = cameraFor(PRESETS.wide);
       const target = c.pos.clone().add(V(0, 0, -1).applyQuaternion(c.quat));
       return {
-        views: [{ node: <Situ era={pg.situ} t={t} />, cam: { pos: c.pos, target, quat: c.quat, fov: c.fov }, rect: [0, 0, W, H] as [number, number, number, number], bg: "#000000", label: "" }],
+        views: [{ node: <Situ era={pg.situ} t={t} />, cam: { pos: c.pos, target, quat: c.quat, fov: c.fov }, rect: [0, 0, W, H] as [number, number, number, number], bg: "#000000", label: "", logDepth: true }],
         titles: [{ y: 0, text: pg.situ === "2004" ? "In the house · PRESETS.wide · 2004 night: doors, windows, porch with leaves, hall dome, dog bed" : "In the house · PRESETS.wide · Christmas 2025: snow, C9 lights, garland, treadmill rack" }],
       };
     }
@@ -589,9 +749,9 @@ export const PropsTestB: React.FC = () => {
   }, [pg, t]);
   return (
     <AbsoluteFill style={{ background: "#111" }}>
-      <ThreeCanvas width={W} height={H} shadows gl={{ antialias: true, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }} camera={{ fov: 30, position: [0, 5, 5] }}>
-        <Views views={views} pageKey={`p${page}`} />
-      </ThreeCanvas>
+      {views.map((v, i) => (
+        <CellCanvas key={`${page}-${i}`} v={v} />
+      ))}
       {views.map((v, i) =>
         v.label ? (
           <div key={i} style={{ position: "absolute", left: v.rect[0] + 10, top: v.rect[1] + v.rect[3] - 34, font: "500 17px Inter, Helvetica, Arial, sans-serif", color: "#fff", background: "rgba(0,0,0,0.55)", padding: "3px 8px", borderRadius: 4 }}>

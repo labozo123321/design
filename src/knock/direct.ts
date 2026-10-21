@@ -37,6 +37,8 @@ export type Dressing = {
   dormBoxes?: boolean;
   /** 2013: her dorm boxes, fridge and lamp waiting by the door the night before she leaves */
   moveOut?: boolean;
+  /** mom's treadmill belt: how far it has run (m) */
+  belt?: number;
   /** your forearm cast (2006) */
   cast?: boolean;
   /** the T-rex on your shelf: how far it has toppled; the shelf's jolt */
@@ -895,6 +897,13 @@ const b4 = (t: number): Frame => {
 };
 
 // ------------------------------------------------------------------------------------------- mom
+/** The belt under her: 1.7 m/s until she slaps the stop (37.93), then running down over a quarter second. */
+const momBelt = (t: number) => {
+  const v = 1.7;
+  if (t < 37.93) return v * (t - 37.0);
+  const u = Math.min(0.27, t - 37.93);
+  return v * 0.93 + v * (u - (u * u) / (2 * 0.27));
+};
 /** Mom's go on the treadmill (2014, real time 37.0-38.8): power-walking on the belt, arms pumping, beaming;
  * slaps the stop; the slowing belt carries her off the back; two staggering steps; a starfish flop onto the
  * carpet, laughing up at the ceiling. */
@@ -902,7 +911,8 @@ const momAt = (t: number): Posed => {
   const s = MOM;
   const k = s.k;
   const dir = V3(0, 0, 1);
-  const zOn = -1.0;
+  // (half a metre from the console, so the stop is in reach)
+  const zOn = -0.68;
   const speed = 1.7;
   const base = { e: { smile: 0.75, squint: 0.2, brow: 0.15 }, nearSide: -1 as const, headPitch: 0.05 };
   // the arms, bent and pumping (body frame), against the legs
@@ -930,23 +940,28 @@ const momAt = (t: number): Posed => {
   }
   if (t < 38.2) {
     // carried back on the slowing belt, off its end, arms out for balance
-    const p = onBelt(37.85 + (t - 37.97) * 0.55, -0.72 * smoother((t - 37.97) / 0.23));
+    const p = onBelt(37.85 + (t - 37.97) * 0.55, -1.0 * smoother((t - 37.97) / 0.23));
     const flail = (sd: number): ArmSpec => ({ rest: { body: true, at: V3(sd * 0.48 * k, 1.28 * k, -0.1 * k), hand: { curl: [0.2, 0.2, 0.25, 0.3], spread: 0.3, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, -1, 0), pole: V3(0, -1, 0.3) } });
     return { ...p, near: flail(-1), far: flail(1), e: { smile: 0.2, jaw: 0.45, brow: 0.9, lidL: 0, lidR: 0 } };
   }
   // two staggering steps back onto the carpet, then over backwards onto the floor, a starfish
-  const landed = lieToPosed(s, -1, { roll: 0, spot: { x: TREAD.x, top: 0.16, pillowZ: -3.44, pillowH: 0 }, prop: -0.16, e: {}, near: null, far: null });
-  const R = V3(-1, 0, 0);
+  // (she lands a little askew, her head by the back wall, her feet well clear of the treadmill's end)
+  const landed0 = lieToPosed(s, -1, { roll: 0, spot: { x: TREAD.x + 0.1, top: 0.16, pillowZ: -3.45, pillowH: 0 }, prop: -0.16, e: {}, near: null, far: null });
+  const pivot = V3(TREAD.x + 0.1, 0, -3.45);
+  const yaw = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), -0.34);
+  const turn = (p: THREE.Vector3) => p.clone().sub(pivot).applyQuaternion(yaw).add(pivot);
+  const landed = { ...landed0, hip: turn(landed0.hip), q: yaw.clone().multiply(landed0.q), feet: [turn(landed0.feet[0]), turn(landed0.feet[1])] as [THREE.Vector3, THREE.Vector3] };
+  const R = V3(-1, 0, 0).applyQuaternion(yaw);
   const star: Posed = {
     ...landed,
     feet: [landed.feet[0].clone().addScaledVector(R, -0.24), landed.feet[1].clone().addScaledVector(R, 0.24)],
-    near: { rest: { at: V3(TREAD.x + 0.62, 0.05, -3.25), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
-    far: { rest: { at: V3(TREAD.x - 0.62, 0.05, -3.25), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
+    near: { rest: { at: turn(V3(TREAD.x + 0.1 + 0.62, 0.05, -3.25)), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
+    far: { rest: { at: turn(V3(TREAD.x + 0.1 - 0.62, 0.05, -3.25)), hand: { curl: [0.2, 0.25, 0.3, 0.35], spread: 0.25, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, 1, 0), pole: V3(0, -1, 0.3) } },
     nearSide: -1,
     e: { smile: 1, jaw: 0.4 + 0.12 * Math.sin(t * 22), squint: 0.45, lidL: 0.35, lidR: 0.35, brow: 0.35 },
     headPitch: 0,
   };
-  const path = [V3(TREAD.x, 0, TREAD.z0 - 0.06), V3(TREAD.x, 0, -2.05)];
+  const path = [V3(TREAD.x, 0, TREAD.z0 - 0.06), V3(TREAD.x, 0, -2.2)];
   if (t < 38.42) {
     const w = walkAlong(s, path, (t - 38.2) * 2.1, { ...base, e: { smile: 0.3, jaw: 0.3, brow: 0.8 } });
     const flail = (sd: number): ArmSpec => ({ rest: { body: true, at: V3(sd * 0.5 * k, 1.32 * k, 0.02 * k), hand: { curl: [0.2, 0.2, 0.25, 0.3], spread: 0.3, thumbOut: 0.6, thumbCurl: 0.1 }, palm: V3(0, -1, 0), pole: V3(0, -1, 0.3) } });
@@ -980,7 +995,7 @@ const b6 = (t: number): Frame => {
     nora: null,
     you,
     walkers,
-    dress: { era, day: !night || momTime, trex: 0, jolt: 0, stars: t < 40 ? 40 - Math.floor((t - 36) * 4) : 18, starGlow: night ? 0.3 : 0, laundry: smooth(38.8, 40.4, t), dormBoxes: t > 39.6 && t < 40.4, beds: { nora: { kind: "none", look: "nora2007" }, you: { kind: "twin", look: t < 40.4 ? "you2011" : "guest" } } },
+    dress: { era, day: !night || momTime, belt: momTime ? momBelt(t) : 0, trex: 0, jolt: 0, stars: t < 40 ? 40 - Math.floor((t - 36) * 4) : 18, starGlow: night ? 0.3 : 0, laundry: smooth(38.8, 40.4, t), dormBoxes: t > 39.6 && t < 40.4, beds: { nora: { kind: "none", look: "nora2007" }, you: { kind: "twin", look: t < 40.4 ? "you2011" : "guest" } } },
     light: momTime
       ? { hall: 0, street: 0, moon: 0, nightlight: 0, fill: 0.5, sun: 0.85, sunAz: 0.3 + 0.05 * (t - 37) }
       : night
