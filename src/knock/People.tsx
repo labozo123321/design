@@ -67,8 +67,10 @@ export const lieFrame = (s: Sib, side: -1 | 1, st: Lie, head: THREE.Vector3) => 
   const th = (st.roll * Math.PI) / 2;
   // the face: up on the back, toward the wall on the side
   const F = V(-side * Math.sin(th), Math.cos(th), 0).normalize();
-  // the body's up runs toward the headboard, lifted by the pillow
-  const lift = 0.13 + (st.prop ?? 0) * 0.8;
+  // the body's up runs toward the headboard, lifted by the pillow (on a mattress the legs sink into it; on
+  // the floor the body lies nearly flat, so the legs and feet stay above the boards)
+  const low = (st.spot?.top ?? 1) < 0.1;
+  const lift = (low ? 0.035 : 0.13) + (st.prop ?? 0) * 0.8;
   const U = V(0, Math.sin(lift), -Math.cos(lift)).normalize();
   // keep F perpendicular to U
   const Fp = F.clone().addScaledVector(U, -F.dot(U)).normalize();

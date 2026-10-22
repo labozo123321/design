@@ -108,6 +108,9 @@ const dustTex = (level: number) =>
   );
 
 const plaster = () => rippled("wallPlaster", new THREE.MeshStandardMaterial({ color: "#F1ECE3", roughness: 0.85 }), 1.3);
+/** The simple cut's cap over the wall's top: plain plaster (the rings pass under it, never as a band on it). */
+let CAP: THREE.Material | null = null;
+const capMat = () => (CAP ??= new THREE.MeshStandardMaterial({ color: "#F1ECE3", roughness: 0.85 }));
 const face = (c: string) => rippled(`wallFace${c}`, new THREE.MeshStandardMaterial({ color: c, roughness: 0.88 }), 0.9);
 const pineEnd = () => rippled("pineEnd", new THREE.MeshStandardMaterial({ map: pineTex(), roughness: 0.75 }), 1.6);
 const pineSide = () => rippled("pineSide", new THREE.MeshStandardMaterial({ map: pineSideTex(), roughness: 0.8 }), 1.6);
@@ -186,7 +189,7 @@ export const SharedWall: React.FC<{ noraPaint: string; youPaint: string; dust: n
       {WALL.studs.map((z, i) => (
         <Box key={i} a={[-X + s, WALL.plateH, z - WALL.studW / 2]} b={[X - s, H, z + WALL.studW / 2]} mats={[ps, ps, pe, ps, ps, ps]} />
       ))}
-      {capped ? <Box a={[-X, H, z0]} b={[X, H + 0.004, z1]} mats={[pl, pl, pl, pl, pl, pl]} cast={false} /> : null}
+      {capped ? <Box a={[-X, H, z0]} b={[X, H + 0.004, z1]} mats={capMat()} cast={false} /> : null}
       {/* a cobweb across the slot by her pillow, from 2016 */}
       {cobweb > 0 ? <Cobweb z0={-2.84 - WALL.studW / 2} z1={-2.44 + WALL.studW / 2} k={cobweb} /> : null}
       {children}

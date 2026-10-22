@@ -33,7 +33,7 @@ export const SEGS: Seg[] = [
   { o0: 0.0, o1: 12.0, year: "2004", knots: [[0.0, 0.0], [4.4, 3.5], [10.6, 7.0], [12.0, 7.95]] },
   // your eleven knocks; then her waking and getting up, the walk across the house, lying down on your rug
   // (stops before the 22.5 flash)
-  { o0: 12.0, o1: 27.5, year: "2009", knots: [[12.0, 15.0], [15.9, 17.4], [18.9, 18.6], [23.57, 20.7], [27.5, 22.4]] },
+  { o0: 12.0, o1: 27.5, year: "2009", knots: [[12.0, 15.0], [15.9, 17.4], [18.9, 18.6], [23.1, 20.7], [27.5, 22.4]] },
   // her knocks waiting; your roll over and answer slow (after the 28.0 flash, before the 36.0 one)
   { o0: 27.5, o1: 39.5, year: "2013", knots: [[27.5, 28.07], [28.83, 29.0], [34.7, 33.4], [38.7, 35.4], [39.5, 35.9]] },
   // (after the 49.0 flash: the mattress already against the wall) your three knocks; the wait; her answer;

@@ -24,10 +24,10 @@ const MEDIUM = PRESETS.medium;
 const CLOSE = P(0, 0.64, -3.15, 4.6);
 const FOLLOW_D = 8.2;
 /** Framing someone up and about: across with them (x), and up the house while they're in the hallway, so
- * it sits a third of the way down the frame rather than under the top line. */
+ * the camera looks down into it over the bedrooms' back wall, the walker near the middle of the frame. */
 const follow = (at: { x: number; z: number }, d = FOLLOW_D): Preset => {
   const hall = Math.min(1, Math.max(0, (-at.z - 2.9) / 1.4));
-  return P(Math.max(-0.85, Math.min(0.85, 0.55 * at.x)), 0.5, -3.25 - 0.5 * hall, d);
+  return P(Math.max(-0.85, Math.min(0.85, 0.55 * at.x)), 0.5, -3.25 - 1.25 * hall, d);
 };
 
 type Spot2 = { x: number; z: number };
@@ -68,13 +68,13 @@ export const cutCam = (o: number): Preset => {
     return mix(base, f, ease(o, 16.0, 18.7));
   }
   if (o < 39.5) {
-    // 2013: from her stripped room, slowly in to the two of you
-    return mix(WIDE, P(0, 0.64, -3.2, 4.7), ease(o, 27.9, 36.6));
+    // 2013: from her stripped room, in to the two of you (halfway by her first knocks)
+    return mix(mix(WIDE, P(0, 0.6, -2.85, 6.6), ease(o, 27.5, 30.6)), P(0, 0.64, -3.2, 4.7), ease(o, 30.6, 35.8));
   }
   // 2025: in to the two of you; out as she laughs and you get up; with you across the house; down beside
-  // her; then slowly back to the whole house for the end card
+  // her; then slowly down the house, the two of them high in the frame over the end card
   const a = mix(mix(WIDE, CLOSE, ease(o, 40.1, 46.0)), P(0, 0.64, -3.18, 4.35), ease(o, 46.0, 53.0));
   const f = follow(lagged(o, 62.0, { x: 0.27, z: -2.55 }, { x: -1.38, z: -2.55 }));
   const b = mix(a, f, ease(o, 54.0, 56.6));
-  return mix(b, WIDE, ease(o, 63.4, 69.6));
+  return mix(b, P(-0.85, 0.45, -1.75, 7.6), ease(o, 63.4, 69.6));
 };

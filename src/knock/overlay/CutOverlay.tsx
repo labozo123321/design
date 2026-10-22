@@ -24,9 +24,9 @@ const SHADOW_SMALL = "0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.75), 0 0 1
 type Cap = { t0: number; t1: number; lines: string[] };
 const CAPS: Cap[] = [
   // 2004 (her knocks 5.2-6.2, yours 8.7-9.8)
-  { t0: 4.6, t1: 7.6, lines: ["your first night in your own room."] },
-  { t0: 8.2, t1: 11.2, lines: ["she made up the knock."] },
-  // 2009 (your eleven knocks 13.4-15.5; she's up at 16.6, across the house 18.9-23.6, down by 25.8)
+  { t0: 4.5, t1: 6.6, lines: ["your first night in your own room."] },
+  { t0: 6.9, t1: 11.2, lines: ["she made up the knock."] },
+  // 2009 (your eleven knocks 13.4-15.5; she's up at 16.6, across the house 18.9-23.1, down by 25)
   { t0: 13.3, t1: 17.4, lines: ["eleven knocks meant come here."] },
   { t0: 20.0, t1: 26.6, lines: ["she always came."] },
   // 2013 (her knocks 29.1-29.8 and 33.2-34.1; you roll over at 34.8 and answer 35.8-37.1)
@@ -35,7 +35,7 @@ const CAPS: Cap[] = [
   // 2025 (your knocks 45.7-46.8; her answer 50.4-51.4; you're up at 55.0, across the house 57.2-61.3)
   { t0: 40.3, t1: 43.9, lines: ["twelve years later."] },
   { t0: 45.5, t1: 49.6, lines: ["this time, you knocked first."] },
-  { t0: 57.4, t1: 62.6, lines: ["and this time, you went to her."] },
+  { t0: 57.4, t1: 61.4, lines: ["and this time, you went to her."] },
 ];
 const CAP_FADE = 0.5;
 const CAP_BASELINE = 1430;
@@ -88,10 +88,10 @@ const pad4 = (n: number) => String(n).padStart(4, "0");
 const Hud: React.FC<{ t: number }> = ({ t }) => {
   const seg = segAt(t);
   const c = COUNTS.find((x) => x.year === seg.year) ?? COUNTS[3];
-  // (in after the title; out for the end card; and through black between the nights); it steps back while
-  // someone crosses the hallway under it (her in 2009, you in 2025)
-  const walk = Math.max(smooth(18.7, 19.3, t) * (1 - smooth(23.2, 23.8, t)), smooth(56.9, 57.5, t));
-  const a = smooth(4.2, 4.9, t) * (1 - smooth(63.9, 64.6, t)) * (1 - blackAt(t)) * (1 - 0.8 * walk);
+  // (in after the title; out for the end card; and through black between the nights); it leaves the frame
+  // to whoever crosses the hallway under it (her in 2009; you in 2025, and it stays out after)
+  const walk = Math.max(smooth(18.5, 19.1, t) * (1 - smooth(23.0, 23.6, t)), smooth(55.3, 55.9, t));
+  const a = smooth(4.2, 4.9, t) * (1 - blackAt(t)) * (1 - walk);
   if (a <= 0.001) return null;
   const k = c.at === null ? 1 : smoother((t - c.at) / ROLL);
   const num = { text: pad4(k > 0 ? c.b : c.a), prev: pad4(c.a), k: c.at === null || t < c.at ? 1 : k };
@@ -102,7 +102,7 @@ const Hud: React.FC<{ t: number }> = ({ t }) => {
         <Roll r={year} h={84} fs={84} style={{ fontFamily: F.ui, fontWeight: 300, fontSize: 84, letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums" }} />
       </div>
       <div style={{ position: "absolute", right: 72, top: 212, textAlign: "right" }}>
-        <div style={{ fontFamily: F.ui, fontWeight: 600, fontSize: 26, lineHeight: "32px", letterSpacing: "0.16em", marginRight: "-0.16em", color: "rgba(255,246,234,0.92)", textShadow: SHADOW_SMALL }}>GOODNIGHT KNOCKS</div>
+        <div style={{ fontFamily: F.ui, fontWeight: 600, fontSize: 30, lineHeight: "36px", letterSpacing: "0.14em", marginRight: "-0.14em", color: "rgba(255,246,234,0.92)", textShadow: SHADOW_SMALL }}>GOODNIGHT KNOCKS</div>
         <div style={{ marginTop: 4, height: 64, display: "flex", justifyContent: "flex-end" }}>
           <Roll r={num} h={64} fs={60} align="right" style={{ fontFamily: F.ui, fontWeight: 300, fontSize: 60, letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }} />
         </div>
@@ -138,14 +138,14 @@ const EndCard: React.FC<{ t: number }> = ({ t }) => {
   return (
     <>
       <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${scrim.toFixed(3)})` }} />
-      <div style={{ position: "absolute", left: 100, top: 700, width: 880, textAlign: "center", opacity: kt, color: INK, transform: `translateY(${(8 * (1 - kt)).toFixed(2)}px)` }}>
+      <div style={{ position: "absolute", left: 100, top: 1130, width: 880, textAlign: "center", opacity: kt, color: INK, transform: `translateY(${(8 * (1 - kt)).toFixed(2)}px)` }}>
         <TitleText size={60} />
       </div>
       <div
         style={{
           position: "absolute",
           left: 100,
-          top: 1360,
+          top: 1420,
           width: 880,
           textAlign: "center",
           opacity: kq,

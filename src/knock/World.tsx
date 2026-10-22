@@ -219,7 +219,7 @@ const Up: React.FC<{ w: Walker; t: number }> = ({ w, t }) => {
   return (
     <>
       <PosedSib s={w.s} p={w.p} t={t} />
-      {w.carry === "pillow" ? <CarriedPillow at={chest} q={w.p.q} /> : null}
+      {w.carry === "pillow" ? <CarriedPillow at={chest} q={w.p.q} look={w.pillowLook} /> : null}
       {w.carry === "bundle" ? <Bundle at={chest} q={w.p.q} t={t} /> : null}
     </>
   );
@@ -248,10 +248,11 @@ const pillowGeo = (() => {
     return g;
   };
 })();
-// (the guest bed's own pillow, the one that ends up on her rug)
-const CarriedPillow: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion }> = ({ at, q }) => (
-  <mesh position={at} quaternion={q} geometry={pillowGeo()} material={BEDS.guest.pillowcase ?? BEDS.guest.sheet} castShadow />
-);
+// (the guest bed's own pillow, the one that ends up on her rug; or whoever's bed it's from)
+const CarriedPillow: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; look?: string }> = ({ at, q, look }) => {
+  const b = BEDS[look ?? "guest"] ?? BEDS.guest;
+  return <mesh position={at} quaternion={q} geometry={pillowGeo()} material={b.pillowcase ?? b.sheet} castShadow />;
+};
 /** Her pillow and quilt bundled in her arms: the quilt in loose folds around the pillow, a corner trailing. */
 const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = ({ at, q, t }) => (
   <group position={at} quaternion={q}>
@@ -289,6 +290,7 @@ const OnFloor: React.FC<{ f: Floor; t: number }> = ({ f, t }) => {
         kind="none"
         spec={spec}
         pillowAt={{ x: f.spot.x, z: f.spot.pillowZ }}
+        pillow={f.pillow}
         rest={b ? b.rest : null}
         covers={b && f.covers !== null ? { zTop: b.f.pos.z + (b.eye.z - b.f.pos.z) * f.covers, caps, loft: 0.03, drape: 0.02 } : null}
       />
@@ -434,7 +436,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   // (the payoff's macro is already turned at the cut, so the note reads upright from its first frame)
   const c = debugCam(cam) ?? (macro ? macroCam(my, t > 50 ? 1 : 0) : cameraFor(F.cam));
   // inside the cavity the seam's bloom is all around the lens: a fraction of it reads as the same glow
-  if (ghost === undefined) setRipples(ringsAt(t).map((r) => (simple ? { ...r, strength: 0.6 * r.strength } : r)), F.seam * (macro ? 0.07 : 0.45), -3.15);
+  if (ghost === undefined) setRipples(ringsAt(t).map((r) => (simple ? { ...r, strength: 0.7 * r.strength } : r)), F.seam * (macro ? 0.07 : 0.45), -3.15);
   const focus = macro ? (F.note ? Math.max(0.1, my - F.note.pos.y) : my - 0.05) : F.cam.dist;
   return (
     <>
@@ -445,7 +447,8 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
         f={{
           era: F.dress.era,
           t,
-          hall: F.light.hall,
+          // (the simple cut's brighter 2009 hallway keeps its fixture's own glow low: it sits near the top line)
+          hall: simple ? Math.min(F.light.hall, 0.12) : F.light.hall,
           strings: F.light.strings ?? 0,
           puppyBed: F.dress.era === "2004b" && t >= 8,
           outside: outsideAt(t, F.dress.era),
