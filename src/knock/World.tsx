@@ -481,6 +481,9 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           t,
           // (the simple cut's brighter 2009 hallway keeps its fixture's own glow low: it sits near the top line)
           hall: hallGlow,
+          // (the simple cut: no fixture outside 2004: even unlit, the hall's light catches its dome, and that
+          // bright patch flickers as it crosses the frame's edge)
+          lamp: !simple || F.dress.era === "2004a",
           strings: garland,
           puppyBed: F.dress.era === "2004b" && t >= 8,
           outside,

@@ -31,6 +31,8 @@ export type FixtureState = {
   strings: number;
   puppyBed: boolean;
   outside: Outside;
+  /** the hallway's ceiling fixture drawn (default true) */
+  lamp?: boolean;
 };
 
 const CURTAINS: Record<string, { nora: string; you: string }> = {
@@ -70,9 +72,11 @@ export const Fixtures: React.FC<{ f: FixtureState }> = ({ f }) => {
       )}
       {/* the hallway: its ceiling light, the banister over the stairwell */}
       {/* (toward the stairwell side, so nobody walking the hall passes under it from the camera's view) */}
-      <group position={[0, ROOM.ceiling, HALL.z1 + 0.27]}>
-        <CeilingFixture on={f.hall} />
-      </group>
+      {f.lamp === false ? null : (
+        <group position={[0, ROOM.ceiling, HALL.z1 + 0.27]}>
+          <CeilingFixture on={f.hall} />
+        </group>
+      )}
       <group position={[0, 0, HALL.z1 + 0.04]}>
         <Banister length={2 * O - 0.03} garland={f.era === "2025" ? { on: f.strings } : null} />
       </group>
