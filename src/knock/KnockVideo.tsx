@@ -7,6 +7,8 @@ import { NFRAMES } from "./script";
 import { Overlay } from "./Overlay";
 import { World } from "./World";
 import { FPS } from "./script";
+import { CUT_FPS, srcAt } from "./cut";
+import { CutOverlay } from "./overlay/CutOverlay";
 
 /**
  * POV: you had a secret knock with your sister. Told by the wall between your rooms: a roofless dollhouse
@@ -54,6 +56,31 @@ export const KnockVideo: React.FC = () => {
         </AbsoluteFill>
       ) : null}
       {!props.noOverlay && !props.cam ? <Overlay frame={frame} /> : null}
+    </AbsoluteFill>
+  );
+};
+
+/** The simple cut's picture: four nights, each played slower (see cut.ts); the HUD, captions and the fades
+ * between nights are the cut's overlay, rendered on its own. */
+export const KnockCutVideo: React.FC = () => {
+  const frame = useCurrentFrame();
+  const props = getInputProps() as { cam?: string; hide?: string[]; noOverlay?: boolean };
+  const t = srcAt(frame / CUT_FPS);
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <ThreeCanvas width={1080} height={1920} shadows camera={{ fov: 30, near: 0.05, far: 200, position: [0, 10, 2] }} gl={{ antialias: false, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}>
+        <World frame={Math.round(t * FPS)} cam={props.cam} hide={props.hide ?? []} tOverride={t} simple />
+      </ThreeCanvas>
+      {!props.noOverlay && !props.cam ? <CutOverlay frame={frame} /> : null}
+    </AbsoluteFill>
+  );
+};
+
+export const KnockCutOverlayOnly: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill>
+      <CutOverlay frame={frame} />
     </AbsoluteFill>
   );
 };

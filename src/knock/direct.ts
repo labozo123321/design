@@ -806,7 +806,8 @@ const b3 = (t: number): Frame => {
       near: { rest: { body: true, at: V3(-0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(1, 0, 0), pole: V3(-1, -0.4, 0.4) } },
       far: { rest: { body: true, at: V3(0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } },
     };
-    const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, near: null, far: null });
+    // (rising from just as she lay, her hands still where they rested on the quilt)
+    const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, near: { rest: restOnCovers(n, "near", -1, 0.5) }, far: { rest: restOnCovers(n, "far", -1, 0.5) } });
     // (her feet stop short of the quilt she's thrown down to the foot of the bed)
     const sitUp: Posed = { ...nBase, hip: V3(-0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(-0.42, 0.56, -2.04), V3(-0.6, 0.56, -2.04)] };
     const edge: Posed = { ...nBase, ...bundleArms, hip: V3(-0.86, 0.6, -2.95), q: facing(V3(-1, 0, 0.35)), feet: [V3(-1.26, 0.06, -2.85), V3(-1.22, 0.06, -3.1)] };

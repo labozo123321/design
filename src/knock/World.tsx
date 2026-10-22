@@ -417,11 +417,12 @@ const debugCam = (cam?: string) => {
 };
 
 /** ghost: draw the world as it was at another moment (the double exposure), through this moment's camera. */
-export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOverride?: number; ghost?: number }> = ({ frame, cam, hide, tOverride, ghost }) => {
+/** simple: the short cut's picture (no inside-the-wall macro, no glow-star field floating over her room). */
+export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOverride?: number; ghost?: number; simple?: boolean }> = ({ frame, cam, hide, tOverride, ghost, simple }) => {
   const tc = tOverride ?? frame / FPS;
   const t = ghost ?? tc;
   const F = ghost === undefined ? frameAt(t) : { ...frameAt(ghost), cam: frameAt(tc).cam, macro: 0 };
-  const macro = (F.macro ?? 0) > 0 && !cam;
+  const macro = (F.macro ?? 0) > 0 && !cam && !simple;
   // (the payoff's macro descends the slot toward the note)
   const push = t > 50 ? Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0;
   const my = MACRO.y - 0.7 * push;
@@ -454,8 +455,8 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       {(F.floor ?? []).map((f, i) => (
         <OnFloor key={i} f={f} t={t} />
       ))}
-      <Dressing d={F.dress} t={t} light={F.light} camDist={macro ? 0 : F.cam.dist} />
-      {F.note ? <Note n={F.note} aged={t > 40} /> : null}
+      <Dressing d={F.dress} t={t} light={F.light} camDist={macro || simple ? 0 : F.cam.dist} />
+      {F.note && !simple ? <Note n={F.note} aged={t > 40} /> : null}
       {F.noteHand && F.nora ? <NoteInHand f={F.nora} /> : null}
       {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} collar={F.dog.collar} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
