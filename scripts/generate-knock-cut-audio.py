@@ -326,6 +326,7 @@ def build():
     g.macro_mask = lambda n: np.zeros(n)
     g.cavity_tone = lambda n: np.zeros((n, 2))
     g.earplugs = lambda x: x
+    g.SIMPLE_CUT = True
     print("score ...")
     M = score_cut()
     mus = g.music_render(M)

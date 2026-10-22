@@ -464,7 +464,11 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   };
   const outside0 = outsideAt(t, F.dress.era);
   const outside = outside0.lights ? { ...outside0, lights: outside0.lights * edgeFade(new THREE.Vector3(0, PORCH.yWall - 0.1, PORCH.z0 + 0.66)) } : outside0;
-  const hallGlow = simple ? Math.min(F.light.hall, 0.12) * edgeFade(new THREE.Vector3(0, ROOM.ceiling - 0.08, HALL.z1 + 0.27)) : F.light.hall;
+  // (the simple cut: the hall fixture held at one soft, tone-mapped glow (its materials come in steps, and
+  // its bulbs leave tone mapping above 0.05, so any fade would flicker); only 2004's switch-off at bedtime)
+  const hallGlow = simple ? (F.dress.era === "2004a" ? F.light.hall : Math.min(F.light.hall, 0.04)) : F.light.hall;
+  // (the banister's string lights dim as they leave the frame, so their bloom goes with them)
+  const garland = (F.light.strings ?? 0) * edgeFade(new THREE.Vector3(0, 0.95, HALL.z1 + 0.04));
   return (
     <>
       <Rig c={c} />
@@ -476,7 +480,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           t,
           // (the simple cut's brighter 2009 hallway keeps its fixture's own glow low: it sits near the top line)
           hall: hallGlow,
-          strings: F.light.strings ?? 0,
+          strings: garland,
           puppyBed: F.dress.era === "2004b" && t >= 8,
           outside,
         }}

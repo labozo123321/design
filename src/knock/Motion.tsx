@@ -71,7 +71,8 @@ const mixArm = (x: ArmSpec | null | undefined, y: ArmSpec | null | undefined, e:
 
 /** Walking along a path (world points on the floor) at distance d (m) from its start: the hips over the
  * path with a bob, facing along it, each foot planted while the other swings. */
-export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<Posed, "hip" | "q" | "feet">, strideK = 0.62): Posed => {
+/** (arms: if given, the arms for the walk's phase, so they can swing with the steps) */
+export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<Posed, "hip" | "q" | "feet">, strideK = 0.62, arms?: (ph: number) => Pick<Posed, "near" | "far">): Posed => {
   // the point at distance d (along the path)
   const segs = path.slice(1).map((q, i) => q.clone().sub(path[i]));
   const lens = segs.map((v) => v.length());
@@ -113,7 +114,7 @@ export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<P
   };
   const bob = Math.abs(Math.cos(ph)) * 0.025 * k;
   const hip = p.clone().add(V3(0, hipHeight(s) - 0.02 * k + bob, 0));
-  return { ...base, hip, q: facing(dir), feet: [foot(-1, ph), foot(1, ph + Math.PI)] };
+  return { ...base, ...(arms ? arms(ph) : {}), hip, q: facing(dir), feet: [foot(-1, ph), foot(1, ph + Math.PI)] };
 };
 
 /** Standing still at a point facing a direction. */

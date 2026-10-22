@@ -1245,6 +1245,12 @@ export const Figure: React.FC<{
     const spread = 0.1 * k;
     const H = new THREE.Vector3(side * 0.095 * k, hipY - 0.02, 0);
     const A = pose.feet ? pose.feet[side < 0 ? 0 : 1].clone() : new THREE.Vector3(side * (spread + 0.01), 0.09 * k + lifts, -0.01);
+    if (pose.ankles) {
+      // (a foot asked for beyond the leg's reach comes in to the end of the straightened leg, shoe and all)
+      const reach = (bust ? 0.425 + 0.41 : 0.45 + 0.43) * k * 0.995;
+      const d = A.clone().sub(H);
+      if (d.length() > reach) A.copy(H).addScaledVector(d.normalize(), reach);
+    }
     const kneeOut = new THREE.Vector3(side * 0.02, 0, -1);
     // (portrait people: legs that reach the floor nearly straight, not crouching)
     const { E: K } = bust ? ik(H, A, 0.425 * k, 0.41 * k, kneeOut) : ik(H, A, 0.45 * k, 0.43 * k, kneeOut);

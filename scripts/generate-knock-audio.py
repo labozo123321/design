@@ -72,6 +72,11 @@ DUCK_DB = -4.0
 # ============================================================================================ dsp helpers
 
 
+
+# The simple cut (generate-knock-cut-audio.py) sets this: nobody carries a pillow or a quilt across the house
+# there, and the string lights go out on their own, so those sounds are left out.
+SIMPLE_CUT = False
+
 def rng(*key):
     return np.random.default_rng(zlib.crc32(repr(key).encode("utf8")))
 
@@ -1963,7 +1968,8 @@ def b3(B):
     place(B.F, cloth(0.35, "sheet", 34) * 0.4, 18.0, pan=-0.5)
     place(B.F, step("bare", "wood", 0.5, 31) * 0.025, 18.41, pan=-0.62)
     place(B.F, step("bare", "wood", 0.5, 32) * 0.025, 18.46, pan=-0.55)
-    place(B.F, cloth(0.3, "quilt", 35) * 0.55, 18.32, pan=-0.55)
+    if not SIMPLE_CUT:
+        place(B.F, cloth(0.3, "quilt", 35) * 0.55, 18.32, pan=-0.55)
     path = [(-1.18, -3.0), (-1.5, -3.35), (-1.52, -3.95), (-1.15, -4.32), (1.15, -4.32), (1.52, -3.95), (1.52, -3.35), (1.42, -2.75)]
     steps, arrive = path_walk(path, 18.6, 2.7, 0.9, step_len_scale=WALK_STRIDE)
     for j, (ts, x, z, d) in enumerate(steps):
@@ -1975,7 +1981,8 @@ def b3(B):
     pans = [xpan(at_dist(path, (q / nd) * (arrive - 18.6) * 2.7)[0]) for q in range(0, nd, ns(0.05))]
     pv = np.interp(np.arange(nd), np.arange(0, nd, ns(0.05)), pans)
     th = (pv + 1) * np.pi / 4
-    place(B.F, np.stack([drag * np.cos(th), drag * np.sin(th)], axis=1) * np.sqrt(2) * 0.28, 18.6)
+    if not SIMPLE_CUT:
+        place(B.F, np.stack([drag * np.cos(th), drag * np.sin(th)], axis=1) * np.sqrt(2) * 0.28, 18.6)
     d_her = dist_to_z(path, -3.66)
     t_her = 18.6 + d_her / 2.7
     place(B.H, door("open", 31) * 0.062, t_her - 0.06, pan=xpan(-1.4))
@@ -1985,10 +1992,12 @@ def b3(B):
     t_yours = 18.6 + d_yours / 2.7
     place(B.H, door("open", 32) * 0.062, t_yours - 0.06, pan=xpan(1.4))
     B.events += [(t_her, "her door"), (t_yours, "your door"), (arrive, "she arrives")]
-    place(B.F, pillow(31, big=1.6) * 0.1, arrive + 0.2, pan=xpan(1.42))
+    if not SIMPLE_CUT:
+        place(B.F, pillow(31, big=1.6) * 0.1, arrive + 0.2, pan=xpan(1.42))
     place(B.F, flop(0.35, 31, 0.3) * 0.09, arrive + 0.5, pan=xpan(1.42))
     place(B.F, flop(0.6, 32, 0.5) * 0.11, arrive + 0.85, pan=xpan(1.42))
-    place(B.F, cloth(0.5, "quilt", 37) * 0.35, arrive + 0.9, pan=xpan(1.42))
+    if not SIMPLE_CUT:
+        place(B.F, cloth(0.5, "quilt", 37) * 0.35, arrive + 0.9, pan=xpan(1.42))
     # Moose: lifts his head in the hall as she passes; trots after her (tags, paws), and drops at her feet
     place(B.H, tags(1, 1) * 0.02, 18.65, pan=xpan(-0.7))
     dpath = [(-0.7, -4.36), (1.15, -4.36), (1.52, -3.98), (1.56, -3.4), (2.03, -2.95), (2.03, -1.6)]
@@ -2216,7 +2225,7 @@ def b9(B):
     # 62.0 up with your pillow
     place(B.F, cloth(0.62, "cotton", 93) * 0.45, 62.0, pan=0.45)
     place(B.F, creak(0.3, 210, 260, 91) * 0.03, 62.25, pan=0.45)
-    for j, tp in enumerate((62.36, 62.52)):
+    for j, tp in enumerate(() if SIMPLE_CUT else (62.36, 62.52)):
         place(B.F, pillow(("deco", j), 0.5) * 0.025, tp, pan=0.75)
     for j, ts in enumerate((62.58, 62.63)):
         place(B.F, step("sock", "wood", 0.5, ("feet", j)) * 0.045, ts, pan=0.62)
@@ -2227,7 +2236,8 @@ def b9(B):
         hall = in_hall(z)
         place(B.H if hall else B.F, step("sock", "wood", 0.6, ("y27", j)) * (0.025 if hall else 0.04), ts, pan=xpan(x))
     carry = cloth(arrive - 62.85, "cotton", 94, rms=0.05)
-    place(B.F, carry * 0.15, 62.85, pan=0.0)
+    if not SIMPLE_CUT:
+        place(B.F, carry * 0.15, 62.85, pan=0.0)
     d_door = dist_to_z(path, -3.66)
     t_door = 62.85 + d_door / 2.35
     place(B.H, door("open", 91) * 0.05, t_door - 0.06, pan=xpan(1.4))
@@ -2240,14 +2250,16 @@ def b9(B):
     place(B.F, cloth(0.3, "sheet", 95) * 0.25, 64.42, pan=-0.35)
     for j, tp in enumerate((64.72, 64.95)):
         place(B.F, thud(180, 0.012, 700, ("pat", j), 0.05) * 0.018, tp, pan=xpan(-1.12))
-    place(B.F, pillow(95, 0.8) * 0.064, arrive + 0.35, pan=xpan(-1.38))
-    B.events.append((arrive + 0.35, "pillow on the rug"))
+    if not SIMPLE_CUT:
+        place(B.F, pillow(95, 0.8) * 0.064, arrive + 0.35, pan=xpan(-1.38))
+        B.events.append((arrive + 0.35, "pillow on the rug"))
     place(B.F, flop(0.4, 91, 0.3) * 0.07, arrive + 0.72, pan=xpan(-1.4))
     place(B.F, flop(0.5, 92, 0.35) * 0.08, arrive + 1.08, pan=xpan(-1.4))
     place(B.F, flop(0.6, 93, 0.5) * 0.09, arrive + 1.45, pan=xpan(-1.4))
     place(B.F, cloth(0.5, "cotton", 96) * 0.3, arrive + 1.1, pan=xpan(-1.4))
     # mom, at the far end of the hall, switches the string lights off
-    place(B.H, lp(switch_click(9), 5000, 2) * 0.1, 66.8, pan=0.55)
+    if not SIMPLE_CUT:
+        place(B.H, lp(switch_click(9), 5000, 2) * 0.1, 66.8, pan=0.55)
     B.events.append((66.8, "string lights switch"))
 
 
@@ -2259,8 +2271,9 @@ def house_2025(B):
     place(B.O, snow_hush(22.6, 99), 49.0, 0.05)
     clock(B, 47.5, 67.5, 0.4, 0.11, gain_fn=lambda tt: 0.55 if tt < 49.0 else 1.0)
     place(B.F, vinyl(0.45, "creak", 81) * 0.045, 49.45, pan=-0.4)
-    place(B.F, phone_down(1) * 0.09, 50.6, pan=0.42)
-    B.events.append((50.6, "phone face-down"))
+    if not SIMPLE_CUT:
+        place(B.F, phone_down(1) * 0.09, 50.6, pan=0.42)
+        B.events.append((50.6, "phone face-down"))
     place(B.F, vinyl(0.5, "creak", 82) * 0.04, 53.7, pan=-0.4)
 
 

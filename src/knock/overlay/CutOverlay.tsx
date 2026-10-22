@@ -24,8 +24,8 @@ const SHADOW_SMALL = "0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.75), 0 0 1
 type Cap = { t0: number; t1: number; lines: string[] };
 const CAPS: Cap[] = [
   // 2004 (her knocks 5.2-6.2, yours 8.7-9.8)
-  { t0: 4.5, t1: 6.6, lines: ["your first night in your own room."] },
-  { t0: 6.9, t1: 11.2, lines: ["she made up the knock."] },
+  { t0: 4.4, t1: 7.0, lines: ["your first night in your own room."] },
+  { t0: 7.3, t1: 11.2, lines: ["she made up the knock."] },
   // 2009 (your eleven knocks 13.4-15.5; she's up at 16.6, across the house 18.9-22.7, down by 26)
   { t0: 13.3, t1: 17.4, lines: ["eleven knocks meant come here."] },
   { t0: 20.0, t1: 26.6, lines: ["she always came."] },
@@ -78,7 +78,8 @@ const Captions: React.FC<{ t: number }> = ({ t }) => {
 /** The goodnight knocks so far: [cut second it rolls at (null: never in this night), before, after]. */
 const COUNTS: { year: string; at: number | null; a: number; b: number }[] = [
   { year: "2004", at: outAt(6.7), a: 0, b: 1 },
-  { year: "2009", at: null, a: 1718, b: 1718 },
+  // (2009: her answer is coming over; it rolls as she arrives)
+  { year: "2009", at: outAt(20.7), a: 1718, b: 1719 },
   { year: "2013", at: outAt(34.8), a: 3215, b: 3216 },
   { year: "2025", at: outAt(59.1), a: 3216, b: 3217 },
 ];

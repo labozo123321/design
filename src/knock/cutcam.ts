@@ -75,6 +75,6 @@ export const cutCam = (o: number): Preset => {
   // her; then slowly down the house, the two of them high in the frame over the end card
   const a = mix(mix(WIDE, CLOSE, ease(o, 40.1, 46.0)), P(0, 0.64, -3.18, 4.35), ease(o, 46.0, 53.0));
   const f = follow(lagged(o, 62.0, { x: 0.27, z: -2.55 }, { x: -1.38, z: -2.55 }));
-  const b = mix(a, f, ease(o, 54.0, 56.6));
+  const b = mix(a, f, ease(o, 53.0, 56.6));
   return mix(b, P(-0.85, 0.45, -1.45, 7.6), ease(o, 63.4, 69.6));
 };

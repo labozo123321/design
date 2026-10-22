@@ -3,7 +3,7 @@ import { MOM, NORA, YOU, type Sib } from "./cast";
 import type { ArmSpec, Lie, Reach, Spot } from "./People";
 import { knockReach, lieBody, lieToPosed } from "./People";
 import { blendPosed, facing, standAt, walkAlong, type Posed } from "./Motion";
-import { BED, PILLOW, PRESETS, TREAD, WALL, knockPoint, type Preset } from "./layout";
+import { BED, PRESETS, ROOM, TREAD, WALL, knockPoint, type Preset } from "./layout";
 import { knockMotion, knocksOf, smooth, smoother, track, V3, vnoise } from "./anim";
 import type { Look } from "./Post";
 import { BEAGLE, type BeaglePose } from "./Beagle";
@@ -159,17 +159,21 @@ const gripEdge = (sib: Sib, which: "near" | "far", side: -1 | 1, edge: number, l
   };
 };
 
-/** The upper arm of someone on their side, lying along the flank, the hand on the hip (body frame). */
-const alongFlank = (sib: Sib, which: "near" | "far", side: -1 | 1): Reach => {
+/** The covers' fraction (feet to eyes) for someone lying in a twin bed that puts the covers' top edge where
+ * they lie once thrown back to its foot, so throwing them back ends exactly where the empty bed shows them. */
+const thrownCovers = (sib: Sib, side: -1 | 1, lie: Lie) => {
+  const b = lieBody(sib, side, lie);
+  return (ROOM.back + 0.55 + 1.17 - b.f.pos.z) / (b.eye.z - b.f.pos.z);
+};
+
+/** Arms hanging relaxed at the sides of someone standing or walking (body frame), the near one on nearSide;
+ * swing: how far forward the near hand is (-1..1, the far one opposite). */
+export const hangArms = (sib: Sib, nearSide: -1 | 1, swing = 0): { near: ArmSpec; far: ArmSpec } => {
   const k = sib.k;
-  const sgnBody = (which === "near" ? (side < 0 ? -1 : 1) : side < 0 ? 1 : -1) as number;
-  return {
-    body: true,
-    at: V3(sgnBody * 0.22 * k, 1.0 * k, -0.05 * k),
-    hand: { curl: [0.45, 0.5, 0.55, 0.6], spread: 0.05, thumbOut: 0.2, thumbCurl: 0.4 },
-    palm: V3(-sgnBody, 0, 0),
-    pole: V3(sgnBody, 0, 0.3),
-  };
+  const one = (sgn: number, fwd: number): ArmSpec => ({
+    rest: { body: true, at: V3(sgn * 0.21 * k, 0.87 * k, -0.03 * k - 0.07 * k * fwd), hand: { curl: [0.35, 0.4, 0.45, 0.5], spread: 0.05, thumbOut: 0.35, thumbCurl: 0.3 }, palm: V3(-sgn, 0, 0), pole: V3(sgn * 0.2, 0, 1) },
+  });
+  return { near: one(nearSide, swing), far: one(-nearSide, -swing) };
 };
 
 // ------------------------------------------------------------------------------------------- the grade
@@ -192,14 +196,17 @@ const b1 = (t: number): Frame => {
   const nora: SibFrame = {
     s: n,
     side: -1,
-    covers: track(t, [
-      [6.6, 0.68],
-      [7.2, 0.86],
-    ]),
+    // (the simple cut: the quilt stays at her waist, both hands on top of it)
+    covers: SIMPLE
+      ? 0.62
+      : track(t, [
+          [6.6, 0.68],
+          [7.2, 0.86],
+        ]),
     lie: {
       roll: nRoll,
       near: nNear,
-      far: { rest: restOnCovers(n, "far", -1, 1), to: gripEdge(n, "far", -1, 0.86), k: smooth(6.7, 7.1, t) },
+      far: SIMPLE ? { rest: restOnCovers(n, "far", -1, 1) } : { rest: restOnCovers(n, "far", -1, 1), to: gripEdge(n, "far", -1, 0.86), k: smooth(6.7, 7.1, t) },
       e: {
         smile: 0.15 + 0.55 * laugh,
         squint: 0.35 * laugh,
@@ -237,16 +244,17 @@ const b1 = (t: number): Frame => {
     [7.3, 0.78],
     [7.8, SIMPLE ? 0.78 : 0.84],
   ]);
-  const yGrip = gripEdge(y, "near", 1, yCov, 0.01 * smooth(3.3, 3.5, t));
+  // (the simple cut: the duvet at your waist, your hands on top of it)
+  const yGrip = SIMPLE ? restOnCovers(y, "near", 1, 0.3) : gripEdge(y, "near", 1, yCov, 0.01 * smooth(3.3, 3.5, t));
   const yNear = knockArm(t, 1, 5.7, 6.7, yGrip, true, 0, 0.02);
   const you: SibFrame = {
     s: y,
     side: 1,
-    covers: yCov,
+    covers: SIMPLE ? 0.64 : yCov,
     lie: {
       roll: yRoll,
       near: yNear,
-      far: { rest: gripEdge(y, "far", 1, yCov, 0.01 * smooth(3.3, 3.5, t)) },
+      far: { rest: SIMPLE ? restOnCovers(y, "far", 1, 0.3) : gripEdge(y, "far", 1, yCov, 0.01 * smooth(3.3, 3.5, t)) },
       e: {
         lidL: t > 3.3 && t < 3.75 ? 1 : 0,
         lidR: t > 3.3 && t < 3.75 ? 1 : 0,
@@ -301,15 +309,6 @@ const phoneHand = (sib: Sib, side: -1 | 1, down = 0): Reach => {
   };
 };
 
-/** Where a pillow lies (its middle): at the head of a twin bed (side), or at a spot on the floor. */
-const bedPillowAt = (side: -1 | 1) => V3(side * (WALL.half + BED.w / 2), BED.top + 0.012 + PILLOW.h * 0.5, PILLOW.z);
-const floorPillowAt = (spot: Spot) => V3(spot.x, spot.top + 0.012 + PILLOW.h * 0.5, spot.pillowZ);
-
-/** The simple cut, 2025: where your phone lies face down beside your pillow once you've put it down (world:
- * where the lowered phone hand left it), and your hand coming away from it to rest on your front. */
-const phoneDownAt = (y: Sib) => lieBody(y, 1, { roll: 0.6, e: {} }).eye.clone().add(V3(0.15, 0.02, 0.2));
-const yFarAfterPhone = (y: Sib, t: number): ArmSpec => ({ rest: phoneHand(y, 1, 1), to: restOnCovers(y, "far", 1, 0.3), k: smooth(50.65, 51.15, t) });
-
 /** The open palm laid flat on the wall (world), in front of the chest: the forearm stands up off the
  * mattress, the fingers up the wall from the wrist. */
 const palmOnWall = (side: -1 | 1, dz = 0.02): Reach => ({
@@ -341,8 +340,7 @@ const mixLook = (a: Omit<Look, "time">, b: Omit<Look, "time">, k: number): Omit<
 const b5 = (t: number): Frame => {
   const n = NORA[18];
   const y = YOU[15];
-  const nKnocks = knockArm(t, -1, 29.0, 33.2, restOnCovers(n, "near", -1, 0.5), false, 0, 0);
-  const nKnocksTop = knockArm(t, -1, 29.0, 33.2, alongFlank(n, "far", -1), false, 0, 0);
+  const nKnocks = knockArm(t, -1, 29.0, 33.2, restOnCovers(n, "near", -1, SIMPLE ? 0.4 : 0.5), false, 0, 0);
   const palm = smooth(34.0, 34.5, t);
   const nora: SibFrame = {
     s: n,
@@ -356,12 +354,12 @@ const b5 = (t: number): Frame => {
           [34.0, 0.9],
         ]),
     lie: {
-      roll: 0.62,
-      // (the simple cut: on her side facing the wall, she knocks and lays her palm on it with her upper arm,
-      // the one in view; the lower one lies under her)
-      near: SIMPLE ? undefined : palm > 0 ? { rest: restOnCovers(n, "near", -1, 0.5), to: palmOnWall(-1), k: palm } : nKnocks,
+      // (the simple cut: lying as in 2025, mostly on her back turned a little to the wall, both hands on top
+      // of the bag; she knocks with the hand by the wall and, when you answer, just closes her eyes)
+      roll: SIMPLE ? 0.3 : 0.62,
+      near: SIMPLE ? nKnocks : palm > 0 ? { rest: restOnCovers(n, "near", -1, 0.5), to: palmOnWall(-1), k: palm } : nKnocks,
       // (the other arm inside the bag, along her side)
-      far: SIMPLE ? (palm > 0 ? { rest: alongFlank(n, "far", -1), to: palmOnWall(-1), k: palm } : nKnocksTop) : null,
+      far: SIMPLE ? { rest: restOnCovers(n, "far", -1, 0.4) } : null,
       e: {
         eyeYaw: -0.15,
         eyePitch: -0.05,
@@ -452,12 +450,12 @@ const b8 = (t: number): Frame => {
         s: y,
         side: 1,
         covers: SIMPLE ? 0.56 : 0.66,
-        // (the simple cut: the screen dims as the phone goes down beside the pillow, where it stays)
-        phone: t < 50.6 ? { on: SIMPLE ? 1 - smooth(50.2, 50.6, t) : 1 } : SIMPLE ? undefined : { on: 0, down: true },
+        // (the simple cut: no phone; you lie awake with your hands on your front)
+        phone: SIMPLE ? undefined : t < 50.6 ? { on: 1 } : { on: 0, down: true },
         lie: {
           roll: 0.6,
           near: { rest: yRestNear, to: knockReach(1, knockPoint(1, 0), 0.07 + 0.008 * Math.sin(t * 5.3)), k: smoother(hover) },
-          far: t < 50.6 ? { rest: phoneHand(y, 1, smooth(50.3, 50.6, t)) } : SIMPLE ? yFarAfterPhone(y, t) : { rest: restOnCovers(y, "far", 1, 0.3) },
+          far: SIMPLE ? { rest: restOnCovers(y, "far", 1, 0.3) } : t < 50.6 ? { rest: phoneHand(y, 1, smooth(50.3, 50.6, t)) } : { rest: restOnCovers(y, "far", 1, 0.3) },
           e: { eyePitch: t < 51.4 ? -0.15 : 0.05, eyeYaw: t > 51.4 ? -0.2 : 0, brow: 0.1, smile: 0 },
         },
       }
@@ -469,7 +467,6 @@ const b8 = (t: number): Frame => {
     you,
     dress: { era: "2025", trex: 0, jolt: 0, stars: 4, starGlow: 0.6, beds: { nora: { kind: "air", look: "air", spec: occupied ? "air-wall" : "air-mid" }, you: { kind: "twin", look: "guest" } } },
     light: { hall: 0, street: 0.25, moon: 0.9, nightlight: 0, fill: 0.8, strings: 1, snow: 1, headlight: t >= 47.7 && t <= 48.7 ? t - 47.7 : undefined },
-    items: SIMPLE && occupied && t >= 50.6 ? [{ kind: "phone", pos: phoneDownAt(y) }] : undefined,
     cam,
     look: { ...SLATE, flash: Math.abs(t - 49.0) < 0.05 ? 0.55 : 0 },
     bloom: 0.55,
@@ -493,17 +490,17 @@ const b9 = (t: number): Frame => {
   const you: SibFrame = {
     s: y,
     side: 1,
-    // (the simple cut: the covers thrown back as you get up)
-    covers: SIMPLE ? 0.56 - 0.44 * smooth(61.45, 62.0, t) : 0.66,
+    // (the simple cut: onto your back, then the covers thrown back to the foot of the bed as you get up)
+    covers: SIMPLE ? 0.56 + (thrownCovers(y, 1, { roll: 0, knees: 0.6, e: {} }) - 0.56) * smooth(61.5, 62.0, t) : 0.66,
     phone: SIMPLE ? undefined : { on: 0, down: true },
     lie: {
-      roll: 0.6 - 0.38 * away,
+      roll: SIMPLE ? 0.6 * (1 - smooth(61.2, 61.7, t)) : 0.6 - 0.38 * away,
       // (the simple cut: the knees drawn up as the covers go back, so the feet come up the bed before you sit
       // up, clear of the covers at its foot)
       knees: SIMPLE ? 0.6 * smooth(61.6, 62.0, t) : undefined,
       prop: 0.006 * smooth(57.4, 57.6, t) * (1 - smooth(57.7, 58.1, t)),
       near: yKnock,
-      far: SIMPLE ? yFarAfterPhone(y, t) : { rest: restOnCovers(y, "far", 1, 0.3) },
+      far: { rest: restOnCovers(y, "far", 1, 0.3) },
       e: {
         eyePitch: t > 55.75 && t < 56.3 ? 0.5 : 0.02,
         eyeYaw: t > 55.75 && t < 56.3 ? 0.2 : -0.2,
@@ -572,24 +569,24 @@ const b9 = (t: number): Frame => {
   const floor: Floor[] = [];
   if (t >= 62.0) {
     youNow = null;
-    const lying = lieToPosed(y, 1, { ...you.lie, roll: 0.6 });
+    const lying = lieToPosed(y, 1, { ...you.lie, roll: SIMPLE ? 0 : 0.6 });
     // the pillow under one arm, held to the chest with both hands
     const k = y.k;
     const hold: ArmSpec = { rest: { body: true, at: V3(-0.17, 1.33 * k, -0.2), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(1, 0, 0), pole: V3(-1, -0.4, 0.4) } };
     const hold2: ArmSpec = { rest: { body: true, at: V3(0.17, 1.33 * k, -0.2), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } };
-    const base = { e: { smile: 0.6, squint: 0.2 }, nearSide: 1 as const, near: hold2, far: hold };
+    // (the simple cut: you bring nothing, your arms at your sides; you sit up a little further from the wall)
+    const base = { e: { smile: 0.6, squint: 0.2 }, nearSide: 1 as const, ...(SIMPLE ? hangArms(y, 1) : { near: hold2, far: hold }) };
     // (feet: left, right; facing the foot of the bed the left foot is toward +x)
-    const sitUp: Posed = { ...base, hip: V3(0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(0.6, 0.56, -1.95), V3(0.42, 0.56, -1.95)] };
+    const sitUp: Posed = SIMPLE
+      ? { ...base, near: lying.near, far: lying.far, nearSide: lying.nearSide, hip: V3(0.6, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(0.7, 0.56, -1.95), V3(0.52, 0.56, -1.95)] }
+      : { ...base, hip: V3(0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(0.6, 0.56, -1.95), V3(0.42, 0.56, -1.95)] };
     const edge: Posed = { ...base, hip: V3(0.86, 0.6, -2.95), q: facing(V3(1, 0, 0.35)), feet: [V3(1.22, 0.06, -3.1), V3(1.26, 0.06, -2.85)] };
     const path = [V3(1.18, 0, -3.0), V3(1.5, 0, -3.35), V3(1.52, 0, -3.95), V3(1.15, 0, -4.32), V3(-1.15, 0, -4.32), V3(-1.52, 0, -3.95), V3(-1.52, 0, -3.35), V3(-1.42, 0, -2.75)];
     const stand = standAt(y, path[0], V3(0.5, 0, -1), base);
     const walkT0 = 62.85;
     const speed = 2.35;
     let p: Posed | null;
-    // (the simple cut: the hands come up from where they lay, and take the pillow from the head of the bed as
-    // you sit up: it travels from there into your arms)
-    let carry: "pillow" | null = SIMPLE && t < 62.15 ? null : "pillow";
-    let pillowAt: Walker["pillowAt"] = SIMPLE && t < 62.45 ? { at: bedPillowAt(1), k: 1 - smooth(62.15, 62.45, t) } : undefined;
+    let carry: "pillow" | null = SIMPLE ? null : "pillow";
     if (t < 62.3) p = blendPosed(SIMPLE ? { ...base, ...lying, e: base.e } : { ...lying, ...base }, sitUp, (t - 62.0) / 0.3);
     else if (t < 62.6) p = blendPosed(sitUp, edge, (t - 62.3) / 0.3);
     else if (t < walkT0) p = blendPosed(edge, stand, (t - 62.6) / (walkT0 - 62.6));
@@ -597,29 +594,28 @@ const b9 = (t: number): Frame => {
       const total = path.reduce((a, q, i) => (i ? a + q.distanceTo(path[i - 1]) : 0), 0);
       const d = Math.min(total, (t - walkT0) * speed);
       const arrive = walkT0 + total / speed;
-      if (t < arrive) p = walkAlong(y, path, d, base, WALK_STRIDE);
+      if (t < arrive) p = walkAlong(y, path, d, base, WALK_STRIDE, SIMPLE ? (ph) => hangArms(y, 1, Math.sin(ph)) : undefined);
       else {
         // drop the pillow on the rug, kneel, lie down on your back beside the mattress
         const end = standAt(y, path[path.length - 1], V3(0, 0, 1), base);
-        const spot: Spot = { x: -1.38, top: 0.012, pillowZ: -3.25, pillowH: 0.12 };
+        const spot: Spot = { x: -1.38, top: 0.012, pillowZ: -3.25, pillowH: SIMPLE ? 0 : 0.12 };
         // (side: the room you lie in, hers; the bed-side logic keeps a sleeper off its own room's wall)
         // (your hands folded on your front as you lie down and once you're down)
         const downArms = { near: { rest: restOnCovers(y, "near", -1, 0.5) }, far: { rest: restOnCovers(y, "far", -1, 0.5) } };
         const down = lieToPosed(y, -1, { roll: 0, spot, e: { smile: 0.5 }, ...downArms });
         const kneel: Posed = { ...base, hip: V3(-1.4, 0.42, -2.6), q: facing(V3(0, -0.2, -1)), feet: [V3(-1.5, 0.05, -2.2), V3(-1.3, 0.05, -2.2)] };
         const sitF: Posed = { ...base, hip: V3(-1.38, 0.13, -2.55), q: facing(V3(0, 0, 1), V3(0, 1, -0.25)), feet: [V3(-1.3, 0.05, -1.75), V3(-1.46, 0.05, -1.75)] };
-        // (the simple cut: the pillow swung down onto the head of the rug beside you; then, still facing down
-        // the room, you crouch, sit and lie back, your hands coming to rest on your front: no turning round)
+        // (the simple cut: still facing down the room, you crouch, sit and lie back, your hands coming to rest
+        // on your front: no turning round)
         const crouch: Posed = { ...base, ...downArms, nearSide: down.nearSide, hip: V3(-1.42, 0.45, -2.72), q: facing(V3(0, 0, 1)), feet: [V3(-1.31, 0.05, -2.4), V3(-1.53, 0.05, -2.4)] };
-        const dropAt = SIMPLE ? 0.32 : 0.35;
-        carry = t < arrive + dropAt ? "pillow" : null;
-        if (SIMPLE && t < arrive + dropAt) pillowAt = { at: floorPillowAt(spot), via: V3(-1.84, 0.75, -2.9), k: smooth(arrive + 0.06, arrive + dropAt, t) };
-        const lyingThere: Floor = { s: y, side: -1, covers: null, spot, pillow: true, body: false, lie: { roll: 0, spot, e: { smile: 0.45, eyePitch: 0.35 }, ...downArms } };
+        const dropAt = SIMPLE ? 0 : 0.35;
+        carry = !SIMPLE && t < arrive + dropAt ? "pillow" : null;
+        const lyingThere: Floor = { s: y, side: -1, covers: null, spot, pillow: !SIMPLE, body: false, lie: { roll: 0, spot, e: { smile: 0.45, eyePitch: 0.35 }, ...downArms } };
         if (SIMPLE) {
-          if (t < arrive + 0.32) p = end;
-          else if (t < arrive + 0.72) p = blendPosed(end, crouch, (t - arrive - 0.32) / 0.4);
-          else if (t < arrive + 1.1) p = blendPosed(crouch, { ...sitF, ...downArms, nearSide: down.nearSide }, (t - arrive - 0.72) / 0.38);
-          else if (t < arrive + 1.5) p = blendPosed({ ...sitF, ...downArms, nearSide: down.nearSide }, { ...base, ...down }, (t - arrive - 1.1) / 0.4);
+          if (t < arrive + 0.2) p = end;
+          else if (t < arrive + 0.6) p = blendPosed(end, crouch, (t - arrive - 0.2) / 0.4);
+          else if (t < arrive + 1.0) p = blendPosed(crouch, { ...sitF, ...downArms, nearSide: down.nearSide }, (t - arrive - 0.6) / 0.4);
+          else if (t < arrive + 1.45) p = blendPosed({ ...sitF, ...downArms, nearSide: down.nearSide }, { ...base, ...down }, (t - arrive - 1.0) / 0.45);
           else p = null;
         } else if (t < arrive + 0.35) p = end;
         else if (t < arrive + 0.75) p = blendPosed(end, kneel, (t - arrive - 0.35) / 0.4);
@@ -630,7 +626,7 @@ const b9 = (t: number): Frame => {
         if (t >= arrive + dropAt) floor.push({ ...lyingThere, body: p === null });
       }
     }
-    if (p) walkers.push({ key: "you", s: y, p, carry, pillowAt });
+    if (p) walkers.push({ key: "you", s: y, p, carry });
   }
   return {
     t,
@@ -638,8 +634,7 @@ const b9 = (t: number): Frame => {
     you: youNow,
     walkers,
     floor,
-    items: SIMPLE ? [{ kind: "phone", pos: phoneDownAt(y) }] : undefined,
-    dress: { era: "2025", trex: smooth(55.6, 55.85, t), jolt: Math.max(...[55.0, 55.3, 55.6].map((k) => (t >= k ? Math.exp(-(t - k) / 0.05) : 0))), stars: 4, starGlow: 0.6 + 0.4 * gold, beds: { nora: { kind: "air", look: "air", spec: "air-wall" }, you: SIMPLE ? { kind: "twin", look: "guest", thrown: t >= 62.0 ? 1 : 0, noPillow: t >= 62.15 } : { kind: "twin", look: "guest" } } },
+    dress: { era: "2025", trex: smooth(55.6, 55.85, t), jolt: Math.max(...[55.0, 55.3, 55.6].map((k) => (t >= k ? Math.exp(-(t - k) / 0.05) : 0))), stars: 4, starGlow: 0.6 + 0.4 * gold, beds: { nora: { kind: "air", look: "air", spec: "air-wall" }, you: SIMPLE ? { kind: "twin", look: "guest", thrown: t >= 62.0 ? 1 : 0 } : { kind: "twin", look: "guest" } } },
     light: {
       hall: 0,
       street: 0.25,
@@ -835,20 +830,21 @@ const b3 = (t: number): Frame => {
   const lightning = SIMPLE
     ? Math.max(0.42 * smooth(15.72, 15.9, t) * Math.exp(-Math.max(0, t - 15.9) / 0.35), 0.3 * smooth(19.52, 19.7, t) * Math.exp(-Math.max(0, t - 19.7) / 0.35))
     : Math.max(strike(15.0), strike(15.8), strike(19.5), 0.35 * strike(21.0, 0.15));
-  const yKnocks = knockArm(t, 1, 15.9, 17.3, gripEdge(y, "near", 1, 0.82), false);
+  // (the simple cut: the covers at your waist, your hands on top of them)
+  const yKnocks = knockArm(t, 1, 15.9, 17.3, SIMPLE ? restOnCovers(y, "near", 1, 0.3) : gripEdge(y, "near", 1, 0.82), false);
   const peek = smooth(21.65, 21.9, t) * (1 - smooth(22.15, 22.4, t));
   const back = smooth(22.2, 22.45, t);
   const you: SibFrame = {
     s: y,
     side: 1,
-    covers: 0.82 - 0.12 * smooth(15.75, 16.15, t),
+    covers: SIMPLE ? 0.6 : 0.82 - 0.12 * smooth(15.75, 16.15, t),
     lie: {
       // (the simple cut: rolling to the wall over a moment, not in one frame)
       roll: t < 17.5 ? (SIMPLE ? 0.5 * smooth(15.6, 15.95, t) : t < 15.85 ? 0 : 0.5) : -0.55 * peek + 0.5 * (1 - smooth(17.5, 18.0, t)) * (1 - peek),
       slide: -0.25 * peek,
       near: yKnocks,
       // (the other hand drops under the covers while you knock, so the fist at the wall reads alone)
-      far: SIMPLE ? { rest: gripEdge(y, "far", 1, 0.82) } : { rest: gripEdge(y, "far", 1, 0.82), to: restOnCovers(y, "far", 1, 0.3), k: smooth(15.6, 15.9, t) * (1 - smooth(17.5, 17.9, t)) },
+      far: SIMPLE ? { rest: restOnCovers(y, "far", 1, 0.3) } : { rest: gripEdge(y, "far", 1, 0.82), to: restOnCovers(y, "far", 1, 0.3), k: smooth(15.6, 15.9, t) * (1 - smooth(17.5, 17.9, t)) },
       e: { lidL: back > 0.5 ? 1 : 0, lidR: back > 0.5 ? 1 : 0, brow: 0.6 * (1 - back), eyePitch: 0.2, eyeYaw: peek > 0.3 ? 0.4 : 0, smile: 0.2 * back },
       headPitch: -0.15 * peek,
     },
@@ -867,10 +863,10 @@ const b3 = (t: number): Frame => {
       side: -1,
       // (the simple cut: asleep with the quilt at her waist, her hands on it; she throws it right back to the
       // foot of the bed over a moment, drawing her knees up, before she sits up)
-      covers: SIMPLE ? 0.56 - 0.44 * smooth(17.45, 17.72, t) : 0.86 - 0.5 * smooth(17.6, 17.72, t),
+      covers: SIMPLE ? 0.56 + (thrownCovers(n, -1, { roll: 0.15, knees: 0.5, e: {} }) - 0.56) * smooth(17.4, 17.72, t) : 0.86 - 0.5 * smooth(17.6, 17.72, t),
       lie: {
         roll: 0.15,
-        knees: SIMPLE ? 0.5 * smooth(17.5, 17.72, t) : undefined,
+        knees: SIMPLE ? 0.5 * smooth(17.45, 17.72, t) : undefined,
         near: { rest: restOnCovers(n, "near", -1, 0.5) },
         far: { rest: restOnCovers(n, "far", -1, 0.5) },
         e: { lidL: 1 - awake, lidR: 1 - awake, puff: 0.7 * smooth(17.5, 17.6, t) * (1 - smooth(17.75, 17.9, t)), brow: -0.2 * awake, eyePitch: 0.3 },
@@ -878,10 +874,13 @@ const b3 = (t: number): Frame => {
     };
   } else {
     const k = n.k;
-    const bundleArms: { near: ArmSpec; far: ArmSpec } = {
-      near: { rest: { body: true, at: V3(-0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(1, 0, 0), pole: V3(-1, -0.4, 0.4) } },
-      far: { rest: { body: true, at: V3(0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } },
-    };
+    // (the simple cut: she brings nothing, her arms at her sides)
+    const bundleArms: { near: ArmSpec; far: ArmSpec } = SIMPLE
+      ? hangArms(n, -1)
+      : {
+          near: { rest: { body: true, at: V3(-0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(1, 0, 0), pole: V3(-1, -0.4, 0.4) } },
+          far: { rest: { body: true, at: V3(0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } },
+        };
     // (rising from just as she lay, her hands still where they rested on the quilt)
     const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, knees: SIMPLE ? 0.5 : undefined, near: { rest: restOnCovers(n, "near", -1, 0.5) }, far: { rest: restOnCovers(n, "far", -1, 0.5) } });
     // (her feet stop short of the quilt she's thrown down to the foot of the bed; the simple cut: her hands
@@ -894,18 +893,16 @@ const b3 = (t: number): Frame => {
     const speed = 2.7;
     const total = path.reduce((a, q, i) => (i ? a + q.distanceTo(path[i - 1]) : 0), 0);
     const arrive = walkT0 + total / speed;
-    const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
+    const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: SIMPLE ? 0 : 0.12 };
     let p: Posed | null = null;
-    // (the simple cut: she brings only her pillow, her quilt left thrown back on her bed; she takes it from
-    // the head of her bed and swings it down onto the head of your rug: never in two places or none)
-    const carried = SIMPLE ? "pillow" : "bundle";
-    const dropAt = SIMPLE ? 0.32 : 0.95;
+    // (the simple cut: she brings nothing: her quilt left thrown back on her bed, her pillow on it)
+    const carried = SIMPLE ? null : "bundle";
+    const dropAt = SIMPLE ? 0 : 0.95;
     let carry: "pillow" | "bundle" | null = carried;
-    let pillowAt: Walker["pillowAt"];
     if (t < 18.05) p = blendPosed({ ...lying, ...nBase }, sitUp, (t - 17.72) / 0.33);
     else if (t < 18.42) p = blendPosed(sitUp, edge, (t - 18.05) / 0.37);
     else if (t < walkT0) p = blendPosed(edge, stand, (t - 18.42) / (walkT0 - 18.42));
-    else if (t < arrive) p = walkAlong(n, path, (t - walkT0) * speed, { ...nBase, ...bundleArms }, WALK_STRIDE);
+    else if (t < arrive) p = walkAlong(n, path, (t - walkT0) * speed, { ...nBase, ...bundleArms }, WALK_STRIDE, SIMPLE ? (ph) => hangArms(n, -1, -Math.sin(ph)) : undefined);
     else {
       // drop the pillow and quilt, down onto the rug on her side, her back to your bed
       const end = standAt(n, path[path.length - 1], V3(0, 0, 1), { ...nBase, ...bundleArms });
@@ -917,28 +914,25 @@ const b3 = (t: number): Frame => {
       carry = t < arrive + dropAt ? carried : null;
       let downAt = arrive + 0.95;
       if (SIMPLE) {
-        // the simple cut: the pillow swung down onto the head of the rug beside her; then, still facing down
-        // the room, she crouches, sits and lies back onto her side (no turning round)
+        // the simple cut: still facing down the room, she crouches, sits and lies back onto her side (no turning
+        // round)
         const crouch: Posed = { ...nBase, ...downArms, nearSide: down.nearSide, hip: V3(1.38, 0.45, -2.72), q: facing(V3(0, 0, 1)), feet: [V3(1.48, 0.05, -2.4), V3(1.28, 0.05, -2.4)] };
         const sitF: Posed = { ...nBase, ...downArms, nearSide: down.nearSide, hip: V3(1.36, 0.14, -2.6), q: facing(V3(0, 0, 1), V3(0, 1, -0.25)), feet: [V3(1.46, 0.05, -1.85), V3(1.28, 0.05, -1.85)] };
-        downAt = arrive + 1.2;
-        if (t < arrive + 0.32) pillowAt = { at: floorPillowAt(spot), via: V3(1.78, 0.75, -2.9), k: smooth(arrive + 0.06, arrive + 0.32, t) };
-        if (t < arrive + 0.32) p = end;
-        else if (t < arrive + 0.62) p = blendPosed(end, crouch, (t - arrive - 0.32) / 0.3);
-        else if (t < arrive + 0.9) p = blendPosed(crouch, sitF, (t - arrive - 0.62) / 0.28);
-        else if (t < downAt) p = blendPosed(sitF, { ...nBase, ...down }, (t - arrive - 0.9) / 0.3);
+        downAt = arrive + 1.15;
+        if (t < arrive + 0.2) p = end;
+        else if (t < arrive + 0.55) p = blendPosed(end, crouch, (t - arrive - 0.2) / 0.35);
+        else if (t < arrive + 0.85) p = blendPosed(crouch, sitF, (t - arrive - 0.55) / 0.3);
+        else if (t < downAt) p = blendPosed(sitF, { ...nBase, ...down }, (t - arrive - 0.85) / 0.3);
         else p = null;
       } else if (t < arrive + 0.2) p = end;
       else if (t < arrive + 0.55) p = blendPosed(end, kneel, (t - arrive - 0.2) / 0.35);
       else if (t < arrive + 0.95) p = blendPosed(kneel, { ...nBase, ...down }, (t - arrive - 0.55) / 0.4);
       else p = null;
       if (t >= arrive + 0.2)
-        floor.push({ s: n, side: 1, covers: p === null && !SIMPLE ? 0.14 + 0.52 * smoother((t - downAt) / 0.5) : null, spot, pillow: t >= arrive + dropAt, body: p === null, look: "nora2007", lie: { roll: -0.9, spot, e: { lidL: 1, lidR: 1 }, ...downArms } });
+        floor.push({ s: n, side: 1, covers: p === null && !SIMPLE ? 0.14 + 0.52 * smoother((t - downAt) / 0.5) : null, spot, pillow: !SIMPLE && t >= arrive + dropAt, body: p === null, look: "nora2007", lie: { roll: -0.9, spot, e: { lidL: 1, lidR: 1 }, ...downArms } });
     }
-    if (p && t < (SIMPLE ? 18.0 : 18.32)) carry = null;
-    // (the simple cut: from the head of her bed into her arms as she sits up)
-    if (SIMPLE && t < 18.3) pillowAt = { at: bedPillowAt(-1), k: 1 - smooth(18.0, 18.3, t) };
-    if (p) walkers.push({ key: "nora", s: n, p, carry, pillowLook: "nora2007", pillowAt });
+    if (p && t < 18.32) carry = null;
+    if (p) walkers.push({ key: "nora", s: n, p, carry, pillowLook: "nora2007" });
   }
   // (pulling back as she gets up, so her way out of the room stays in frame)
   const cam = t < 17.8 ? PRESETS.medium : camBetween(t, 17.8, 19.2, PRESETS.medium, PRESETS.wide);
@@ -950,7 +944,7 @@ const b3 = (t: number): Frame => {
     floor,
     dog: mooseIn2009(t, n),
     // (her quilt stays thrown back on the bed while she sits up; at 18.32 she gathers it and her pillow)
-    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 17.72 ? 1 : 0, bare: !SIMPLE && t >= 18.32, noPillow: t >= (SIMPLE ? 18.0 : 18.32) }, you: { kind: "twin", look: "you2009" } } },
+    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 17.72 ? 1 : 0, bare: !SIMPLE && t >= 18.32, noPillow: !SIMPLE && t >= 18.32 }, you: { kind: "twin", look: "you2009" } } },
     // (the simple cut: her door open on a brighter hallway, so her way across the house reads)
     light: { hall: 0.12 + (SIMPLE ? 0.55 : 0.25) * smooth(18.2, 18.6, t), street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
     cam,
@@ -965,7 +959,7 @@ const b3 = (t: number): Frame => {
  * trotting after her along the hall, through your door, round her on the outer side, to flop across her
  * ankles facing the camera, eyes closing. */
 const mooseIn2009 = (t: number, n: Sib): Dog | null => {
-  const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: 0.12 };
+  const spot: Spot = { x: 1.34, top: 0.012, pillowZ: -3.2, pillowH: SIMPLE ? 0 : 0.12 };
   const legs = lieToPosed(n, 1, { roll: -0.9, spot, e: {}, near: null, far: null }).feet;
   const ankle = legs[0].clone().lerp(legs[1], 0.5);
   // the quilt over her legs is a ridge the dog drapes over
