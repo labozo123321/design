@@ -6,7 +6,7 @@ import type { HandPose } from "../coaster/Hand";
 import { CardHair } from "../looks/Hair";
 import { Glasses } from "../looks/Accessories";
 import { skullR } from "../looks/Hair";
-import type { Sib } from "./cast";
+import { BAREFOOT, type Sib } from "./cast";
 import { BED, PILLOW, WALL } from "./layout";
 import type { Capsule, HeadRest } from "./Beds";
 
@@ -382,7 +382,8 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     headPitch: st.headPitch,
     feet: [footAt(s.k, -1, b.knees), footAt(s.k, 1, b.knees)],
     ankles: true,
-    pointToes: st.bareFeet ? LIE_POINT : 0,
+    // (bare feet fall relaxed; shoes stay upright at the ankle: tipped, they'd sink into the floor)
+    pointToes: st.bareFeet && s.outfit.shoe === BAREFOOT ? LIE_POINT : 0,
   };
   // (a hand under the covers isn't drawn; an arm left to the Figure hangs where armCapsules says it does)
   const hanging = (sd: number): Arm => ({ at: V(sd * 0.24 * s.k, 0.82 * s.k, -0.04 * s.k), hand: RELAX });

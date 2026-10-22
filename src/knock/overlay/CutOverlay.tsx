@@ -23,19 +23,24 @@ const SHADOW_SMALL = "0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.75), 0 0 1
 // ------------------------------------------------------------------------------------------- captions
 type Cap = { t0: number; t1: number; lines: string[] };
 const CAPS: Cap[] = [
-  { t0: 4.6, t1: 7.0, lines: ["your first night in your own room."] },
-  { t0: 8.2, t1: 12.8, lines: ["she made up the knock."] },
-  { t0: 15.2, t1: 19.6, lines: ["eleven knocks meant come here."] },
-  { t0: 21.0, t1: 26.3, lines: ["she always came."] },
-  { t0: 28.2, t1: 32.4, lines: ["her last night home."] },
-  { t0: 33.6, t1: 39.8, lines: ["you almost didn’t answer."] },
-  { t0: 41.2, t1: 45.2, lines: ["twelve years later."] },
-  { t0: 48.6, t1: 52.2, lines: ["this time, you knocked first."] },
-  { t0: 58.4, t1: 63.2, lines: ["and this time, you went to her."] },
+  // 2004 (her knocks 5.2-6.2, yours 8.7-9.8)
+  { t0: 4.6, t1: 7.6, lines: ["your first night in your own room."] },
+  { t0: 8.2, t1: 11.2, lines: ["she made up the knock."] },
+  // 2009 (your eleven knocks 13.4-15.5; she's up at 16.6, across the house 18.9-23.6, down by 25.8)
+  { t0: 13.3, t1: 17.4, lines: ["eleven knocks meant come here."] },
+  { t0: 20.0, t1: 26.6, lines: ["she always came."] },
+  // 2013 (her knocks 29.1-29.8 and 33.2-34.1; you roll over at 34.8 and answer 35.8-37.1)
+  { t0: 28.2, t1: 31.9, lines: ["her last night home."] },
+  { t0: 32.6, t1: 38.6, lines: ["you almost didn’t answer."] },
+  // 2025 (your knocks 45.7-46.8; her answer 50.4-51.4; you're up at 55.0, across the house 57.2-61.3)
+  { t0: 40.3, t1: 43.9, lines: ["twelve years later."] },
+  { t0: 45.5, t1: 49.6, lines: ["this time, you knocked first."] },
+  { t0: 57.4, t1: 62.6, lines: ["and this time, you went to her."] },
 ];
-const CAP_FADE = 0.45;
+const CAP_FADE = 0.5;
 const CAP_BASELINE = 1430;
-const CAP_LINE = 55;
+const CAP_LINE = 64;
+const CAP_SIZE = 54;
 
 const Captions: React.FC<{ t: number }> = ({ t }) => {
   const c = CAPS.find((x) => t >= x.t0 && t < x.t1);
@@ -60,7 +65,7 @@ const Captions: React.FC<{ t: number }> = ({ t }) => {
       </defs>
       <g transform={`translate(0 ${(6 * (1 - kin)).toFixed(2)})`} opacity={(0.94 * a).toFixed(3)} filter="url(#kc-cap-shadow)">
         {c.lines.map((l, i) => (
-          <text key={i} x={540} y={CAP_BASELINE - (c.lines.length - 1 - i) * CAP_LINE} textAnchor="middle" fontFamily={F.serif} fontStyle="italic" fontWeight={400} fontSize={46} fill={INK}>
+          <text key={i} x={540} y={CAP_BASELINE - (c.lines.length - 1 - i) * CAP_LINE} textAnchor="middle" fontFamily={F.serif} fontStyle="italic" fontWeight={400} fontSize={CAP_SIZE} fill={INK}>
             {l}
           </text>
         ))}
@@ -77,29 +82,29 @@ const COUNTS: { year: string; at: number | null; a: number; b: number }[] = [
   { year: "2013", at: outAt(34.8), a: 3215, b: 3216 },
   { year: "2025", at: outAt(59.1), a: 3216, b: 3217 },
 ];
-const ROLL = 0.5;
+const ROLL = 0.7;
 const pad4 = (n: number) => String(n).padStart(4, "0");
 
 const Hud: React.FC<{ t: number }> = ({ t }) => {
   const seg = segAt(t);
   const c = COUNTS.find((x) => x.year === seg.year) ?? COUNTS[3];
   // (in after the title; out for the end card; and through black between the nights); it steps back while
-  // someone walks the hallway at the top of the frame (her in 2009, you in 2025)
-  const walk = Math.max(smooth(19.6, 20.1, t) * (1 - smooth(23.7, 24.3, t)), smooth(57.6, 58.1, t));
-  const a = smooth(4.2, 4.9, t) * (1 - smooth(63.6, 64.3, t)) * (1 - blackAt(t)) * (1 - 0.85 * walk);
+  // someone crosses the hallway under it (her in 2009, you in 2025)
+  const walk = Math.max(smooth(18.7, 19.3, t) * (1 - smooth(23.2, 23.8, t)), smooth(56.9, 57.5, t));
+  const a = smooth(4.2, 4.9, t) * (1 - smooth(63.9, 64.6, t)) * (1 - blackAt(t)) * (1 - 0.8 * walk);
   if (a <= 0.001) return null;
   const k = c.at === null ? 1 : smoother((t - c.at) / ROLL);
   const num = { text: pad4(k > 0 ? c.b : c.a), prev: pad4(c.a), k: c.at === null || t < c.at ? 1 : k };
   const year = { text: seg.year, prev: seg.year, k: 1 };
   return (
     <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, opacity: a, color: INK, textShadow: SHADOW }}>
-      <div style={{ position: "absolute", left: 72, top: 214, height: 76 }}>
-        <Roll r={year} h={76} fs={76} style={{ fontFamily: F.ui, fontWeight: 200, fontSize: 76, letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums" }} />
+      <div style={{ position: "absolute", left: 72, top: 208, height: 84 }}>
+        <Roll r={year} h={84} fs={84} style={{ fontFamily: F.ui, fontWeight: 300, fontSize: 84, letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums" }} />
       </div>
-      <div style={{ position: "absolute", right: 72, top: 218, textAlign: "right" }}>
-        <div style={{ fontFamily: F.ui, fontWeight: 500, fontSize: 17, lineHeight: "22px", letterSpacing: "0.24em", marginRight: "-0.24em", color: "rgba(255,246,234,0.78)", textShadow: SHADOW_SMALL }}>GOODNIGHT KNOCKS</div>
-        <div style={{ marginTop: 6, height: 56, display: "flex", justifyContent: "flex-end" }}>
-          <Roll r={num} h={56} fs={52} align="right" style={{ fontFamily: F.ui, fontWeight: 200, fontSize: 52, letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }} />
+      <div style={{ position: "absolute", right: 72, top: 212, textAlign: "right" }}>
+        <div style={{ fontFamily: F.ui, fontWeight: 600, fontSize: 26, lineHeight: "32px", letterSpacing: "0.16em", marginRight: "-0.16em", color: "rgba(255,246,234,0.92)", textShadow: SHADOW_SMALL }}>GOODNIGHT KNOCKS</div>
+        <div style={{ marginTop: 4, height: 64, display: "flex", justifyContent: "flex-end" }}>
+          <Roll r={num} h={64} fs={60} align="right" style={{ fontFamily: F.ui, fontWeight: 300, fontSize: 60, letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }} />
         </div>
       </div>
     </div>
@@ -126,9 +131,9 @@ const Title: React.FC<{ t: number }> = ({ t }) => {
 };
 
 const EndCard: React.FC<{ t: number }> = ({ t }) => {
-  const scrim = 0.28 * smooth(64.0, 64.8, t);
-  const kt = smooth(64.6, 65.4, t);
-  const kq = smooth(66.0, 66.8, t);
+  const scrim = 0.28 * smooth(64.5, 65.3, t);
+  const kt = smooth(65.0, 65.8, t);
+  const kq = smooth(66.3, 67.1, t);
   if (scrim <= 0.001) return null;
   return (
     <>
@@ -162,13 +167,18 @@ const EndCard: React.FC<{ t: number }> = ({ t }) => {
 export const CutOverlay: React.FC<{ frame: number }> = ({ frame }) => {
   const t = frame / CUT_FPS;
   const black = blackAt(t);
-  // a gentle darkening behind the top line so its thin numerals hold over the lit hallway
-  const scrim = 0.32 * (1 - black);
+  // a gentle darkening behind the top line so it holds over the posters and the lit hallway, and under the
+  // captions so they hold over the patterned bedding
+  const scrim = 0.42 * (1 - black);
+  const capScrim = 0.26 * (1 - black);
   return (
     <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, overflow: "hidden", pointerEvents: "none" }}>
       {black > 0.001 ? <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${black.toFixed(4)})` }} /> : null}
       {scrim > 0.002 ? (
-        <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 520, background: `linear-gradient(to bottom, rgba(0,0,0,${scrim.toFixed(3)}) 0%, rgba(0,0,0,${(scrim * 0.6).toFixed(3)}) 55%, rgba(0,0,0,0) 100%)` }} />
+        <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 560, background: `linear-gradient(to bottom, rgba(0,0,0,${scrim.toFixed(3)}) 0%, rgba(0,0,0,${(scrim * 0.75).toFixed(3)}) 45%, rgba(0,0,0,0) 100%)` }} />
+      ) : null}
+      {capScrim > 0.002 ? (
+        <div style={{ position: "absolute", left: 0, top: 1240, width: 1080, height: 360, background: `linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,${capScrim.toFixed(3)}) 50%, rgba(0,0,0,0) 100%)` }} />
       ) : null}
       <EndCard t={t} />
       <Hud t={t} />

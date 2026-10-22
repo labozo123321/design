@@ -12,7 +12,7 @@ import type { Cut } from "../looks/Hair";
  */
 
 /** In bed (and padding down the hall) nobody wears shoes: the "shoe" is a bare foot. */
-const BAREFOOT = "#E2B496";
+export const BAREFOOT = "#E2B496";
 
 export type Sib = {
   key: string;

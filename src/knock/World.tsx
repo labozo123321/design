@@ -1,7 +1,7 @@
 import React from "react";
 import * as THREE from "three";
 import { FPS } from "./script";
-import { cameraFor } from "./layout";
+import { cameraFor, type Preset } from "./layout";
 import { House } from "./House";
 import { SharedWall } from "./SharedWall";
 import { Bed, airRect, type BedLook, type BedSpec, type Capsule } from "./Beds";
@@ -215,7 +215,7 @@ const clearOfWallHeld = (at: THREE.Vector3, q: THREE.Quaternion, half: [number, 
 const Up: React.FC<{ w: Walker; t: number }> = ({ w, t }) => {
   const k = w.s.k;
   const chest0 = w.p.hip.clone().add(new THREE.Vector3(0, 0.4 * k, 0).applyQuaternion(w.p.q)).add(new THREE.Vector3(0, 0, -0.17).applyQuaternion(w.p.q));
-  const chest = w.carry ? clearOfWallHeld(chest0, w.p.q, w.carry === "bundle" ? [0.3, 0.3, 0.14] : [0.25, 0.17, 0.075]) : chest0;
+  const chest = w.carry ? clearOfWallHeld(chest0, w.p.q, w.carry === "bundle" ? [0.36, 0.33, 0.17] : [0.25, 0.17, 0.075]) : chest0;
   return (
     <>
       <PosedSib s={w.s} p={w.p} t={t} />
@@ -259,10 +259,11 @@ const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = 
       <primitive object={pillowcaseMat("lilac")} attach="material" />
     </mesh>
     {[
-      [-0.09, -0.03, -0.05, 0.13, 0.09, 0.075],
-      [0.08, -0.05, -0.045, 0.14, 0.085, 0.07],
-      [0.0, -0.1, -0.06, 0.16, 0.07, 0.065],
-      [0.17, -0.19 - 0.02 * Math.sin(t * 7), -0.03, 0.05, 0.13, 0.025],
+      [-0.1, -0.02, -0.06, 0.17, 0.11, 0.09],
+      [0.1, -0.04, -0.055, 0.17, 0.1, 0.085],
+      [0.0, -0.12, -0.07, 0.2, 0.085, 0.075],
+      [0.0, 0.05, -0.1, 0.17, 0.09, 0.045],
+      [0.19, -0.22 - 0.02 * Math.sin(t * 7), -0.03, 0.07, 0.16, 0.03],
     ].map(([x, y, z, a, b, c], i) => (
       <mesh key={i} position={[x, y, z]} scale={[a, b, c]} material={BEDS.nora2007.cover} castShadow>
         <sphereGeometry args={[1, 20, 14]} />
@@ -411,17 +412,21 @@ const debugCam = (cam?: string) => {
   if (cam === "sideY") return at([2.3, 1.5, -0.9], [0.45, 0.55, -2.7]);
   if (cam === "feetN") return at([-1.85, 0.78, -2.0], [-0.5, 0.58, -2.0]);
   if (cam === "rugN") return at([-0.5, 0.75, -1.0], [-1.38, 0.08, -1.95]);
+  if (cam === "rugFeetN") return at([-0.85, 1.25, -0.55], [-1.38, 0.05, -1.65]);
   if (cam === "legsN") return at([-0.45, 1.7, -1.0], [-0.45, 0.5, -2.1]);
   if (cam === "legsY") return at([0.45, 1.7, -1.0], [0.45, 0.5, -2.1]);
   return null;
 };
 
 /** ghost: draw the world as it was at another moment (the double exposure), through this moment's camera. */
-/** simple: the short cut's picture (no inside-the-wall macro, no glow-star field floating over her room). */
-export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOverride?: number; ghost?: number; simple?: boolean }> = ({ frame, cam, hide, tOverride, ghost, simple }) => {
+/** simple: the short cut's picture (the director's calmer variant; no inside-the-wall macro, no glow-star
+ * field floating over her room; the wall's top closed over, so the knocks' light never shows inside it;
+ * softer rings). camOverride: the cut's own camera. */
+export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOverride?: number; ghost?: number; simple?: boolean; camOverride?: Preset }> = ({ frame, cam, hide, tOverride, ghost, simple, camOverride }) => {
   const tc = tOverride ?? frame / FPS;
   const t = ghost ?? tc;
-  const F = ghost === undefined ? frameAt(t) : { ...frameAt(ghost), cam: frameAt(tc).cam, macro: 0 };
+  const F0 = ghost === undefined ? frameAt(t, simple) : { ...frameAt(ghost), cam: frameAt(tc).cam, macro: 0 };
+  const F = camOverride ? { ...F0, cam: camOverride } : F0;
   const macro = (F.macro ?? 0) > 0 && !cam && !simple;
   // (the payoff's macro descends the slot toward the note)
   const push = t > 50 ? Math.sin(Math.PI * 0.5 * Math.min(1, Math.max(0, (t - 59.3) / 0.8))) : 0;
@@ -429,7 +434,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   // (the payoff's macro is already turned at the cut, so the note reads upright from its first frame)
   const c = debugCam(cam) ?? (macro ? macroCam(my, t > 50 ? 1 : 0) : cameraFor(F.cam));
   // inside the cavity the seam's bloom is all around the lens: a fraction of it reads as the same glow
-  if (ghost === undefined) setRipples(ringsAt(t), F.seam * (macro ? 0.07 : 0.45), -3.15);
+  if (ghost === undefined) setRipples(ringsAt(t).map((r) => (simple ? { ...r, strength: 0.6 * r.strength } : r)), F.seam * (macro ? 0.07 : 0.45), -3.15);
   const focus = macro ? (F.note ? Math.max(0.1, my - F.note.pos.y) : my - 0.05) : F.cam.dist;
   return (
     <>
@@ -446,7 +451,7 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           outside: outsideAt(t, F.dress.era),
         }}
       />
-      <SharedWall noraPaint={ERA_PAINT.nora} youPaint={ERA_PAINT.you} dust={0} cobweb={0} />
+      <SharedWall noraPaint={ERA_PAINT.nora} youPaint={ERA_PAINT.you} dust={0} cobweb={0} capped={simple} />
       <InBed f={F.nora} side={-1} bed={F.dress.beds.nora} t={t} hide={hide} />
       <InBed f={F.you} side={1} bed={F.dress.beds.you} t={t} hide={hide} />
       {(F.walkers ?? []).map((w) => (

@@ -8,6 +8,7 @@ import { Overlay } from "./Overlay";
 import { World } from "./World";
 import { FPS } from "./script";
 import { CUT_FPS, srcAt } from "./cut";
+import { cutCam } from "./cutcam";
 import { CutOverlay } from "./overlay/CutOverlay";
 
 /**
@@ -69,7 +70,7 @@ export const KnockCutVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       <ThreeCanvas width={1080} height={1920} shadows camera={{ fov: 30, near: 0.05, far: 200, position: [0, 10, 2] }} gl={{ antialias: false, logarithmicDepthBuffer: true, preserveDrawingBuffer: true }}>
-        <World frame={Math.round(t * FPS)} cam={props.cam} hide={props.hide ?? []} tOverride={t} simple />
+        <World frame={Math.round(t * FPS)} cam={props.cam} hide={props.hide ?? []} tOverride={t} simple camOverride={cutCam(frame / CUT_FPS)} />
       </ThreeCanvas>
       {!props.noOverlay && !props.cam ? <CutOverlay frame={frame} /> : null}
     </AbsoluteFill>

@@ -160,7 +160,8 @@ const Cobweb: React.FC<{ z0: number; z1: number; k: number }> = ({ z0, z1, k }) 
   );
 };
 
-export const SharedWall: React.FC<{ noraPaint: string; youPaint: string; dust: number; cobweb: number; children?: React.ReactNode }> = ({ noraPaint, youPaint, dust, cobweb, children }) => {
+/** capped: the cut top closed over with a plaster cap (the simple cut never looks inside the wall). */
+export const SharedWall: React.FC<{ noraPaint: string; youPaint: string; dust: number; cobweb: number; capped?: boolean; children?: React.ReactNode }> = ({ noraPaint, youPaint, dust, cobweb, capped, children }) => {
   const H = WALL.cut;
   const X = WALL.half;
   const s = WALL.skin;
@@ -185,6 +186,7 @@ export const SharedWall: React.FC<{ noraPaint: string; youPaint: string; dust: n
       {WALL.studs.map((z, i) => (
         <Box key={i} a={[-X + s, WALL.plateH, z - WALL.studW / 2]} b={[X - s, H, z + WALL.studW / 2]} mats={[ps, ps, pe, ps, ps, ps]} />
       ))}
+      {capped ? <Box a={[-X, H, z0]} b={[X, H + 0.004, z1]} mats={[pl, pl, pl, pl, pl, pl]} cast={false} /> : null}
       {/* a cobweb across the slot by her pillow, from 2016 */}
       {cobweb > 0 ? <Cobweb z0={-2.84 - WALL.studW / 2} z1={-2.44 + WALL.studW / 2} k={cobweb} /> : null}
       {children}

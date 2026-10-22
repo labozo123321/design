@@ -2,7 +2,7 @@ import React from "react";
 import * as THREE from "three";
 import { Figure, RELAX, type Arm, type Pose } from "../wedding/Figure";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
-import type { Sib } from "./cast";
+import { BAREFOOT, type Sib } from "./cast";
 import { HeadBits, LIE_POINT, clearOfWall, lyingChains, type ArmSpec, type Reach } from "./People";
 import { smoother, V3 } from "./anim";
 
@@ -47,12 +47,25 @@ export const facing = (dir: THREE.Vector3, up = V3(0, 1, 0)) => {
 /** Blend two postures (hips, orientation, feet; arms and face from the nearer one unless given). */
 export const blendPosed = (a: Posed, b: Posed, k: number): Posed => {
   const e = smoother(k);
+  // the hands travel from one pose's place to the other's (no snap halfway), each arm with its own side
+  const [bNear, bFar] = (b.nearSide ?? -1) === (a.nearSide ?? -1) ? [b.near, b.far] : [b.far, b.near];
   return {
     ...(e < 0.5 ? a : b),
     hip: a.hip.clone().lerp(b.hip, e),
     q: a.q.clone().slerp(b.q, e),
     feet: [a.feet[0].clone().lerp(b.feet[0], e), a.feet[1].clone().lerp(b.feet[1], e)],
+    nearSide: a.nearSide,
+    near: mixArm(a.near, bNear, e),
+    far: mixArm(a.far, bFar, e),
   };
+};
+/** Where an arm is headed (its target once more than halfway there). */
+const settled = (s?: ArmSpec | null): Reach | null => (s ? (s.to && (s.k ?? 1) > 0.5 ? s.to : s.rest) : null);
+const mixArm = (x: ArmSpec | null | undefined, y: ArmSpec | null | undefined, e: number): ArmSpec | null | undefined => {
+  const rx = settled(x);
+  const ry = settled(y);
+  if (!rx || !ry) return e < 0.5 ? x : y;
+  return { rest: rx, to: ry, k: e };
 };
 
 /** Walking along a path (world points on the floor) at distance d (m) from its start: the hips over the
@@ -131,7 +144,7 @@ export const PosedSib: React.FC<{ s: Sib; p: Posed; t: number }> = ({ s, p, t })
     feet: [toBody(p.feet[0], root, p.q), toBody(p.feet[1], root, p.q)],
     ankles: true,
     // (the feet fall relaxed as the body lies down; upright, they stand on the floor)
-    pointToes: LIE_POINT * Math.min(1, Math.max(0, 1 - 1.4 * new THREE.Vector3(0, 1, 0).applyQuaternion(p.q).y)),
+    pointToes: s.outfit.shoe === BAREFOOT ? LIE_POINT * Math.min(1, Math.max(0, 1 - 1.4 * new THREE.Vector3(0, 1, 0).applyQuaternion(p.q).y)) : 0,
   };
   // (out of whichever room's side of the wall the hips are in)
   const room = (p.hip.x < 0 ? -1 : 1) as -1 | 1;
