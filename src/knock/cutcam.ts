@@ -26,7 +26,7 @@ const FOLLOW_D = 8.2;
 /** Framing someone up and about: across with them (x), and up the house while they're in the hallway, so
  * the camera looks down into it over the bedrooms' back wall, the walker near the middle of the frame. */
 const follow = (at: { x: number; z: number }, d = FOLLOW_D): Preset => {
-  const hall = Math.min(1, Math.max(0, (-at.z - 2.9) / 1.4));
+  const hall = smoother((-at.z - 2.9) / 1.4);
   return P(Math.max(-1.0, Math.min(1.0, 0.65 * at.x)), 0.5, -3.25 - 1.25 * hall, d);
 };
 
@@ -37,15 +37,16 @@ const subjectAt = (src: number, upAt: number, before: Spot2, after: Spot2): Spot
   if (w) return { x: w.p.hip.x, z: w.p.hip.z };
   return src < upAt ? before : after;
 };
-/** The camera's lagging view of the subject: a weighted average over the last half second (within the night). */
+/** The camera's lagging view of the subject: a weighted average over the last 0.9 s (within the night), so it
+ * eases to a stop after them rather than stopping when they do. */
 const lagged = (o: number, upAt: number, before: Spot2, after: Spot2): Spot2 => {
   const o0 = segAt(o).o0;
   let x = 0;
   let z = 0;
   let w = 0;
-  for (let i = 0; i <= 8; i++) {
-    const oi = Math.max(o0, o - (i / 8) * 0.5);
-    const wi = 1 - i / 9;
+  for (let i = 0; i <= 12; i++) {
+    const oi = Math.max(o0, o - (i / 12) * 0.9);
+    const wi = 1 - i / 13;
     const p = subjectAt(srcAt(oi), upAt, before, after);
     x += wi * p.x;
     z += wi * p.z;

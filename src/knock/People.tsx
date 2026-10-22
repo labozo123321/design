@@ -141,11 +141,23 @@ export const bodyCapsules = (s: Sib, f: ReturnType<typeof lieFrame>, knees: numb
     { a: w(V(0, hipY - 0.02, 0.0)), b: w(V(0, hipY + 0.44 * k, 0.0)), r: 0.14 * k },
     { a: w(V(-0.1 * k, hipY - 0.05, 0)), b: w(V(0.1 * k, hipY - 0.05, 0)), r: 0.125 * k },
   ];
+  return [...caps, ...legCapsules(s, w, [footAt(k, -1, knees), footAt(k, 1, knees)])];
+};
+
+/** The legs' capsules (thigh, shin, the foot and the shoe below it) for feet at body-frame points, the knees
+ * where the Figure's IK puts them, in world space through w. */
+export const legCapsules = (s: Sib, w: (p: THREE.Vector3) => THREE.Vector3, feet: [THREE.Vector3, THREE.Vector3], reachClamp = false): Capsule[] => {
+  const k = s.k;
+  const hipY = 0.93 * k;
+  const caps: Capsule[] = [];
   // (the Figure's bones: a bust figure's legs are a little shorter, so its knees bend further)
   const [thigh, shin] = s.outfit.bust ? [0.425 * k, 0.41 * k] : [0.45 * k, 0.43 * k];
   for (const sd of [-1, 1]) {
     const hip = V(sd * 0.095 * k, hipY - 0.02, 0);
-    const foot = footAt(k, sd, knees);
+    const foot = feet[sd < 0 ? 0 : 1].clone();
+    // (no further than the leg reaches, as the Figure draws it)
+    const d = foot.clone().sub(hip);
+    if (reachClamp && d.length() > (thigh + shin) * 0.995) foot.copy(hip).addScaledVector(d.normalize(), (thigh + shin) * 0.995);
     const knee = ik(hip, foot, thigh, shin, V(sd * 0.02, 0, -1));
     caps.push({ a: w(hip), b: w(knee), r: 0.085 * k });
     caps.push({ a: w(knee), b: w(foot), r: 0.07 * k });

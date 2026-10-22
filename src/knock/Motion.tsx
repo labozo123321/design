@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { Figure, RELAX, type Arm, type Pose } from "../wedding/Figure";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
 import { BAREFOOT, type Sib } from "./cast";
-import { HeadBits, LIE_POINT, clearOfWall, lyingChains, turnToward, type ArmSpec, type Reach } from "./People";
+import { HeadBits, LIE_POINT, clearOfWall, legCapsules, lyingChains, turnToward, type ArmSpec, type Reach } from "./People";
+import type { Capsule } from "./Beds";
 import { smoother, V3 } from "./anim";
 import { mixHand } from "../coaster/Hand";
 
@@ -125,6 +126,13 @@ export const standAt = (s: Sib, at: THREE.Vector3, dir: THREE.Vector3, base: Omi
 };
 
 const toBody = (p: THREE.Vector3, root: THREE.Vector3, q: THREE.Quaternion) => p.clone().sub(root).applyQuaternion(q.clone().invert());
+
+/** A posed body's legs as capsules in the world (for covers it's getting out from under). */
+export const posedLegCapsules = (s: Sib, p: Posed): Capsule[] => {
+  const root = p.hip.clone().sub(V3(0, hipHeight(s), 0).applyQuaternion(p.q));
+  const w = (v: THREE.Vector3) => v.clone().applyQuaternion(p.q).add(root);
+  return legCapsules(s, w, [toBody(p.feet[0], root, p.q), toBody(p.feet[1], root, p.q)], true);
+};
 
 /** Draw a posed body. */
 export const PosedSib: React.FC<{ s: Sib; p: Posed; t: number }> = ({ s, p, t }) => {

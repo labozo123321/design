@@ -28,7 +28,9 @@ export type SibFrame = {
 };
 
 export type Era = "2004a" | "2004b" | "2007" | "2009" | "2011" | "2013" | "2014" | "2016" | "2025";
-export type BedState = { kind: "twin" | "air" | "none"; look: string; bare?: boolean; spec?: "air-mid" | "air-wall"; thrown?: number; noPillow?: boolean };
+/** (left: the simple cut: the covers lie as they were thrown back, at the usual loft, and drape over the legs
+ * of whoever is still getting out from under them) */
+export type BedState = { kind: "twin" | "air" | "none"; look: string; bare?: boolean; spec?: "air-mid" | "air-wall"; thrown?: number; noPillow?: boolean; left?: boolean };
 export type Dressing = {
   era: Era;
   /** the time-lapse's day (empty, beds made) */
@@ -372,12 +374,13 @@ const b5 = (t: number): Frame => {
   };
   // you: on your side facing your window (away from the wall), eyes open, jaw set; the eyes flick toward the
   // wall behind you while she waits; at 33.45 you roll over, forehead to the wall, and answer softly
+  // (the simple cut: you roll only partway to the wall, as you lie in 2025, so your knocking hand stays in
+  // view and reaches the wall where its rings start)
   const yRoll = track(t, [
     [33.45, -0.72],
-    [33.95, 0.82],
+    [33.95, SIMPLE ? 0.55 : 0.82],
   ]);
-  // (the simple cut: your fist lower on the wall, by your chest, clear of your face)
-  const yKnocks = knockArm(t, 1, 33.9, 34.8, restOnCovers(y, "near", 1, 0.3), false, SIMPLE ? 0.32 : -0.02, SIMPLE ? -0.12 : -0.02);
+  const yKnocks = knockArm(t, 1, 33.9, 34.8, restOnCovers(y, "near", 1, 0.3), false, -0.02, -0.02);
   const you: SibFrame = {
     s: y,
     side: 1,
@@ -491,13 +494,10 @@ const b9 = (t: number): Frame => {
     s: y,
     side: 1,
     // (the simple cut: onto your back, then the covers thrown back to the foot of the bed as you get up)
-    covers: SIMPLE ? 0.56 + (thrownCovers(y, 1, { roll: 0, knees: 0.6, e: {} }) - 0.56) * smooth(61.5, 62.0, t) : 0.66,
+    covers: SIMPLE ? 0.56 + (thrownCovers(y, 1, { roll: 0, e: {} }) - 0.56) * smooth(61.5, 62.0, t) : 0.66,
     phone: SIMPLE ? undefined : { on: 0, down: true },
     lie: {
       roll: SIMPLE ? 0.6 * (1 - smooth(61.2, 61.7, t)) : 0.6 - 0.38 * away,
-      // (the simple cut: the knees drawn up as the covers go back, so the feet come up the bed before you sit
-      // up, clear of the covers at its foot)
-      knees: SIMPLE ? 0.6 * smooth(61.6, 62.0, t) : undefined,
       prop: 0.006 * smooth(57.4, 57.6, t) * (1 - smooth(57.7, 58.1, t)),
       near: yKnock,
       far: { rest: restOnCovers(y, "far", 1, 0.3) },
@@ -634,7 +634,7 @@ const b9 = (t: number): Frame => {
     you: youNow,
     walkers,
     floor,
-    dress: { era: "2025", trex: smooth(55.6, 55.85, t), jolt: Math.max(...[55.0, 55.3, 55.6].map((k) => (t >= k ? Math.exp(-(t - k) / 0.05) : 0))), stars: 4, starGlow: 0.6 + 0.4 * gold, beds: { nora: { kind: "air", look: "air", spec: "air-wall" }, you: SIMPLE ? { kind: "twin", look: "guest", thrown: t >= 62.0 ? 1 : 0 } : { kind: "twin", look: "guest" } } },
+    dress: { era: "2025", trex: smooth(55.6, 55.85, t), jolt: Math.max(...[55.0, 55.3, 55.6].map((k) => (t >= k ? Math.exp(-(t - k) / 0.05) : 0))), stars: 4, starGlow: 0.6 + 0.4 * gold, beds: { nora: { kind: "air", look: "air", spec: "air-wall" }, you: SIMPLE ? { kind: "twin", look: "guest", thrown: t >= 62.0 ? 1 : 0, left: true } : { kind: "twin", look: "guest" } } },
     light: {
       hall: 0,
       street: 0.25,
@@ -863,10 +863,9 @@ const b3 = (t: number): Frame => {
       side: -1,
       // (the simple cut: asleep with the quilt at her waist, her hands on it; she throws it right back to the
       // foot of the bed over a moment, drawing her knees up, before she sits up)
-      covers: SIMPLE ? 0.56 + (thrownCovers(n, -1, { roll: 0.15, knees: 0.5, e: {} }) - 0.56) * smooth(17.4, 17.72, t) : 0.86 - 0.5 * smooth(17.6, 17.72, t),
+      covers: SIMPLE ? 0.56 + (thrownCovers(n, -1, { roll: 0.15, e: {} }) - 0.56) * smooth(17.4, 17.72, t) : 0.86 - 0.5 * smooth(17.6, 17.72, t),
       lie: {
         roll: 0.15,
-        knees: SIMPLE ? 0.5 * smooth(17.45, 17.72, t) : undefined,
         near: { rest: restOnCovers(n, "near", -1, 0.5) },
         far: { rest: restOnCovers(n, "far", -1, 0.5) },
         e: { lidL: 1 - awake, lidR: 1 - awake, puff: 0.7 * smooth(17.5, 17.6, t) * (1 - smooth(17.75, 17.9, t)), brow: -0.2 * awake, eyePitch: 0.3 },
@@ -882,7 +881,7 @@ const b3 = (t: number): Frame => {
           far: { rest: { body: true, at: V3(0.18, 1.3 * k, -0.24), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } },
         };
     // (rising from just as she lay, her hands still where they rested on the quilt)
-    const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, knees: SIMPLE ? 0.5 : undefined, near: { rest: restOnCovers(n, "near", -1, 0.5) }, far: { rest: restOnCovers(n, "far", -1, 0.5) } });
+    const lying = lieToPosed(n, -1, { roll: 0.15, e: {}, near: { rest: restOnCovers(n, "near", -1, 0.5) }, far: { rest: restOnCovers(n, "far", -1, 0.5) } });
     // (her feet stop short of the quilt she's thrown down to the foot of the bed; the simple cut: her hands
     // stay in front of her as she sits up)
     const sitUp: Posed = { ...nBase, ...(SIMPLE ? { near: lying.near, far: lying.far, nearSide: lying.nearSide } : {}), hip: V3(-0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(-0.42, 0.56, -2.04), V3(-0.6, 0.56, -2.04)] };
@@ -944,7 +943,7 @@ const b3 = (t: number): Frame => {
     floor,
     dog: mooseIn2009(t, n),
     // (her quilt stays thrown back on the bed while she sits up; at 18.32 she gathers it and her pillow)
-    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 17.72 ? 1 : 0, bare: !SIMPLE && t >= 18.32, noPillow: !SIMPLE && t >= 18.32 }, you: { kind: "twin", look: "you2009" } } },
+    dress: { era: "2009", trex: 0, jolt: 0, stars: 40, starGlow: 0.6, beds: { nora: { kind: "twin", look: "nora2007", thrown: t >= 17.72 ? 1 : 0, left: SIMPLE, bare: !SIMPLE && t >= 18.32, noPillow: !SIMPLE && t >= 18.32 }, you: { kind: "twin", look: "you2009" } } },
     // (the simple cut: her door open on a brighter hallway, so her way across the house reads)
     light: { hall: 0.12 + (SIMPLE ? 0.55 : 0.25) * smooth(18.2, 18.6, t), street: 0.1, moon: 0.15, nightlight: 1, fill: 0.7, lightning },
     cam,

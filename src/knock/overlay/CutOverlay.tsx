@@ -35,7 +35,7 @@ const CAPS: Cap[] = [
   // 2025 (your knocks 45.7-46.8; her answer 50.4-51.4; you're up at 55.0, across the house 57.2-61.3)
   { t0: 40.3, t1: 43.9, lines: ["twelve years later."] },
   { t0: 45.5, t1: 49.6, lines: ["this time, you knocked first."] },
-  { t0: 57.4, t1: 61.4, lines: ["and this time, you went to her."] },
+  { t0: 57.2, t1: 60.1, lines: ["and this time, you went to her."] },
 ];
 const CAP_FADE = 0.5;
 const CAP_BASELINE = 1430;
@@ -132,9 +132,11 @@ const Title: React.FC<{ t: number }> = ({ t }) => {
 };
 
 const EndCard: React.FC<{ t: number }> = ({ t }) => {
+  // (the words go to black with the picture at the very end)
+  const out = 1 - smooth(69.2, 69.95, t);
   const scrim = 0.28 * smooth(64.5, 65.3, t);
-  const kt = smooth(65.0, 65.8, t);
-  const kq = smooth(66.3, 67.1, t);
+  const kt = smooth(65.0, 65.8, t) * out;
+  const kq = smooth(66.3, 67.1, t) * out;
   if (scrim <= 0.001) return null;
   return (
     <>

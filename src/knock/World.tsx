@@ -4,13 +4,13 @@ import { FPS } from "./script";
 import { cameraFor, type Preset } from "./layout";
 import { House } from "./House";
 import { SharedWall } from "./SharedWall";
-import { Bed, airRect, type BedLook, type BedSpec, type Capsule } from "./Beds";
+import { Bed, airRect, bedRect, type BedLook, type BedSpec, type Capsule } from "./Beds";
 import { KnockPost } from "./Post";
 import { Rig } from "./KnockVideo";
 import { ringsAt, setRipples } from "./ripple";
 import { NightLights } from "./Lights";
 import { LyingSib, armCapsules, lieBody, lyingArms } from "./People";
-import { PosedSib } from "./Motion";
+import { PosedSib, posedLegCapsules } from "./Motion";
 import { frameAt, type BedState, type Floor, type SibFrame, type Walker } from "./direct";
 import { glow } from "../home/materials";
 import { Dressing } from "./Dressing";
@@ -73,7 +73,7 @@ const handsUnder = (f: SibFrame, side: -1 | 1, zTop: number | null, top: number)
 };
 
 /** One sibling in their bed: the body, and the bed with covers shaped over it and the pillow dented. */
-const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[] }> = (props) => {
+const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[]; walkers?: Walker[] }> = (props) => {
   const { f, bed } = props;
   if (bed.kind !== "air") return <InBed1 {...props} />;
   // the air mattress (the prop: vinyl, flocked top, fitted sheet; its folded quilt while it's still made
@@ -90,7 +90,7 @@ const InBed: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: numb
     </>
   );
 };
-const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[]; airSpec?: BedSpec }> = ({ f, side, bed, t, hide, airSpec }) => {
+const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: number; hide: string[]; airSpec?: BedSpec; walkers?: Walker[] }> = ({ f, side, bed, t, hide, airSpec, walkers }) => {
   const look = BEDS[bed.look] ?? BEDS.nora2004;
   const spec = airSpec ?? (bed.spec === "air-mid" ? AIR_MID : bed.kind === "air" ? airRect() : undefined);
   const pillowAt = airSpec ? { x: (airSpec.x0 + airSpec.x1) / 2 + 0.12 * (bed.spec === "air-mid" ? 0 : 1), z: bed.spec === "air-mid" ? airSpec.z0 + 0.3 : -3.3 } : undefined;
@@ -99,6 +99,12 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
     if (bed.kind === "none") return null;
     // a made bed, or (someone just got out) the covers thrown back to the foot
     const zTop = (spec?.z0 ?? -3.6) + 0.55 + (bed.thrown ?? 0) * 1.17;
+    // (left as thrown: still over the legs of whoever is getting out from under them, so they flatten as the
+    // legs come out instead of all at once)
+    const rr = spec ?? bedRect(side);
+    const legCaps = bed.left
+      ? (walkers ?? []).filter((w) => w.p.hip.x > rr.x0 - 0.4 && w.p.hip.x < rr.x1 + 0.4 && w.p.hip.z > rr.z0 - 0.2 && w.p.hip.z < rr.z1 + 0.2).flatMap((w) => posedLegCapsules(w.s, w.p))
+      : [];
     return (
       <Bed
         side={side}
@@ -108,7 +114,7 @@ const InBed1: React.FC<{ f: SibFrame | null; side: -1 | 1; bed: BedState; t: num
         bare={bed.bare}
         pillow={!bed.noPillow}
         pillowAt={pillowAt}
-        covers={bed.bare ? null : { zTop, caps: [], loft: bed.thrown ? 0.05 * bed.thrown : undefined }}
+        covers={bed.bare ? null : { zTop, caps: legCaps, loft: bed.thrown && !bed.left ? 0.05 * bed.thrown : undefined }}
       />
     );
   }
@@ -490,8 +496,8 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
         }}
       />
       <SharedWall noraPaint={ERA_PAINT.nora} youPaint={ERA_PAINT.you} dust={0} cobweb={0} capped={simple} />
-      <InBed f={F.nora} side={-1} bed={F.dress.beds.nora} t={t} hide={hide} />
-      <InBed f={F.you} side={1} bed={F.dress.beds.you} t={t} hide={hide} />
+      <InBed f={F.nora} side={-1} bed={F.dress.beds.nora} t={t} hide={hide} walkers={F.walkers} />
+      <InBed f={F.you} side={1} bed={F.dress.beds.you} t={t} hide={hide} walkers={F.walkers} />
       {(F.walkers ?? []).map((w) => (
         <Up key={w.key} w={w} t={t} />
       ))}
