@@ -3,8 +3,9 @@ import * as THREE from "three";
 import { Figure, RELAX, type Arm, type Pose } from "../wedding/Figure";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
 import { BAREFOOT, type Sib } from "./cast";
-import { HeadBits, LIE_POINT, clearOfWall, lyingChains, type ArmSpec, type Reach } from "./People";
+import { HeadBits, LIE_POINT, clearOfWall, lyingChains, turnToward, type ArmSpec, type Reach } from "./People";
 import { smoother, V3 } from "./anim";
+import { mixHand } from "../coaster/Hand";
 
 /**
  * Bodies out of bed: one model for every posture. A body is its hips (a world point), its orientation (the
@@ -71,25 +72,34 @@ const mixArm = (x: ArmSpec | null | undefined, y: ArmSpec | null | undefined, e:
 /** Walking along a path (world points on the floor) at distance d (m) from its start: the hips over the
  * path with a bob, facing along it, each foot planted while the other swings. */
 export const walkAlong = (s: Sib, path: THREE.Vector3[], d: number, base: Omit<Posed, "hip" | "q" | "feet">, strideK = 0.62): Posed => {
-  // the point and heading at distance d
+  // the point at distance d (along the path)
+  const segs = path.slice(1).map((q, i) => q.clone().sub(path[i]));
+  const lens = segs.map((v) => v.length());
+  const dirs = segs.map((v) => v.clone().normalize());
   let rem = Math.max(0, d);
-  let p = path[0].clone();
-  let dir = path[1].clone().sub(path[0]).normalize();
-  for (let i = 0; i < path.length - 1; i++) {
-    const seg = path[i + 1].clone().sub(path[i]);
-    const L = seg.length();
-    if (rem <= L || i === path.length - 2) {
-      p = path[i].clone().addScaledVector(seg.normalize(), Math.min(rem, L));
-      dir = seg.clone();
-      // turn smoothly into the next leg over the last 30 cm
-      if (i < path.length - 2 && L - rem < 0.3) {
-        const next = path[i + 2].clone().sub(path[i + 1]).normalize();
-        dir.lerp(next, (0.3 - (L - rem)) / 0.6).normalize();
-      }
-      break;
-    }
-    rem -= L;
+  let i = 0;
+  while (i < segs.length - 1 && rem > lens[i]) rem -= lens[i++];
+  const p = path[i].clone().addScaledVector(dirs[i], Math.min(rem, lens[i]));
+  // the heading: each leg's direction, handed on to the next across every corner over up to 30 cm either
+  // side of it (less on a short leg, so the turns never overlap), so the body never snaps round
+  const at = Math.min(Math.max(0, d), lens.reduce((x, y) => x + y, 0));
+  const corner: number[] = [];
+  const half: number[] = [];
+  let c = 0;
+  for (let j = 0; j < segs.length - 1; j++) {
+    c += lens[j];
+    corner.push(c);
+    half.push(Math.max(1e-3, Math.min(0.3, lens[j] / 2, lens[j + 1] / 2)));
   }
+  const ramp = (a: number, b: number) => Math.min(1, Math.max(0, (at - a) / (b - a)));
+  const dir = new THREE.Vector3();
+  for (let j = 0; j < segs.length; j++) {
+    const up = j === 0 ? 1 : ramp(corner[j - 1] - half[j - 1], corner[j - 1] + half[j - 1]);
+    const down = j === segs.length - 1 ? 1 : 1 - ramp(corner[j] - half[j], corner[j] + half[j]);
+    dir.addScaledVector(dirs[j], up * down);
+  }
+  if (dir.lengthSq() < 1e-8) dir.copy(dirs[i]);
+  dir.normalize();
   const k = s.k;
   // (one full cycle, two steps; hurrying across a dark house, the steps are long)
   const stride = strideK * k;
@@ -130,7 +140,9 @@ export const PosedSib: React.FC<{ s: Sib; p: Posed; t: number }> = ({ s, p, t })
     if (!a.to || (a.k ?? 1) <= 0) return r;
     const g = one(a.to);
     const k = Math.min(1, a.k ?? 1);
-    return { at: r.at.clone().lerp(g.at, k), hand: k > 0.5 ? g.hand : r.hand, palm: k > 0.5 ? g.palm : r.palm, pole: k > 0.5 ? g.pole : r.pole };
+    // (the hand opens or closes and the elbow and palm swing round over the whole move, not at its middle)
+    const turn = (a?: THREE.Vector3, b?: THREE.Vector3) => (a && b ? turnToward(a, b, k) : k > 0.5 ? b : a);
+    return { at: r.at.clone().lerp(g.at, k), hand: r.hand && g.hand ? mixHand(r.hand, g.hand, k) : k > 0.5 ? g.hand : r.hand, palm: turn(r.palm, g.palm), pole: turn(r.pole, g.pole) };
   };
   const nearKey: "armL" | "armR" = (p.nearSide ?? -1) < 0 ? "armL" : "armR";
   const farKey: "armL" | "armR" = nearKey === "armL" ? "armR" : "armL";

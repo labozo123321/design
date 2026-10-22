@@ -26,7 +26,7 @@ const CAPS: Cap[] = [
   // 2004 (her knocks 5.2-6.2, yours 8.7-9.8)
   { t0: 4.5, t1: 6.6, lines: ["your first night in your own room."] },
   { t0: 6.9, t1: 11.2, lines: ["she made up the knock."] },
-  // 2009 (your eleven knocks 13.4-15.5; she's up at 16.6, across the house 18.9-23.1, down by 25)
+  // 2009 (your eleven knocks 13.4-15.5; she's up at 16.6, across the house 18.9-22.7, down by 26)
   { t0: 13.3, t1: 17.4, lines: ["eleven knocks meant come here."] },
   { t0: 20.0, t1: 26.6, lines: ["she always came."] },
   // 2013 (her knocks 29.1-29.8 and 33.2-34.1; you roll over at 34.8 and answer 35.8-37.1)
@@ -90,7 +90,7 @@ const Hud: React.FC<{ t: number }> = ({ t }) => {
   const c = COUNTS.find((x) => x.year === seg.year) ?? COUNTS[3];
   // (in after the title; out for the end card; and through black between the nights); it leaves the frame
   // to whoever crosses the hallway under it (her in 2009; you in 2025, and it stays out after)
-  const walk = Math.max(smooth(18.5, 19.1, t) * (1 - smooth(23.0, 23.6, t)), smooth(55.3, 55.9, t));
+  const walk = Math.max(smooth(18.5, 19.1, t) * (1 - smooth(22.5, 23.1, t)), smooth(55.3, 55.9, t));
   const a = smooth(4.2, 4.9, t) * (1 - blackAt(t)) * (1 - walk);
   if (a <= 0.001) return null;
   const k = c.at === null ? 1 : smoother((t - c.at) / ROLL);
@@ -138,14 +138,14 @@ const EndCard: React.FC<{ t: number }> = ({ t }) => {
   return (
     <>
       <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${scrim.toFixed(3)})` }} />
-      <div style={{ position: "absolute", left: 100, top: 1130, width: 880, textAlign: "center", opacity: kt, color: INK, transform: `translateY(${(8 * (1 - kt)).toFixed(2)}px)` }}>
+      <div style={{ position: "absolute", left: 100, top: 1170, width: 880, textAlign: "center", opacity: kt, color: INK, transform: `translateY(${(8 * (1 - kt)).toFixed(2)}px)` }}>
         <TitleText size={60} />
       </div>
       <div
         style={{
           position: "absolute",
           left: 100,
-          top: 1420,
+          top: 1400,
           width: 880,
           textAlign: "center",
           opacity: kq,

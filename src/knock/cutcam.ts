@@ -27,7 +27,7 @@ const FOLLOW_D = 8.2;
  * the camera looks down into it over the bedrooms' back wall, the walker near the middle of the frame. */
 const follow = (at: { x: number; z: number }, d = FOLLOW_D): Preset => {
   const hall = Math.min(1, Math.max(0, (-at.z - 2.9) / 1.4));
-  return P(Math.max(-0.85, Math.min(0.85, 0.55 * at.x)), 0.5, -3.25 - 1.25 * hall, d);
+  return P(Math.max(-1.0, Math.min(1.0, 0.65 * at.x)), 0.5, -3.25 - 1.25 * hall, d);
 };
 
 type Spot2 = { x: number; z: number };
@@ -37,14 +37,14 @@ const subjectAt = (src: number, upAt: number, before: Spot2, after: Spot2): Spot
   if (w) return { x: w.p.hip.x, z: w.p.hip.z };
   return src < upAt ? before : after;
 };
-/** The camera's lagging view of the subject: a weighted average over the last 0.7 s (within the night). */
+/** The camera's lagging view of the subject: a weighted average over the last half second (within the night). */
 const lagged = (o: number, upAt: number, before: Spot2, after: Spot2): Spot2 => {
   const o0 = segAt(o).o0;
   let x = 0;
   let z = 0;
   let w = 0;
   for (let i = 0; i <= 8; i++) {
-    const oi = Math.max(o0, o - (i / 8) * 0.7);
+    const oi = Math.max(o0, o - (i / 8) * 0.5);
     const wi = 1 - i / 9;
     const p = subjectAt(srcAt(oi), upAt, before, after);
     x += wi * p.x;
@@ -76,5 +76,5 @@ export const cutCam = (o: number): Preset => {
   const a = mix(mix(WIDE, CLOSE, ease(o, 40.1, 46.0)), P(0, 0.64, -3.18, 4.35), ease(o, 46.0, 53.0));
   const f = follow(lagged(o, 62.0, { x: 0.27, z: -2.55 }, { x: -1.38, z: -2.55 }));
   const b = mix(a, f, ease(o, 54.0, 56.6));
-  return mix(b, P(-0.85, 0.45, -1.75, 7.6), ease(o, 63.4, 69.6));
+  return mix(b, P(-0.85, 0.45, -1.45, 7.6), ease(o, 63.4, 69.6));
 };

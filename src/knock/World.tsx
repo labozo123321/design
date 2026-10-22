@@ -19,7 +19,7 @@ import { Beagle } from "./Beagle";
 import { FoldedNote } from "./props/wall";
 import { AIR_MATTRESS, AirMattress } from "./props/bedroom";
 import { guestDuvetMat, navyDuvetMat, patchworkQuiltMat, pillowcaseMat, plainSheetMat, racecarDuvetMat, sleepingBagMat, soccerDuvetMat, starQuiltMat, stripedSheetMat } from "./props/textures";
-import { BED, WALL } from "./layout";
+import { BED, HALL, PORCH, ROOM, WALL } from "./layout";
 
 /** Everything in the picture for one frame, as the director has it. */
 
@@ -206,7 +206,8 @@ const clearOfWallHeld = (at: THREE.Vector3, q: THREE.Quaternion, half: [number, 
     for (const sy of [-1, 1])
       for (const sz of [-1, 1]) {
         const c = new THREE.Vector3(sx * half[0], sy * half[1], sz * half[2]).applyQuaternion(q).add(at);
-        if (c.y < WALL.cut + 0.02) pen = Math.max(pen, WALL.half + 0.012 - room * c.x);
+        // (along the wall only: out in the hallway there's nothing to keep clear of)
+        if (c.y < WALL.cut + 0.02 && c.z > ROOM.back - 0.02 && c.z < ROOM.front + 0.02) pen = Math.max(pen, WALL.half + 0.012 - room * c.x);
       }
   return pen > 0 ? at.clone().add(new THREE.Vector3(room * pen, 0, 0)) : at;
 };
@@ -219,7 +220,7 @@ const Up: React.FC<{ w: Walker; t: number }> = ({ w, t }) => {
   return (
     <>
       <PosedSib s={w.s} p={w.p} t={t} />
-      {w.carry === "pillow" ? <CarriedPillow at={chest} q={w.p.q} look={w.pillowLook} /> : null}
+      {w.carry === "pillow" ? <CarriedPillow at={chest} q={w.p.q} look={w.pillowLook} placed={w.pillowAt} /> : null}
       {w.carry === "bundle" ? <Bundle at={chest} q={w.p.q} t={t} /> : null}
     </>
   );
@@ -249,9 +250,19 @@ const pillowGeo = (() => {
   };
 })();
 // (the guest bed's own pillow, the one that ends up on her rug; or whoever's bed it's from)
-const CarriedPillow: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; look?: string }> = ({ at, q, look }) => {
+// placed: on its way between the arms (k 0) and lying flat where it's left (k 1), through `via` if given;
+// it grows to a bed pillow's size as it goes down
+const PILLOW_FLAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+const CarriedPillow: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; look?: string; placed?: Walker["pillowAt"] }> = ({ at, q, look, placed }) => {
   const b = BEDS[look ?? "guest"] ?? BEDS.guest;
-  return <mesh position={at} quaternion={q} geometry={pillowGeo()} material={b.pillowcase ?? b.sheet} castShadow />;
+  const k = placed ? Math.min(1, Math.max(0, placed.k)) : 0;
+  let pos = at;
+  if (placed && k > 0) {
+    const via = placed.via ?? at.clone().lerp(placed.at, 0.5);
+    pos = at.clone().multiplyScalar((1 - k) * (1 - k)).addScaledVector(via, 2 * k * (1 - k)).addScaledVector(placed.at, k * k);
+  }
+  const rot = k > 0 ? q.clone().slerp(PILLOW_FLAT, k) : q;
+  return <mesh position={pos} quaternion={rot} scale={[1 + 0.24 * k, 1 + 0.18 * k, 1 - 0.13 * k]} geometry={pillowGeo()} material={b.pillowcase ?? b.sheet} castShadow />;
 };
 /** Her pillow and quilt bundled in her arms: the quilt in loose folds around the pillow, a corner trailing. */
 const Bundle: React.FC<{ at: THREE.Vector3; q: THREE.Quaternion; t: number }> = ({ at, q, t }) => (
@@ -436,8 +447,24 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   // (the payoff's macro is already turned at the cut, so the note reads upright from its first frame)
   const c = debugCam(cam) ?? (macro ? macroCam(my, t > 50 ? 1 : 0) : cameraFor(F.cam));
   // inside the cavity the seam's bloom is all around the lens: a fraction of it reads as the same glow
-  if (ghost === undefined) setRipples(ringsAt(t).map((r) => (simple ? { ...r, strength: 0.7 * r.strength } : r)), F.seam * (macro ? 0.07 : 0.45), -3.15);
+  // (the simple cut: softer rings, and none on the end card, where nobody is seen knocking)
+  if (ghost === undefined) setRipples(simple && t > 67.5 ? [] : ringsAt(t).map((r) => (simple ? { ...r, strength: 0.7 * r.strength } : r)), F.seam * (macro ? 0.07 : 0.45), -3.15);
   const focus = macro ? (F.note ? Math.max(0.1, my - F.note.pos.y) : my - 0.05) : F.cam.dist;
+  // (the simple cut: a bright light near the top or bottom of the frame dims as it leaves it, so its bloom
+  // goes with it instead of vanishing in one frame once it's out)
+  const edgeFade = (p: THREE.Vector3) => {
+    if (!simple) return 1;
+    const pc = new THREE.PerspectiveCamera(c.fov, 1080 / 1920, 0.05, 200);
+    pc.position.copy(c.pos);
+    pc.quaternion.copy(c.quat);
+    pc.updateMatrixWorld();
+    const y = Math.abs(p.clone().project(pc).y);
+    const u = Math.min(1, Math.max(0, (y - 0.74) / 0.26));
+    return 1 - u * u * (3 - 2 * u);
+  };
+  const outside0 = outsideAt(t, F.dress.era);
+  const outside = outside0.lights ? { ...outside0, lights: outside0.lights * edgeFade(new THREE.Vector3(0, PORCH.yWall - 0.1, PORCH.z0 + 0.66)) } : outside0;
+  const hallGlow = simple ? Math.min(F.light.hall, 0.12) * edgeFade(new THREE.Vector3(0, ROOM.ceiling - 0.08, HALL.z1 + 0.27)) : F.light.hall;
   return (
     <>
       <Rig c={c} />
@@ -448,10 +475,10 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
           era: F.dress.era,
           t,
           // (the simple cut's brighter 2009 hallway keeps its fixture's own glow low: it sits near the top line)
-          hall: simple ? Math.min(F.light.hall, 0.12) : F.light.hall,
+          hall: hallGlow,
           strings: F.light.strings ?? 0,
           puppyBed: F.dress.era === "2004b" && t >= 8,
-          outside: outsideAt(t, F.dress.era),
+          outside,
         }}
       />
       <SharedWall noraPaint={ERA_PAINT.nora} youPaint={ERA_PAINT.you} dust={0} cobweb={0} capped={simple} />
@@ -468,7 +495,17 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
       {F.noteHand && F.nora ? <NoteInHand f={F.nora} /> : null}
       {F.dog ? <Beagle at={F.dog.at} yaw={F.dog.yaw} pose={F.dog.pose} puppy={F.dog.puppy} inBed={F.dog.inBed} ground={F.dog.ground} collar={F.dog.collar} /> : null}
       {(F.light.snow ?? 0) > 0 && !macro ? <Snow t={t} k={F.light.snow ?? 0} /> : null}
-      {(F.items ?? []).map((it, i) => (it.kind === "pillowOver" ? <PillowOver key={i} at={it.pos} q={it.q} /> : null))}
+      {(F.items ?? []).map((it, i) =>
+        it.kind === "pillowOver" ? (
+          <PillowOver key={i} at={it.pos} q={it.q} />
+        ) : it.kind === "phone" ? (
+          // (a phone left face down on the covers)
+          <mesh key={i} position={[it.pos.x, it.pos.y - 0.02, it.pos.z]} rotation={[-Math.PI / 2, 0, 0.4]} castShadow>
+            <boxGeometry args={[0.072, 0.15, 0.009]} />
+            <meshPhysicalMaterial color="#141418" roughness={0.35} clearcoat={0.6} />
+          </mesh>
+        ) : null,
+      )}
       {macro ? (
         <>
           <Motes t={t} lift={F.seam} />

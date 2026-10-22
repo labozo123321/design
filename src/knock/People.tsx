@@ -2,12 +2,12 @@ import React from "react";
 import * as THREE from "three";
 import { Figure, GRIP, RELAX, type Arm, type Pose } from "../wedding/Figure";
 import { NEUTRAL, type Expr } from "../coaster/face/sculpt";
-import type { HandPose } from "../coaster/Hand";
+import { mixHand, type HandPose } from "../coaster/Hand";
 import { CardHair } from "../looks/Hair";
 import { Glasses } from "../looks/Accessories";
 import { skullR } from "../looks/Hair";
 import { BAREFOOT, type Sib } from "./cast";
-import { BED, PILLOW, WALL } from "./layout";
+import { BED, PILLOW, ROOM, WALL } from "./layout";
 import type { Capsule, HeadRest } from "./Beds";
 
 /**
@@ -56,6 +56,19 @@ export type Lie = {
 /** A place to lie: the x of the head when on the back, the surface's height, the pillow's centre z and
  * height. */
 export type Spot = { x: number; top: number; pillowZ: number; pillowH: number };
+/** A direction turned from p toward q by the fraction k of the angle between them, along the great circle:
+ * an elbow or a palm swings round evenly, never flipping halfway as a straight blend of two opposed
+ * directions would. */
+export const turnToward = (p: THREE.Vector3, q: THREE.Vector3, k: number) => {
+  const a = p.clone().normalize();
+  const b = q.clone().normalize();
+  const ang = Math.acos(Math.min(1, Math.max(-1, a.dot(b))));
+  if (ang < 1e-4) return b;
+  const axis = new THREE.Vector3().crossVectors(a, b);
+  if (axis.lengthSq() < 1e-8) axis.crossVectors(a, Math.abs(a.x) < 0.9 ? V(1, 0, 0) : V(0, 1, 0));
+  return a.applyAxisAngle(axis.normalize(), ang * k);
+};
+
 export const bedSpot = (side: -1 | 1): Spot => ({ x: side * 0.25, top: BED.top, pillowZ: PILLOW.z, pillowH: PILLOW.h });
 
 /** The head's eye-level origin above the feet (body frame), as the Figure builds it standing. */
@@ -307,8 +320,9 @@ export const clearOfWall = (a: Arm, sd: number, k: number, room: -1 | 1, toWorld
     let pen = 0;
     for (const [p, r] of pts) {
       const w = toWorld(p);
-      // only near the wall's height (it's cut at 1.1 m; above it, nothing to hit)
-      if (w.y > WALL.cut + r) continue;
+      // only near the wall's height (it's cut at 1.1 m; above it, nothing to hit), and only along it: out in
+      // the hallway, past the bedrooms' back wall, there's no shared wall to keep clear of
+      if (w.y > WALL.cut + r || w.z < ROOM.back - r || w.z > ROOM.front + r) continue;
       pen = Math.max(pen, WALL.half + r + 0.002 - room * w.x);
     }
     if (pen <= 1e-4) break;
@@ -338,8 +352,8 @@ export const lyingArms = (s: Sib, side: -1 | 1, st: Lie) => {
     if (!a.to || (a.k ?? 1) <= 0) return r;
     const g = one(a.to);
     const k = Math.min(1, a.k ?? 1);
-    const mix = (p?: THREE.Vector3, q?: THREE.Vector3) => (p && q ? p.clone().lerp(q, k).normalize() : (k > 0.5 ? q : p));
-    const hand = k > 0.5 ? g.hand : r.hand;
+    const mix = (p?: THREE.Vector3, q?: THREE.Vector3) => (p && q ? turnToward(p, q, k) : (k > 0.5 ? q : p));
+    const hand = r.hand && g.hand ? mixHand(r.hand, g.hand, k) : k > 0.5 ? g.hand : r.hand;
     return { at: r.at.clone().lerp(g.at, k), hand, palm: mix(r.palm, g.palm), pole: mix(r.pole, g.pole) };
   };
   const toW = (p: THREE.Vector3) => p.clone().applyQuaternion(f.q).add(f.pos);
