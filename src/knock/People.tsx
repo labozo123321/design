@@ -384,7 +384,7 @@ export const LyingSib: React.FC<{ s: Sib; side: -1 | 1; st: Lie; t: number }> = 
     headPitch: st.headPitch,
     feet: [footAt(s.k, -1, b.knees), footAt(s.k, 1, b.knees)],
     ankles: true,
-    // (bare feet fall relaxed; shoes stay upright at the ankle: tipped, they'd sink into the floor)
+    // (bare feet fall relaxed; shoes stay upright at the ankle)
     pointToes: st.bareFeet && s.outfit.shoe === BAREFOOT ? LIE_POINT : 0,
   };
   // (a hand under the covers isn't drawn; an arm left to the Figure hangs where armCapsules says it does)

@@ -483,6 +483,9 @@ const b9 = (t: number): Frame => {
     phone: SIMPLE ? undefined : { on: 0, down: true },
     lie: {
       roll: 0.6 - 0.38 * away,
+      // (the simple cut: the knees drawn up as the covers go back, so the feet come up the bed before you sit
+      // up, clear of the covers at its foot)
+      knees: SIMPLE ? 0.6 * smooth(61.7, 62.0, t) : undefined,
       prop: 0.006 * smooth(57.4, 57.6, t) * (1 - smooth(57.7, 58.1, t)),
       near: yKnock,
       far: { rest: restOnCovers(y, "far", 1, 0.3) },
@@ -557,7 +560,8 @@ const b9 = (t: number): Frame => {
     const hold: ArmSpec = { rest: { body: true, at: V3(-0.17, 1.33 * k, -0.2), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(1, 0, 0), pole: V3(-1, -0.4, 0.4) } };
     const hold2: ArmSpec = { rest: { body: true, at: V3(0.17, 1.33 * k, -0.2), hand: { curl: [0.8, 0.9, 0.9, 1.0], spread: 0.05, thumbOut: 0.5, thumbCurl: 0.4 }, palm: V3(-1, 0, 0), pole: V3(1, -0.4, 0.4) } };
     const base = { e: { smile: 0.6, squint: 0.2 }, nearSide: 1 as const, near: hold2, far: hold };
-    const sitUp: Posed = { ...base, hip: V3(0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(0.42, 0.56, -1.95), V3(0.6, 0.56, -1.95)] };
+    // (feet: left, right; facing the foot of the bed the left foot is toward +x)
+    const sitUp: Posed = { ...base, hip: V3(0.5, 0.62, -2.75), q: facing(V3(0, 0, 1)), feet: [V3(0.6, 0.56, -1.95), V3(0.42, 0.56, -1.95)] };
     const edge: Posed = { ...base, hip: V3(0.86, 0.6, -2.95), q: facing(V3(1, 0, 0.35)), feet: [V3(1.22, 0.06, -3.1), V3(1.26, 0.06, -2.85)] };
     const path = [V3(1.18, 0, -3.0), V3(1.5, 0, -3.35), V3(1.52, 0, -3.95), V3(1.15, 0, -4.32), V3(-1.15, 0, -4.32), V3(-1.52, 0, -3.95), V3(-1.52, 0, -3.35), V3(-1.42, 0, -2.75)];
     const stand = standAt(y, path[0], V3(0.5, 0, -1), base);
@@ -583,7 +587,7 @@ const b9 = (t: number): Frame => {
         const downArms = { near: { rest: restOnCovers(y, "near", -1, 0.5) }, far: { rest: restOnCovers(y, "far", -1, 0.5) } };
         const down = lieToPosed(y, -1, { roll: 0, spot, e: { smile: 0.5 }, ...downArms });
         const kneel: Posed = { ...base, hip: V3(-1.4, 0.42, -2.6), q: facing(V3(0, -0.2, -1)), feet: [V3(-1.5, 0.05, -2.2), V3(-1.3, 0.05, -2.2)] };
-        const sitF: Posed = { ...base, hip: V3(-1.38, 0.13, -2.55), q: facing(V3(0, 0, 1), V3(0, 1, -0.25)), feet: [V3(-1.46, 0.05, -1.75), V3(-1.3, 0.05, -1.75)] };
+        const sitF: Posed = { ...base, hip: V3(-1.38, 0.13, -2.55), q: facing(V3(0, 0, 1), V3(0, 1, -0.25)), feet: [V3(-1.3, 0.05, -1.75), V3(-1.46, 0.05, -1.75)] };
         carry = t < arrive + 0.35 ? "pillow" : null;
         const lyingThere: Floor = { s: y, side: -1, covers: null, spot, pillow: true, body: false, lie: { roll: 0, spot, e: { smile: 0.45, eyePitch: 0.35 }, ...downArms } };
         if (t < arrive + 0.35) p = end;
