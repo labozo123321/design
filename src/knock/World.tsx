@@ -464,9 +464,10 @@ export const World: React.FC<{ frame: number; cam?: string; hide: string[]; tOve
   };
   const outside0 = outsideAt(t, F.dress.era);
   const outside = outside0.lights ? { ...outside0, lights: outside0.lights * edgeFade(new THREE.Vector3(0, PORCH.yWall - 0.1, PORCH.z0 + 0.66)) } : outside0;
-  // (the simple cut: the hall fixture held at one soft, tone-mapped glow (its materials come in steps, and
-  // its bulbs leave tone mapping above 0.05, so any fade would flicker); only 2004's switch-off at bedtime)
-  const hallGlow = simple ? (F.dress.era === "2004a" ? F.light.hall : Math.min(F.light.hall, 0.04)) : F.light.hall;
+  // (the simple cut: the hall fixture itself is lit only for 2004's switch-off at bedtime; otherwise the
+  // hall's light comes from out of frame: a lit bulb's bloom swells at the frame's edge and vanishes as it
+  // leaves it, and its materials come in steps, so it could never fade smoothly either)
+  const hallGlow = simple ? (F.dress.era === "2004a" ? F.light.hall : 0) : F.light.hall;
   // (the banister's string lights dim as they leave the frame, so their bloom goes with them)
   const garland = (F.light.strings ?? 0) * edgeFade(new THREE.Vector3(0, 0.95, HALL.z1 + 0.04));
   return (
