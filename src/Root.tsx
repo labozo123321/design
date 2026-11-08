@@ -38,6 +38,8 @@ import { BH_DURATION } from "./blackhole/timeline";
 import { WI_DURATION } from "./whatif/timeline";
 import { FIGHT_DURATION } from "./fight/choreo";
 import { STORY_DURATION } from "./story/timeline";
+import { Lift } from "./lift/Lift";
+import { LIFT_FRAMES } from "./lift/timeline";
 
 const defaultProps: TeaserProps = { showSafeArea: false };
 
@@ -154,6 +156,7 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="Wedding" component={Wedding} durationInFrames={WEDDING_DURATION} fps={30} width={1080} height={1920} />
       <Composition id="Looks" component={Looks} durationInFrames={LOOKS_DURATION} fps={30} width={1080} height={1920} />
       <Composition id="Roadster" component={RoadsterVideo} durationInFrames={ROADSTER_DURATION} fps={30} width={1080} height={1920} />
+      <Composition id="Lift" component={Lift} durationInFrames={LIFT_FRAMES} fps={30} width={1080} height={1920} />
     <Composition
       id="BlackHole"
       component={BlackHole}
