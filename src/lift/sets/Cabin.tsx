@@ -1,6 +1,6 @@
 import React from "react";
 import * as THREE from "three";
-import { flat, gloss, toon } from "../toon";
+import { canvasTex, flat, gloss, toon } from "../toon";
 import { Fx } from "../Fx";
 import { Earth } from "../Globe";
 import { SkyDome, Stars, Label } from "./common";
@@ -18,6 +18,56 @@ const H = 2.6;
 const D = 3.2;
 const WIN = { w: 2.2, h: 1.5, y: 1.45 };
 
+/** A rocket with a red no-sign over it. */
+const noRocketTex = () =>
+  canvasTex("no-rocket", 256, 256, (g) => {
+    g.fillStyle = "#fdf8ee";
+    g.fillRect(0, 0, 256, 256);
+    g.save();
+    g.translate(128, 128);
+    g.rotate(Math.PI / 4);
+    // the rocket: body, nose, fins, window
+    g.fillStyle = "#e5484d";
+    g.beginPath();
+    g.moveTo(-34, 40);
+    g.lineTo(-58, 72);
+    g.lineTo(-24, 66);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(34, 40);
+    g.lineTo(58, 72);
+    g.lineTo(24, 66);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "#cfd5df";
+    g.beginPath();
+    g.moveTo(0, -86);
+    g.bezierCurveTo(30, -60, 34, -20, 30, 66);
+    g.lineTo(-30, 66);
+    g.bezierCurveTo(-34, -20, -30, -60, 0, -86);
+    g.fill();
+    g.lineWidth = 6;
+    g.strokeStyle = "#2a2d36";
+    g.stroke();
+    g.fillStyle = "#4fb6ff";
+    g.beginPath();
+    g.arc(0, -18, 13, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.restore();
+    // the no-sign
+    g.strokeStyle = "#e01e2b";
+    g.lineWidth = 22;
+    g.beginPath();
+    g.arc(128, 128, 100, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(128 - 71, 128 - 71);
+    g.lineTo(128 + 71, 128 + 71);
+    g.stroke();
+  });
+
 /** Out of the window: space, Earth's curve below, maybe a rocket going by. rocket: 0..1 its pass. */
 const Outside: React.FC<{ t: number; rocket?: number }> = ({ t, rocket }) => (
   <group>
@@ -27,7 +77,7 @@ const Outside: React.FC<{ t: number; rocket?: number }> = ({ t, rocket }) => (
     <directionalLight position={[40, 30, 20]} intensity={2.0} color="#fff6ea" />
     <Earth r={55} pos={[4, -52, -62]} spin={t * 0.02 + 1.2} tilt={0.25} />
     {rocket !== undefined && rocket > 0 && rocket < 1 ? (
-      <group position={[-26 + rocket * 52, 1 + rocket * 7, -16]} rotation={[0, 0, -Math.PI / 2 + 0.25]} scale={0.8}>
+      <group position={[-14 + rocket * 26, 3.3 + rocket * 2, -30]} rotation={[0, 0, -Math.PI / 2 + 0.08]} scale={0.8}>
         <RocketBody t={t} />
         <Flames k={1} t={t} len={5} />
       </group>
@@ -39,7 +89,7 @@ export const Cabin: React.FC<{ t: number; rocket?: number; children?: React.Reac
   <group>
     <Outside t={t} rocket={rocket} />
     <hemisphereLight args={["#fff2e2", "#6a5a52", 0.9]} />
-    <pointLight position={[1.2, 2.2, 0.6]} intensity={4} distance={6} color="#ffd9a8" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.001} />
+    <pointLight position={[0.5, 2.45, -0.6]} intensity={1.5} distance={6} color="#ffd9a8" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.002} shadow-normalBias={0.03} />
     {/* floor and ceiling */}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} material={toon("#b8a58f")} receiveShadow>
       <planeGeometry args={[W, D]} />
@@ -59,8 +109,29 @@ export const Cabin: React.FC<{ t: number; rocket?: number; children?: React.Reac
     <mesh position={[0, H / 2, D / 2]} rotation={[0, Math.PI, 0]} material={toon("#f3f4f7")} receiveShadow>
       <planeGeometry args={[W, H]} />
     </mesh>
-    {/* the window wall (-z), built round the opening */}
+    {/* on the back wall, a framed "no rockets" sign (flat planes facing the room, so a camera beyond the
+        back wall doesn't see them) */}
+    <group position={[0.62, 1.62, D / 2 - 0.02]} rotation={[0, Math.PI, 0]}>
+      <mesh material={toon("#7a5232")}>
+        <planeGeometry args={[0.62, 0.62]} />
+      </mesh>
+      <mesh position={[0, 0, 0.012]} material={toon("#ffffff", { map: noRocketTex(), emissive: "#ffffff", ei: 0.15, emap: true })}>
+        <planeGeometry args={[0.52, 0.52]} />
+      </mesh>
+    </group>
+    {/* the window wall (-z), built round the opening; outside it, a darker hull (planes facing out, so
+        they don't draw from inside) */}
     <group position={[0, 0, -D / 2]}>
+      {[
+        [0, (WIN.y - WIN.h / 2) / 2, W, WIN.y - WIN.h / 2],
+        [0, (H + WIN.y + WIN.h / 2) / 2, W, H - (WIN.y + WIN.h / 2)],
+        [-(W / 2 + WIN.w / 2) / 2, WIN.y, (W - WIN.w) / 2, WIN.h],
+        [(W / 2 + WIN.w / 2) / 2, WIN.y, (W - WIN.w) / 2, WIN.h],
+      ].map(([x, y, w, h], i) => (
+        <mesh key={`hull${i}`} position={[x, y, -0.056]} rotation={[0, Math.PI, 0]} material={toon("#4c5568")}>
+          <planeGeometry args={[w, h]} />
+        </mesh>
+      ))}
       <mesh position={[0, (WIN.y - WIN.h / 2) / 2, 0]} material={toon("#f3f4f7")}>
         <boxGeometry args={[W, WIN.y - WIN.h / 2, 0.1]} />
       </mesh>

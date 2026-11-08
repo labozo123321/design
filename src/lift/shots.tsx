@@ -663,18 +663,22 @@ shot("junk-cloud", cut(21, "A", 0.08), (t, u) => {
 });
 shot("junk-bullet", cut(21, "flying", 0.08), (t, u) => {
   const cam = shake(C(-4.5, 12.6, 16.5, 0, 10.6, 6, 38), t, 0.02, 3);
-  const chunks = [0.15, 0.9, 1.55].map((t0, i) => {
-    const k = (u - t0) / 0.45;
+  // three pieces of junk shoot across, far enough off to be seen whole, each with a faint streak
+  const chunks = [0.1, 0.85, 1.6].map((t0, i) => {
+    const k = (u - t0) / 0.7;
     if (k < 0 || k > 1) return null;
-    const x = lerp(-16, 16, k);
+    const x = lerp(-15, 15, k);
     return (
-      <group key={i} position={[x, 12.4 + i * 0.7, 13.6 - i * 1.0]} scale={[3.6, 1.3, 1.3]}>
-        <mesh material={toon("#dfe4ec", { emissive: "#8a94aa", ei: 0.4 })} scale={0.7}>
-          <boxGeometry args={[1, 0.6, 0.8]} />
-        </mesh>
+      <group key={i} position={[x, 12.6 + i * 0.9, 7.5 - i * 0.8]}>
+        <group rotation={[0.4 * i, k * 6, 0.3]}>
+          <mesh material={toon(["#dfe4ec", "#e3b04b", "#c9ced8"][i], { emissive: "#8a94aa", ei: 0.4 })} scale={0.55}>
+            <boxGeometry args={[1, 0.6, 0.8]} />
+          </mesh>
+        </group>
+        {/* the streak trails behind (the piece flies toward +x) */}
         <Fx>
-          <mesh position={[-1.3, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={flat("#bfe9ff", 1.6, { additive: true, opacity: 0.5 })}>
-            <coneGeometry args={[0.25, 2.4, 10, 1, true]} />
+          <mesh position={[-1.6, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={flat("#bfe9ff", 1.2, { additive: true, opacity: 0.28 })}>
+            <coneGeometry args={[0.18, 2.8, 10, 1, true]} />
           </mesh>
         </Fx>
       </group>
@@ -883,8 +887,14 @@ const Sitting: React.FC<{ t: number; face: ChibiProps["face"]; sip?: number; hea
     sweat={sweat}
   />
 );
+// The cabin is small, so the wider cameras sit outside it: one looks in through the window (its sill a
+// dark ledge along the bottom of the frame), one looks over your shoulder from beyond the back wall (the
+// walls face inwards, so from outside they don't draw).
+const FACE_IN = V(0.15, 1.04, -0.29); // the front of your face, sat in the chair
+const SIP_CAM = C(-0.15, 1.12, -2.2, 0.15, 0.92, -0.05, 32);
+const backView = (u: number): Cam => C(0.4, 1.45, 3.7 - u, 0.0, 1.4, -1.6, 34);
 shot("cabin-nofire", cut(25, "No", 0.08), (t, u) => {
-  const cam = C(1.25 - 0.1 * u, 1.42, 1.2 - 0.1 * u, -0.3, 1.18, -1.6, 40);
+  const cam = C(0.25 - 0.04 * u, 1.25, -3.6 + 0.15 * u, 0.15, 0.75, 0.0, 36);
   return {
     cam,
     content: (
@@ -892,11 +902,11 @@ shot("cabin-nofire", cut(25, "No", 0.08), (t, u) => {
         <Sitting t={t} face={{ eyes: "half", mouth: "smile" }} />
       </Cabin>
     ),
-    lens: lens(cam, V(0.15, 0.9, -0.1), 0.05),
+    lens: lens(cam, FACE_IN, 0.02),
   };
 });
 shot("cabin-sip", cut(25, 9, 0.08), (t, u) => {
-  const cam = C(0.42, 1.0, -1.25, 0.15, 0.95, -0.1, 32);
+  const cam = SIP_CAM;
   const sip = smooth(0.15, 0.45, u) * (1 - smooth(0.8, 1.0, u));
   return {
     cam,
@@ -905,11 +915,11 @@ shot("cabin-sip", cut(25, 9, 0.08), (t, u) => {
         <Sitting t={t} sip={sip} face={{ eyes: sip > 0.5 ? "happy" : "half", mouth: sip > 0.5 ? "tiny" : "smile" }} head={{ pitch: -0.1 * sip }} />
       </Cabin>
     ),
-    lens: lens(cam, V(0.15, 0.95, -0.15), 0.1),
+    lens: lens(cam, FACE_IN, 0.04),
   };
 });
 shot("cabin-view", cut(25, "Just", 0.1), (t, u) => {
-  const cam = C(0.75 - 0.12 * u, 1.45, 1.35 - 0.15 * u, -0.2, 1.25, -3, 42);
+  const cam = backView(0.3 * u);
   return {
     cam,
     content: (
@@ -917,7 +927,7 @@ shot("cabin-view", cut(25, "Just", 0.1), (t, u) => {
         <Sitting t={t} face={{ eyes: "happy", mouth: "smile" }} head={{ yaw: 0.2 }} />
       </Cabin>
     ),
-    lens: lens(cam, V(0.15, 1.0, -0.1), 0.04),
+    lens: lens(cam, V(0, 1.4, -1.6), 0.012),
   };
 });
 
@@ -931,14 +941,17 @@ const queueAt = (i: number): { p: [number, number, number]; yaw: number } => {
   const s = (i - 3) * 0.6;
   return { p: [DOOR.x + FRONT.x * d0 + SIDE.x * s, DECK, DOOR.z + FRONT.z * d0 + SIDE.z * s], yaw: Math.atan2(-SIDE.x, -SIDE.z) };
 };
-const Queue: React.FC<{ t: number; turned?: boolean }> = ({ t, turned = false }) => (
+/** A point in the lobby's frame (x along the side of the line, z out of the doors), on the ground. */
+const lobbyAt = (lx: number, lz: number): [number, number] => [DOOR.x + SIDE.x * lx + FRONT.x * (lz - 1.2), DOOR.z + SIDE.z * lx + FRONT.z * (lz - 1.2)];
+/** The rocket guys turn to face this point when caught. */
+const Queue: React.FC<{ t: number; turned?: boolean; faceTo?: [number, number] }> = ({ t, turned = false, faceTo }) => (
   <>
     {Array.from({ length: 10 }, (_, i) => {
       const { p, yaw } = queueAt(i);
       if (i >= 8) {
         // the rocket guys, last in line; caught on camera, they turn round, sheepish
         const look = i === 8 ? CAST.rivalA : CAST.rivalB;
-        const back = Math.atan2(SIDE.x, SIDE.z) + (i === 8 ? -0.35 : 0.3);
+        const back = faceTo ? yawTo([p[0], p[2]], faceTo) + (i === 8 ? 0.15 : -0.15) : Math.atan2(SIDE.x, SIDE.z) + (i === 8 ? -0.35 : 0.3);
         return (
           <Person
             key={i}
@@ -959,12 +972,14 @@ const Queue: React.FC<{ t: number; turned?: boolean }> = ({ t, turned = false })
     })}
   </>
 );
+// the line runs out of the doors and turns along the deck; the camera tracks along it (starting past the
+// lobby's corner, which would fill the frame) and ends on two familiar backs at the very end
 shot("lobby-line", cut(26, 0, 0.1), (t, u) => {
-  const a = queueAt(1).p;
+  const a = queueAt(2).p;
   const b = queueAt(8).p;
-  const k = smoother(u / 1.4);
+  const k = smoother(u / 1.35);
   const foc = V(lerp(a[0], b[0], k), 1.0, lerp(a[2], b[2], k));
-  const cam = C(foc.x + 1.4, 1.55, foc.z - 2.9, foc.x, 1.0, foc.z, 38);
+  const cam = C(foc.x + 1.4, 1.55, foc.z - 2.9, foc.x, foc.y, foc.z, 38);
   return {
     cam,
     content: (
@@ -972,41 +987,44 @@ shot("lobby-line", cut(26, 0, 0.1), (t, u) => {
         <Queue t={t} />
       </Ocean>
     ),
-    lens: lens(cam, foc, 0.05),
+    lens: lens(cam, foc, 0.04),
   };
 });
+const RIVALS_CAM = lobbyAt(2.8, 1.05);
 shot("lobby-rivals", cut(26, "They're", 0.1), (t, u) => {
   const a = queueAt(8).p;
   const b = queueAt(9).p;
-  const mid = V((a[0] + b[0]) / 2, 1.4, (a[2] + b[2]) / 2);
-  const cam = C(mid.x + SIDE.x * 2.4 - FRONT.x * 1.5, 1.55, mid.z + SIDE.z * 2.4 - FRONT.z * 1.5 - 0.1 * u, mid.x, 1.38, mid.z, 36);
+  const mid = V((a[0] + b[0]) / 2, 1.3, (a[2] + b[2]) / 2);
+  const p = V(RIVALS_CAM[0], 1.45, RIVALS_CAM[1]).lerp(mid, 0.04 * u);
+  const cam = C(p.x, p.y, p.z, mid.x, mid.y, mid.z, 40);
   return {
     cam,
     content: (
       <Ocean t={t} doors={1}>
-        <Queue t={t} turned />
+        <Queue t={t} turned faceTo={RIVALS_CAM} />
       </Ocean>
     ),
-    lens: lens(cam, mid, 0.09),
+    lens: lens(cam, mid, 0.05),
   };
 });
 
 // ======================================================================= 27: you still hate rockets
 shot("cabin-rocket", cut(27, 0, 0.12), (t, u) => {
-  const cam = C(0.7, 1.55, 1.45, -0.1, 1.3, -3, 44);
+  const cam = backView(0.5 + 0.1 * u);
   const jump = smooth(0.3, 0.4, u) * Math.exp(-Math.max(0, u - 0.4) * 5);
   return {
     cam,
     content: (
-      <Cabin t={t} rocket={(u - 0.05) / 0.5}>
+      <Cabin t={t} rocket={(u - 0.05) / 0.57}>
         <Sitting t={t} face={{ eyes: "half", mouth: "smile" }} tilt={jump * 0.15} />
       </Cabin>
     ),
+    lens: lens(cam, V(0, 1.4, -1.6), 0.012),
     bloom: { strength: 0.55, radius: 0.45, threshold: 1.0 },
   };
 });
 shot("cabin-flinch", cut(27, "rockets.", 0.1), (t, u) => {
-  const cam = shake(C(0.42, 1.0, -1.25, 0.15, 0.95, -0.1, 32), t, 0.01 * (1 - smooth(0.2, 0.6, u)), 4);
+  const cam = shake(SIP_CAM, t, 0.01 * (1 - smooth(0.2, 0.6, u)), 4);
   const fright = 1 - smooth(0.55, 0.62, u);
   return {
     cam,
@@ -1015,7 +1033,7 @@ shot("cabin-flinch", cut(27, "rockets.", 0.1), (t, u) => {
         <Sitting t={t} face={fright > 0.5 ? { eyes: "spiral", mouth: "wavy", brows: "worry" } : { eyes: "half", mouth: "frown", brows: "down" }} sweat={fright} tilt={fright * Math.sin(t * 45) * 0.05} />
       </Cabin>
     ),
-    lens: lens(cam, V(0.15, 0.95, -0.15), 0.1),
+    lens: lens(cam, FACE_IN, 0.04),
     blur: false,
   };
 });
