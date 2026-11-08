@@ -42,7 +42,7 @@ export const Lift: React.FC = () => {
   // the camera half a frame ago (same shot), for the motion blur
   const prevT = Math.max(shot.t0, t - 0.5 / FPS);
   const prev = prevT < t ? shot.make(prevT, prevT - shot.t0).cam : st.cam;
-  const blur = st.blur === false ? { dir: [0, 0] as [number, number], zoom: 0 } : camBlur(st.cam, prev, 1.0, 1080 / 1920, st.blurRef);
+  const blur = st.blur === false ? { dir: [0, 0] as [number, number], zoom: 0 } : camBlur(st.cam, prev, 0.6, 1080 / 1920, st.blurRef);
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       {fontOk ? (

@@ -117,7 +117,7 @@ export const Height: React.FC<{ camY: number; stack?: number; plane?: number; bi
           <planeGeometry args={[260, 1.6]} />
         </mesh>
       </Fx>
-      <Label text={"SPACE  ·  100 km"} h={bigLabel ? 4.2 : 1.7} pos={[0, SPACE_Y + (bigLabel ? 3.4 : 1.6), -5.9]} o={{ size: 120, color: "#ffffff", stroke: "#0d1a3a", strokeW: 18 }} glow={1.15} />
+      <Label text={"SPACE  ·  100 km"} h={bigLabel ? 4.2 : 0.6} pos={[0.4, SPACE_Y + (bigLabel ? 3.4 : 0.75), -5.9]} o={{ size: 120, color: "#ffffff", stroke: "#0d1a3a", strokeW: 18 }} glow={1.15} />
       {/* the stack */}
       {stack > 0
         ? Array.from({ length: 11 }, (_, i) => <Mountain key={i} n={i + 1} y={i * MOUNT_H * 0.985} s={1} show={(stack * 11 - i) * 1.6} />)

@@ -754,3 +754,45 @@ the folding table with a game controller. Snap zoom. He grins, thumbs up. So do 
 
 The render under software GL takes 3-4 s a frame: bundle once, render the JPEG sequence in batches, lay
 the bed under it (mastered to about -15 LUFS) as for Looks.
+
+## Lift (narrated, the "master plan" reel format)
+
+"POV: rockets terrify you, so you build an elevator to space". A 104 s narrated 3D cartoon in the format
+of the second-person "secret genius master plan" reels: a voice tells you your own story, the cuts land
+on its words, one to three words of caption at a time sit a little below the middle of the frame, and the
+cast are little round-headed people with drawn meme faces. You want to go to space but rockets terrify
+you, so the plan on the war room's board is an elevator: the height (space at 100 km, eleven Everests; the
+elevator to 36,000 km, where an orbit takes a day), the cable (steel snaps under its own weight; a carbon
+nanotube ribbon), the base (a floating platform on the equator), the weight (an asteroid parked 100,000 km
+up) and the power (a laser beam). Then space junk; the base sails out of the way. The rocket guys laugh;
+ten years later the doors open, the ride takes a week, and the rocket guys are in line. You still hate
+rockets. "Going up?" A wink, and a lift's ding. No real people, companies or logos.
+
+1. **Voice:** `KOKORO_DIR=... python3 scripts/generate-lift-voice.py` synthesises the narration with
+   Kokoro-82M (`am_michael`, one clip per sentence), times every word by aligning a Whisper transcript of
+   each clip to the script, and writes `out/lift/vo.wav`, `public/lift/vo.mp3` and `src/lift/vo.json`
+   (sentences, words and the caption chunks, with numbers shown as digits). `--captions-only` re-chunks.
+2. **Picture:** `src/lift/`:
+   - `Chibi.tsx`: the rig (a bean body with a chest patch, rubber-hose arms and legs that bend as curves
+     so no joint can pop, round shoes, the big head with its hair of lumps over a cap, glasses, hard hats,
+     a sweat drop, dizzy stars, a mug, a ticket, a plug) and its pose library;
+   - `faces.ts`: the faces, painted on a square projected straight onto the head's front (half-lidded
+     smug eyes, a toothy grin, spiral eyes, a wink, shades...);
+   - `Post.tsx`: ink lines from depth and normals, depth of field, bloom, motion blur from the camera's
+     turn (or a named still point), the grade; `Fx.tsx` keeps glows and holograms out of the ink;
+   - `sets/`: the night roof, the launch pad and rocket (with a bubble window), the war room (hologram
+     globe, the master plan board), the height scale, space (Earth from Natural Earth outlines, the ribbon,
+     the ring, the junk, the net), the steel cable, the ribbon works, the ocean base, the climber's cabin and
+     the top deck;
+   - `shots.tsx`: about 60 shots, each starting a hair before its word; `timeline.ts` reads `vo.json`.
+   Nunito (SIL OFL) is served from `public/lift/fonts`; `src/lift/index.ts` is Lift's own entry point, so
+   a render needs no network.
+3. **Sound:** `python3 scripts/generate-lift-audio.py` writes `out/lift/mix.wav` and
+   `public/lift/mix.mp3`: the voice; an original score (100 BPM, the plucked "plan" groove in E minor,
+   wonder bells and pads for space, sunny G major for the ocean, a drop-out for the alarm, felt piano for
+   the ride, the last swell into G) ducked about 9 dB under the voice; and the sounds, synthesised and
+   placed on the cuts. Mastered to -14 LUFS, true peak under -1 dBTP.
+
+Render the picture without captions (`--props='{"noCaptions":true}'`) as a JPEG sequence in batches
+(about 2.5-4 s a frame under software GL at 864x1536), the composition `LiftCaptions` as a transparent
+PNG sequence at full size, then scale the picture to 1080x1920, lay the captions over it and mux the mix.

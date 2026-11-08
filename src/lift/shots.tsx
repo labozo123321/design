@@ -63,7 +63,7 @@ const cut = (i: number, w: number | string = 0, lead = 0.1) => at(i, w) - lead;
 const LAUNCH_FAR = 3.95;
 shot("roof-wide", 0, (t, u) => {
   const k = smoother(u / 1.5);
-  const cam = mixCam(C(1.6, 5.2, 8.8, 0, 2.2, -8, 36), C(0.3, 1.55, 2.8, 0.05, 2.6, -10, 34), k);
+  const cam = mixCam(C(1.4, 5.0, 8.6, 0, 2.0, -8, 36), C(0.45, 1.25, 2.4, 0.0, 1.9, -10, 34), k);
   return {
     cam,
     content: (
@@ -72,8 +72,7 @@ shot("roof-wide", 0, (t, u) => {
         <You t={t} pos={[0, 0, 0]} yaw={Math.PI} head={{ pitch: -0.38 }} bob={idle(t)} />
       </>
     ),
-    lens: lens(cam, V(0, 1, 0), 0.03),
-    grade: { fade: smooth(0, 0.45, t) },
+    grade: { fade: 0.35 + 0.65 * smooth(0, 0.3, t) },
   };
 });
 shot("roof-face", cut(0, "more", 0.12), (t, u) => {
@@ -316,7 +315,8 @@ const SYNC = 0.75; // rad/s: Earth and the satellite turning together, sped up
 shot("space-day", cut(9, 0, 0.12), (t, u) => {
   const spin = 0.35 - u * SYNC;
   // upright frame: the equator's +x is up the screen, so the satellite circles in the yz plane
-  const satPos: [number, number, number] = [10, GEO_R * Math.cos(spin) + 9, -GEO_R * Math.sin(spin)];
+  // the label just inside the ring from the satellite, so it never leaves the frame
+  const satPos: [number, number, number] = [10, GEO_R * 0.78 * Math.cos(spin), -GEO_R * 0.78 * Math.sin(spin)];
   const cam = C(70, 4, 200, 0, 4, 0, 40);
   return {
     cam,

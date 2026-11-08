@@ -71,10 +71,10 @@ export const Rooftop: React.FC<{ t: number; launch?: number }> = ({ t, launch })
       <fog attach="fog" args={["#1d1d55", 18, 80]} />
       {/* the moon */}
       <Fx>
-        <mesh position={[-10, 22, -80]} material={flat("#ffffff", 1.6, { map: moonTex() })}>
+        <mesh position={[-10, 22, -80]} material={flat("#ffffff", 1.12, { map: moonTex() })}>
           <circleGeometry args={[6, 48]} />
         </mesh>
-        <mesh position={[-10, 22, -80.5]} material={flat("#fff3c4", 0.5, { additive: true, opacity: 0.35 })}>
+        <mesh position={[-10, 22, -80.5]} material={flat("#fff3c4", 0.4, { additive: true, opacity: 0.25 })}>
           <circleGeometry args={[9, 48]} />
         </mesh>
       </Fx>
